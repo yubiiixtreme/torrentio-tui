@@ -237,3 +237,28 @@ def test_play_magnet_returns_zero_on_success(monkeypatch) -> None:
 
     monkeypatch.setattr(torrent_mod.subprocess, "run", lambda *a, **k: FakeResult())
     assert torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T") == 0
+
+
+def test_play_magnet_never_passes_broken_title_flag(monkeypatch) -> None:
+    """Regression: webtorrent-cli has no --title flag (confirmed against
+    6.0.1: `Error: Unknown argument: title`, hard exit 1). Passing one
+    turned every single magnet click into a guaranteed crash.
+    """
+    monkeypatch.setattr(
+        torrent_mod.shutil, "which", lambda name: name if name == "webtorrent" else None
+    )
+    captured = {}
+
+    class FakeResult:
+        returncode = 0
+        stderr = ""
+
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return FakeResult()
+
+    monkeypatch.setattr(torrent_mod.subprocess, "run", fake_run)
+    torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "Some Title", backend="mpv")
+
+    assert not any("title" in arg.lower() for arg in captured["cmd"])
+    assert captured["cmd"] == ["webtorrent", "magnet:?xt=urn:btih:abc", "--mpv"]

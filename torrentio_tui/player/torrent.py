@@ -58,12 +58,15 @@ def play_magnet(magnet: str, title: str, backend: str = "mpv") -> int:
             "configure a debrid key in your stream addon URL so it returns "
             "direct http links. Magnet (truncated): " + magnet[:80] + "..."
         )
-    if streamer == "webtorrent":
-        player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
-        cmd = ["webtorrent", magnet, player_flag, f"--title={title}"]
-    else:  # peerflix
-        player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
-        cmd = ["peerflix", magnet, player_flag]
+    # Neither streamer's CLI has a reliable way to set the player window
+    # title: webtorrent-cli has no --title flag at all (confirmed against
+    # webtorrent-cli 6.0.1 — passing one is a hard crash, "Unknown argument:
+    # title"), and its --player-args is itself fragile (crashes if used
+    # without one of --mpv/--vlc/etc. selecting a player first). Not worth
+    # the risk for a cosmetic window title; mpv/vlc just show their own
+    # default title from the stream instead.
+    player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
+    cmd = [streamer, magnet, player_flag]
 
     # Capture stderr only (stdout stays live so webtorrent/peerflix's own
     # progress UI still shows) so a crash — like node-datachannel's native
