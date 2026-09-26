@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-09-26
 
+### Fixed
+- **Python 3.10 was completely broken** — `config.py` imported stdlib
+  `tomllib` unconditionally, but that module only exists from Python 3.11
+  onward, despite `pyproject.toml` claiming `requires-python = ">=3.10"`.
+  Any real 3.10 install would crash on the very first import. Caught by
+  CI's 3.10 job failing; now falls back to the `tomli` backport (added as
+  a conditional dependency for `python_version < "3.11"`) on 3.10.
+- Removed the PyPI badges from the README — they showed "package/version
+  not found" because nothing has actually been published to PyPI or
+  tagged as a GitHub release yet, not because they were broken. Replaced
+  with a static Python-version badge; can bring the PyPI ones back once
+  there's an actual release to point them at.
+
 ### Added
 - **`vlc-android` player backend** — launches VLC for Android directly via
   an `am start` intent (per VLC's documented Android intent API) instead

@@ -1,7 +1,6 @@
 # Torrentio TUI
 
-[![PyPI version](https://img.shields.io/pypi/v/torrentio-tui?label=PyPI)](https://pypi.org/project/torrentio-tui/)
-[![Python](https://img.shields.io/pypi/pyversions/torrentio-tui)](https://pypi.org/project/torrentio-tui/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/yubiiixtreme/torrentio-tui/workflows/CI/badge.svg)](https://github.com/yubiiixtreme/torrentio-tui/actions)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
