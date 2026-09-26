@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Container
+from textual.containers import Container, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Static
+
+from torrentio_tui.config import THEMES
 
 KEYBINDINGS = (
     ("↑ / ↓", "Move selection in lists"),
@@ -13,6 +15,7 @@ KEYBINDINGS = (
     ("l", "Save/unsave highlighted title in your Library (❤️)"),
     ("d", "Download highlighted title (requires yt-dlp)"),
     ("i", "Show detailed info for highlighted title"),
+    ("t", f"Cycle theme ({', '.join(THEMES)})"),
     ("?", "Show this help screen"),
     ("Esc", "Close picker / help screen / go back"),
     ("q", "Quit application"),
@@ -48,20 +51,20 @@ class HelpScreen(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with Container(id="help-container"):
-            yield Static("⌨  Keybindings", id="help-title")
+        with Container(id="help-container"), VerticalScroll():
+            yield Static("⌨  Keybindings", classes="help-title")
             lines = "\n".join(f"[bold]{key:<10}[/bold]  {desc}" for key, desc in KEYBINDINGS)
-            yield Static(lines, id="help-body", markup=True)
+            yield Static(lines, classes="help-body", markup=True)
 
-            yield Static("\n📡  Available Sources", id="help-title", markup=True)
+            yield Static("\n📡  Available Sources", classes="help-title", markup=True)
             source_lines = "\n".join(
                 f"[bold cyan]{src:<18}[/bold cyan]  {desc}" for src, desc in SOURCES_INFO
             )
-            yield Static(source_lines, id="help-body", markup=True)
+            yield Static(source_lines, classes="help-body", markup=True)
 
-            yield Static("\n💡  Tips", id="help-title", markup=True)
+            yield Static("\n💡  Tips", classes="help-title", markup=True)
             tip_lines = "\n".join(f"  • {tip}" for tip in TIPS)
-            yield Static(tip_lines, id="help-body", markup=True)
+            yield Static(tip_lines, classes="help-body", markup=True)
         yield Footer()
 
     def action_dismiss_help(self) -> None:

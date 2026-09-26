@@ -38,5 +38,6 @@ class TorrentioTuiApp(App):
 
     def on_mount(self) -> None:
         self.register_theme(TORRENTIO_THEME)
-        self.theme = "torrentio"
+        wanted = self.config.ui.theme
+        self.theme = wanted if wanted in self.available_themes else "torrentio"
         self.push_screen(MainScreen(self.sources, self.config))

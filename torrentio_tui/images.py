@@ -1,165 +1,135 @@
-"""Image caching and display for poster art."""
+"""Poster art: download, cache, and render.
+
+Real image rendering needs the optional `textual-image` dependency
+(`pip install torrentio-tui[images]`) — it auto-detects the terminal's
+graphics protocol (Kitty, iTerm2, Sixel) and falls back to a Unicode
+half-block approximation everywhere else, so it renders *something*
+real in virtually any color terminal. It pulls in Pillow, which isn't
+guaranteed to have a prebuilt wheel on every platform (Termux/ARM being
+the main case), so it's optional rather than a hard dependency — without
+it, PosterWidget falls back to a plain colored icon card instead of
+failing to install at all.
+"""
 
 from __future__ import annotations
 
 import hashlib
-import os
 import shutil
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Optional
 
-from textual import work
-from textual.app import App
+from textual.containers import Container
 from textual.widgets import Static
 
 from torrentio_tui.config import cache_dir
 
+try:
+    from textual_image.widget import Image as _ImageWidget
+
+    IMAGES_AVAILABLE = True
+except ImportError:
+    _ImageWidget = None
+    IMAGES_AVAILABLE = False
+
 _USER_AGENT = "torrentio-tui/0.6 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
-# Image cache directory
 IMAGE_CACHE_DIR = cache_dir() / "posters"
-IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+_IMAGE_MAGIC = (b"\xff\xd8\xff", b"\x89PNG", b"GIF8", b"RIFF")
 
 
 def _cache_key(url: str) -> str:
-    """Generate a cache filename from URL."""
-    return hashlib.sha256(url.encode()).hexdigest()[:16] + ".jpg"
+    return hashlib.sha256(url.encode()).hexdigest()[:16] + ".img"
 
 
-def _get_cached_path(url: str) -> Path:
-    """Get the cached file path for a URL."""
+def _cached_path(url: str) -> Path:
     return IMAGE_CACHE_DIR / _cache_key(url)
 
 
-def is_cached(url: str) -> bool:
-    """Check if an image is cached."""
-    return _get_cached_path(url).exists()
-
-
-def get_cached_path(url: str) -> Path | None:
-    """Get cached image path if exists."""
-    path = _get_cached_path(url)
-    return path if path.exists() else None
-
-
-async def download_image(app: App, url: str, timeout: float = 10.0) -> Path | None:
-    """Download an image and cache it. Returns cached path or None on failure."""
-    cached = get_cached_path(url)
-    if cached:
+def download_image(url: str, timeout: float = 10.0) -> Path | None:
+    """Download (or reuse a cached copy of) an image. Returns the local
+    path, or None if the download failed or wasn't actually an image.
+    Blocking — call this from a thread worker, not the UI thread.
+    """
+    cached = _cached_path(url)
+    if cached.exists():
         return cached
 
     try:
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": _USER_AGENT, "Accept": "image/*"},
-        )
+        req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "image/*"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = resp.read()
-            # Basic validation - check it's an image
-            if not data[:4] in (b"\xff\xd8\xff", b"\x89PNG", b"GIF8", b"RIFF"):
-                return None
-            cached.write_bytes(data)
-            return cached
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
         return None
 
+    # Cheap sniff; not exhaustive, just enough to reject HTML error pages.
+    if not any(data.startswith(magic) for magic in _IMAGE_MAGIC):
+        return None
 
-class PosterWidget(Static):
-    """Widget for displaying poster images with fallback.
+    IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cached.write_bytes(data)
+    return cached
 
-    Uses CSS background-image via inline styles. The widget expects
-    to have a fixed width/height set via CSS.
+
+class PosterWidget(Container):
+    """Poster display: a real rendered image when textual-image is
+    installed and the download succeeds, otherwise a colored icon card
+    showing the content kind — always something, never a blank box.
     """
 
     DEFAULT_CSS = """
     PosterWidget {
-        background: $surface;
+        align: center middle;
+    }
+    PosterWidget > Static {
+        width: 100%;
+        height: 100%;
+        content-align: center middle;
+        text-style: bold;
     }
     """
 
-    def __init__(self, url: str | None = None, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.poster_url = url
-        self._loading = False
+        self._fallback = Static("🍿", id="poster-fallback")
 
-    async def set_poster(self, url: str | None) -> None:
-        """Set poster URL and load image."""
-        self.poster_url = url
-        if not url:
-            self._show_placeholder()
+    def compose(self):
+        yield self._fallback
+
+    def show_fallback(self, icon: str, color: str = "gray") -> None:
+        """Show the icon-card fallback (no poster URL, download failed, or
+        textual-image isn't installed)."""
+        self.styles.border = ("round", color)
+        for child in list(self.children):
+            if child is not self._fallback:
+                child.remove()
+        if not self._fallback.is_mounted:
+            self.mount(self._fallback)
+        self._fallback.update(icon)
+        self._fallback.display = True
+
+    def show_image(self, path: Path) -> None:
+        """Render a real downloaded image (only called when textual-image
+        is available and the download succeeded)."""
+        if _ImageWidget is None:
             return
-
-        # Check cache first
-        cached = get_cached_path(url)
-        if cached and cached.exists():
-            self._display_image(cached)
-            return
-
-        # Download async
-        self._show_loading()
-        app = self.app
-        if app:
-            path = await download_image(app, url)
-            if path:
-                self._display_image(path)
-            else:
-                self._show_placeholder()
-
-    def _display_image(self, path: Path) -> None:
-        """Display cached image via CSS background."""
-        try:
-            # Convert to file:// URL for CSS
-            file_url = path.resolve().as_uri()
-            self.styles.background_image = f"url('{file_url}')"
-            self.styles.background_size = "cover"
-            self.styles.background_position = "center"
-            self.styles.background_repeat = "no-repeat"
-            self.update("")
-        except Exception:
-            self._show_placeholder()
-
-    def _show_loading(self) -> None:
-        self.update("📥")
-
-    def _show_placeholder(self) -> None:
-        self.update("🎬")
-
-    def clear_poster(self) -> None:
-        """Clear the poster."""
-        self.poster_url = None
-        self.styles.background_image = ""
-        self.update("🍿")
-
-
-async def preload_posters(app: App, urls: list[str]) -> None:
-    """Preload multiple posters in background."""
-    for url in urls:
-        if url and not is_cached(url):
-            await download_image(app, url)
+        for child in list(self.children):
+            child.remove()
+        self._fallback.display = False
+        self.mount(_ImageWidget(str(path)))
 
 
 def clear_cache() -> None:
-    """Clear the image cache."""
     if IMAGE_CACHE_DIR.exists():
         shutil.rmtree(IMAGE_CACHE_DIR)
     IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def cache_size() -> int:
-    """Get cache size in bytes."""
-    total = 0
-    for f in IMAGE_CACHE_DIR.glob("*"):
-        if f.is_file():
-            total += f.stat().st_size
-    return total
-
-
 def cache_size_human() -> str:
-    """Get human-readable cache size."""
-    size = cache_size()
-    for unit in ["B", "KB", "MB", "GB"]:
+    total = sum(f.stat().st_size for f in IMAGE_CACHE_DIR.glob("*") if f.is_file())
+    size = float(total)
+    for unit in ("B", "KB", "MB", "GB"):
         if size < 1024:
             return f"{size:.1f} {unit}"
         size /= 1024

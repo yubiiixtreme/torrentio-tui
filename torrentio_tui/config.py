@@ -24,6 +24,19 @@ def _default_player_backend() -> str:
     return "termux" if is_termux() else "mpv"
 
 
+#: Curated theme list, cycled with the "t" key. "torrentio" is our own;
+#: the rest ship built into Textual — no extra registration needed.
+THEMES: tuple[str, ...] = (
+    "torrentio",
+    "dracula",
+    "nord",
+    "gruvbox",
+    "catppuccin-mocha",
+    "tokyo-night",
+    "monokai",
+)
+
+
 def _default_hwdec() -> str:
     # mpv's own recommended safe default: enables hardware decoding where
     # supported, silently falls back to software otherwise. Most useful on
@@ -46,6 +59,12 @@ default_quality = "1080p"
 # (occasionally unstable) mode. Most impactful on Android/Termux.
 hwdec = "{_default_hwdec()}"
 
+[ui]
+# One of: {", ".join(THEMES)}
+# Press "t" in-app to cycle through them (saved back here automatically),
+# or Ctrl+P → "theme" for the full Textual theme list.
+theme = "torrentio"
+
 [sources]
 # Order controls search fan-out / result ranking.
 # "stremio" = Cinemeta catalogue (movie/series/anime search) + Torrentio-style
@@ -60,7 +79,7 @@ hwdec = "{_default_hwdec()}"
 # "subsplease" = Latest anime from SubsPlease
 # "stremio-adult" = Adult content via Stremio (requires [adult] enabled)
 # "hanime" = Hentai anime from Hanime.tv (requires [adult] enabled)
-enabled = ["stremio", "local"]
+enabled = ["stremio", "mediafusion", "local"]
 
 [sources.stremio]
 # Metadata catalogue (search + episodes). Default is the public Cinemeta.
@@ -74,12 +93,14 @@ stream_url = "https://torrentio.strem.fun"
 # Env override: TORRENTIO_TUI_TIMEOUT (seconds).
 timeout_seconds = 15.0
 
-# --- Alternative stream addons (enable by adding to [sources].enabled) ---
-# [sources.mediafusion]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://mediafusion.elfhosted.com"
-# timeout_seconds = 15.0
-#
+# --- Alternative stream addons (enabled by default alongside Torrentio, so
+#     one being blocked/down doesn't leave you with zero results — remove
+#     from [sources].enabled above to turn any of these off) ---
+[sources.mediafusion]
+cinemeta_url = "https://v3-cinemeta.strem.io"
+stream_url = "https://mediafusion.elfhosted.com"
+timeout_seconds = 15.0
+
 # [sources.knightcrawler]
 # cinemeta_url = "https://v3-cinemeta.strem.io"
 # stream_url = "https://knightcrawler.ml"
@@ -195,6 +216,11 @@ class NetworkConfig:
 
 
 @dataclass(slots=True)
+class UIConfig:
+    theme: str = "torrentio"
+
+
+@dataclass(slots=True)
 class Config:
     player: PlayerConfig = field(default_factory=PlayerConfig)
     enabled_sources: list[str] = field(default_factory=lambda: ["stremio", "local"])
@@ -203,6 +229,7 @@ class Config:
     adult: AdultConfig = field(default_factory=AdultConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
+    ui: UIConfig = field(default_factory=UIConfig)
     sources_config: dict[str, dict] = field(default_factory=dict)
 
     @classmethod
@@ -258,6 +285,10 @@ class Config:
             if "directory" in downloads:
                 cfg.downloads.directory = Path(downloads["directory"]).expanduser()
 
+            ui_cfg = data.get("ui", {})
+            if "theme" in ui_cfg:
+                cfg.ui.theme = str(ui_cfg["theme"])
+
         # Env vars always win (also honoured inside StremioSource itself).
         if env_cinemeta := os.environ.get("TORRENTIO_TUI_CINEMETA_URL"):
             cfg.stremio.cinemeta_url = env_cinemeta
@@ -274,8 +305,31 @@ class Config:
             cfg.downloads.directory = Path(env_dir).expanduser()
         if env_adult := os.environ.get("TORRENTIO_TUI_ADULT"):
             cfg.adult.enabled = env_adult.lower() in ("1", "true", "yes", "on")
+        if env_theme := os.environ.get("TORRENTIO_TUI_THEME"):
+            cfg.ui.theme = env_theme
 
         return cfg
+
+
+def save_theme(theme: str) -> None:
+    """Best-effort persistence for the "t" theme-cycle keybinding: patches
+    just the `theme = "..."` line under `[ui]` in the existing config.toml,
+    leaving everything else (including the user's own comments) untouched.
+    Silently does nothing if the file or that line isn't there — cycling
+    still works for the rest of the session either way, it just won't be
+    remembered next launch.
+    """
+    import re
+
+    path = config_file()
+    if not path.exists():
+        return
+    text = path.read_text()
+    new_text, count = re.subn(
+        r'^theme = ".*"$', f'theme = "{theme}"', text, count=1, flags=re.MULTILINE
+    )
+    if count:
+        path.write_text(new_text)
 
 
 def ensure_dirs() -> None:

@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-26
+
+### Added
+- **Real poster art** — `images.py`/`PosterWidget` now actually renders
+  downloaded images (via the optional `textual-image` dependency,
+  `pip install torrentio-tui[images]`), auto-detecting Kitty/iTerm2/Sixel
+  graphics or falling back to a Unicode half-block approximation. Falls
+  back to the existing colored icon card if the extra isn't installed or
+  a poster fails to download — always shows *something*.
+- **Theme cycling** — press `t` to cycle a curated set (`torrentio`,
+  `dracula`, `nord`, `gruvbox`, `catppuccin-mocha`, `tokyo-night`,
+  `monokai`); the choice is saved to `[ui] theme` in config.toml and
+  restored on next launch. Full Textual theme list still available via
+  the command palette (Ctrl+P).
+- `mediafusion` enabled by default alongside `stremio`, so one provider
+  being down/blocked doesn't leave a fresh install with zero results;
+  results from each are tagged with their own colored source badge.
+
+### Fixed
+- **`?` (help) crashed the app.** `HelpScreen` mounted three `Static`
+  widgets with `id="help-title"` and three with `id="help-body"` in the
+  same container — Textual requires unique ids per parent, so opening
+  help raised `MountError: Tried to insert 3 widgets with the same ID`.
+  Never caught anywhere, so this would have taken the whole app down the
+  first time anyone pressed `?`. Switched to CSS classes instead of ids.
+- **Poster art never actually rendered.** The previous implementation set
+  `self.styles.background_image = "url(...)"` — not a real Textual CSS
+  property (that's web CSS); it silently did nothing. Replaced with an
+  actual rendering pipeline.
+- **`StremioSource` id collision** (from a couple of commits back) —
+  every config entry that maps to `StremioSource` (`stremio`,
+  `mediafusion`, `knightcrawler`, `torrentio-selfhost`) reported the
+  same hardcoded class-level `id`, so clicking any result always
+  resolved back to whichever loaded first regardless of which one
+  actually produced it. Each instance now gets its own id.
+- **`webtorrent-cli --title` flag doesn't exist** — every magnet click
+  built a command with a flag this webtorrent-cli version rejects
+  outright (`Error: Unknown argument: title`), crashing before it ever
+  touched the network. Removed; player.play()'s exit code is also no
+  longer silently ignored, so a streamer crash now surfaces as a real
+  error instead of being recorded as "watched."
+
 ## [0.3.0] - 2026-09-26
 
 ### Fixed
@@ -114,6 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Watch history and library
 - Plugin architecture for sources
 
+[0.4.0]: https://github.com/yubiiixtreme/torrentio-tui/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/yubiiixtreme/torrentio-tui/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/yubiiixtreme/torrentio-tui/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/yubiiixtreme/torrentio-tui/releases/tag/v0.1.0

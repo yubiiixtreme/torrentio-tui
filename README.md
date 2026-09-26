@@ -1,26 +1,50 @@
-# Torrentio TUI
+# 🎬 Torrentio TUI
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/yubiiixtreme/torrentio-tui/workflows/CI/badge.svg)](https://github.com/yubiiixtreme/torrentio-tui/actions)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-A terminal UI for discovering and streaming **movies, series & anime** —
-search a catalogue, pick an episode, pick a quality, and it plays instantly
-in **mpv / vlc** on your own machine.
+**Netflix, but it's your terminal.** Search movies, series and anime
+across multiple sources at once, pick a quality, and it's playing in
+mpv/vlc seconds later — real poster art rendered inline, your pick of
+color themes, everything stored locally on your own machine. No account,
+no tracking, no ads.
 
-Built with Python + [Textual](https://textual.textualize.io/). Inspired by
-[MovieBox-TUI](https://github.com/mesamirh/MovieBox-TUI) (multi-source feel)
-and [ani-cli](https://github.com/pystardust/ani-cli) (search → pick → mpv).
+```
+ ┌─ Search ──────────────────────────────┐┌─ Dune: Part Two (2024) ─────┐
+ │ 🔍 dune                                ││ ┌──────────┐                │
+ │                                        ││ │  poster  │ MOVIE · 2024   │
+ │ 🎬 Dune: Part Two (2024)   [stremio]   ││ │  image   │ stremio        │
+ │ 🎬 Dune: Part Two (2024)   [mediafusion]│ └──────────┘                │
+ │ 🎬 Dune: Part One (2021)   [stremio]   ││ Paul Atreides unites with   │
+ │ 🎬 Dune (1984)             [stremio]   ││ the Fremen while seeking    │
+ └────────────────────────────────────────┘└ revenge...                 ┘
+   l Save   d Download   i Info   t Theme   ?  Help   q Quit
+```
 
-## Screenshots
+New here? Jump to **[Quickstart](#quickstart)** — three commands and
+you're watching something.
 
-*Coming soon — run `torrentio-tui` to see the beautiful Textual TUI!*
+Built with Python + [Textual](https://textual.textualize.io/). Concept
+inspired by [MovieBox-TUI](https://github.com/mesamirh/MovieBox-TUI)
+(multi-source feel) and [ani-cli](https://github.com/pystardust/ani-cli)
+(search → pick → mpv), built independently on top of the Stremio addon
+ecosystem (Cinemeta + Torrentio-compatible stream addons).
 
 ## Features
 
-- 🔍 **Catalogue search** — movies, series & anime via
-  [Cinemeta](https://v3-cinemeta.strem.io/manifest.json)
+- 🔍 **Search multiple sources at once** — every enabled provider
+  (Torrentio, MediaFusion, Knightcrawler, your own self-hosted instance,
+  ...) is queried in parallel and results are merged, each tagged with a
+  colored source badge, so one provider being down or blocked never
+  leaves you with zero results
+- 🖼️ **Real poster art**, rendered inline in your terminal (Kitty/iTerm2/
+  Sixel graphics where supported, a Unicode-block approximation
+  everywhere else) — not ASCII placeholders, actual cached images
+- 🎨 **Pick your theme** — press `t` to cycle a curated set (a built-in
+  cinematic gold/red theme plus Dracula, Nord, Gruvbox, Catppuccin,
+  Tokyo Night, Monokai), remembered across restarts
 - 🎬 **One-key playback** — streams resolve via
   [Torrentio](https://torrentio.strem.fun/configure) (or any compatible
   Stremio addon) and play in mpv/vlc
@@ -28,6 +52,10 @@ and [ani-cli](https://github.com/pystardust/ani-cli) (search → pick → mpv).
   ranked with seeders and size
 - 📚 **Continue watching + library** — history and favorites stored locally
 - ⬇️ **Downloads** via `yt-dlp` for direct http streams
+- 📱 **Works on Android via Termux** — auto-detected, hands playback off
+  to VLC/your video app since Termux has no display of its own
+- 🩺 **Self-diagnosing** — `--doctor` checks every tool it depends on and
+  live-probes whether your sources are actually reachable
 - 🔌 **Plugin sources** — new sources drop in without touching UI/player code
 - 💾 **Local files source** — index and play your own `~/Videos` folder
 
@@ -39,6 +67,7 @@ and [ani-cli](https://github.com/pystardust/ani-cli) (search → pick → mpv).
 | `mpv` **or** `vlc` | video playback (desktop/Linux/macOS) | `sudo apt install mpv` / `sudo dnf install mpv` / `brew install mpv` |
 | `webtorrent-cli` *(optional)* | plays magnet links without a debrid key | `npm install -g webtorrent-cli` |
 | `yt-dlp` *(optional)* | downloads | `pip install yt-dlp` |
+| `textual-image` *(optional)* | real poster art instead of icon cards | `pip install "torrentio-tui[images]"` |
 
 Run `torrentio-tui --doctor` any time to check what's installed and where
 your config file lives.
@@ -52,14 +81,17 @@ your config file lives.
 ### Option 1 — pip from GitHub (recommended)
 
 ```
-pip install git+https://github.com/yubiiixtreme/torrentio-tui.git
+pip install "torrentio-tui[images] @ git+https://github.com/yubiiixtreme/torrentio-tui.git"
 torrentio-tui
 ```
+
+Drop `[images]` for a lighter install without real poster art (icon
+cards instead) — everything else is identical.
 
 ### Option 2 — pipx (isolated, stays on PATH)
 
 ```
-pipx install git+https://github.com/yubiiixtreme/torrentio-tui.git
+pipx install "torrentio-tui[images] @ git+https://github.com/yubiiixtreme/torrentio-tui.git"
 torrentio-tui
 ```
 
@@ -203,12 +235,22 @@ backend = "mpv"          # mpv | vlc | termux | vlc-android
 default_quality = "1080p"
 hwdec = "auto-safe"       # mpv hardware decoding; "" to disable, "auto" for more aggressive
 
+[ui]
+theme = "torrentio"       # torrentio | dracula | nord | gruvbox | catppuccin-mocha | tokyo-night | monokai
+
 [sources]
-enabled = ["stremio", "local"]
+# Searched in parallel and merged — having more than one enabled means a
+# single provider being down/blocked doesn't leave you with zero results.
+enabled = ["stremio", "mediafusion", "local"]
 
 [sources.stremio]
 cinemeta_url = "https://v3-cinemeta.strem.io"
 stream_url = "https://torrentio.strem.fun"
+timeout_seconds = 15.0
+
+[sources.mediafusion]
+cinemeta_url = "https://v3-cinemeta.strem.io"
+stream_url = "https://mediafusion.elfhosted.com"
 timeout_seconds = 15.0
 
 [network]
@@ -218,6 +260,12 @@ timeout_seconds = 15.0
 directory = "~/Videos/torrentio-tui"
 ```
 
+`torrentio-tui --list-sources` prints every source id the app knows how
+to load, `?` inside the app lists what each one does, and the full set of
+options (IPTV, anime-specific sources, adult content behind an explicit
+opt-in) is documented with examples in the generated config file itself
+— open `~/.config/torrentio-tui/config.toml` and read the comments.
+
 | Env var | Purpose |
 |---------|---------|
 | `TORRENTIO_TUI_STREAM_URL` | custom stream addon URL |
@@ -226,6 +274,7 @@ directory = "~/Videos/torrentio-tui"
 | `TORRENTIO_TUI_PROXY` / `--proxy` | proxy URL for Cinemeta/Torrentio requests |
 | `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, `termux`, or `vlc-android` |
 | `TORRENTIO_TUI_HWDEC` / `--hwdec` | mpv `--hwdec` mode (`auto-safe`, `auto`, `""` to disable) |
+| `TORRENTIO_TUI_THEME` | color theme name (see `[ui]` above) |
 | `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
 | `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
 
@@ -249,6 +298,7 @@ torrentio-tui --version         # print the installed version
 | `l` | save / unsave highlighted result to Library |
 | `d` | download the highlighted result (needs `yt-dlp`) |
 | `i` | quick info popup for the highlighted result |
+| `t` | cycle color theme (saved automatically) |
 | `?` | show the in-app keybindings help |
 | `Esc` | back out of episode / quality / help dialogs |
 | `q` | quit |
@@ -261,6 +311,7 @@ torrentio_tui/
   config.py        # XDG config/data/cache paths, config.toml loading
   termux.py        # Termux (Android) environment detection
   proxy.py         # Optional outbound proxy (http/https/socks5) for Cinemeta/Torrentio
+  images.py        # Poster download/cache + rendering (textual-image, optional)
   history.py       # "Continue watching" store (JSON)
   library.py       # Saved/favorites store (JSON)
   downloads.py     # Batch download via yt-dlp subprocess
@@ -268,7 +319,10 @@ torrentio_tui/
 
   sources/
     base.py        # Source ABC — the plugin contract (search / get_episodes / get_streams)
-    stremio.py     # Cinemeta catalogue + Torrentio-style streams (movie/series/anime)
+    stremio.py     # Cinemeta catalogue + Torrentio-style streams (movie/series/anime);
+                    # also backs mediafusion/knightcrawler/torrentio-selfhost (different stream_url)
+    iptv.py        # Live TV from an M3U playlist
+    anime.py       # AniList metadata, Nyaa.si and SubsPlease torrents
     local.py       # Indexes a local media folder
     example.py     # Annotated template for a real scraper/API source (not registered)
     registry.py    # Maps config source ids -> Source classes
@@ -322,7 +376,7 @@ To cut a release:
 ```
 .venv/bin/python -m build
 .venv/bin/python -m twine upload dist/*
-git tag v0.3.0 && git push --tags
+git tag v0.4.0 && git push --tags
 ```
 
 ## Sources & legal note

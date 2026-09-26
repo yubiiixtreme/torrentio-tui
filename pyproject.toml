@@ -1,6 +1,6 @@
 [project]
 name = "torrentio-tui"
-version = "0.3.0"
+version = "0.4.0"
 description = "Terminal UI for discovering and streaming movie/series/anime via Stremio (Cinemeta + Torrentio) into mpv/vlc"
 readme = "README.md"
 license = "MIT"
@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio", "build", "twine", "ruff"]
 proxy = ["pysocks"]
+images = ["textual-image"]
 
 [project.scripts]
 torrentio-tui = "torrentio_tui.cli:main"

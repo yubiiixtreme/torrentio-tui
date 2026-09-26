@@ -20,6 +20,7 @@ from textual.widgets import (
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
+from torrentio_tui.images import IMAGES_AVAILABLE, PosterWidget, download_image
 from torrentio_tui.library import LibraryStore
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.player.registry import get_player
@@ -88,6 +89,7 @@ class MainScreen(Screen):
         ("l", "toggle_library", "Save/unsave"),
         ("d", "download", "Download"),
         ("i", "info", "Info"),
+        ("t", "cycle_theme", "Theme"),
         ("question_mark", "help", "Help"),
         ("q", "app.quit", "Quit"),
     ]
@@ -99,6 +101,7 @@ class MainScreen(Screen):
         self.history = HistoryStore()
         self.library = LibraryStore()
         self._last_results: list[SearchResult] = []
+        self._pending_poster_url: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -117,7 +120,7 @@ class MainScreen(Screen):
 
     def _build_detail_panel(self) -> Vertical:
         return Vertical(
-            Static(id="detail-poster"),
+            PosterWidget(id="detail-poster"),
             Static(id="detail-title"),
             Static(id="detail-meta"),
             Static(id="detail-genres"),
@@ -153,15 +156,14 @@ class MainScreen(Screen):
             list_view.append(ResultItem(item))
 
     def _show_detail(self, item: SearchResult | None) -> None:
-        poster = self.query_one("#detail-poster", Static)
+        poster = self.query_one("#detail-poster", PosterWidget)
         title = self.query_one("#detail-title", Static)
         meta = self.query_one("#detail-meta", Static)
         genres = self.query_one("#detail-genres", Static)
         overview = self.query_one("#detail-overview", Static)
 
         if item is None:
-            poster.styles.border = ("round", "gray")
-            poster.update("🍿")
+            poster.show_fallback("🍿")
             title.update("[dim]Select a title to preview[/dim]")
             meta.update("")
             genres.update("")
@@ -169,8 +171,10 @@ class MainScreen(Screen):
             return
 
         icon, color, label = _kind_style(item.kind)
-        poster.styles.border = ("round", color)
-        poster.update(f"{icon}\n[b]{label}[/b]")
+        poster.show_fallback(icon, color)
+        self._pending_poster_url = item.poster_url
+        if item.poster_url and IMAGES_AVAILABLE:
+            self._load_poster(item.poster_url)
 
         title.update(f"[bold]{item.title}[/bold]")
         year = str(item.year) if item.year else "—"
@@ -179,6 +183,23 @@ class MainScreen(Screen):
         overview.update(
             item.overview.strip() if item.overview else "[dim]No synopsis available.[/dim]"
         )
+
+    @work(exclusive=True, thread=True)
+    def _load_poster(self, url: str) -> None:
+        path = download_image(url)
+        if path is None:
+            return
+
+        def apply() -> None:
+            if self._pending_poster_url != url:
+                return  # user moved on to a different item while this downloaded
+            try:
+                poster = self.query_one("#detail-poster", PosterWidget)
+            except Exception:  # noqa: BLE001 -- screen may have moved on
+                return
+            poster.show_image(path)
+
+        self.app.call_from_thread(apply)
 
     def show_error_detail(self, message: str) -> None:
         self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
@@ -264,6 +285,19 @@ class MainScreen(Screen):
 
     def action_help(self) -> None:
         self.app.push_screen(HelpScreen())
+
+    def action_cycle_theme(self) -> None:
+        from torrentio_tui.config import THEMES, save_theme
+
+        current = self.app.theme
+        try:
+            next_theme = THEMES[(THEMES.index(current) + 1) % len(THEMES)]
+        except ValueError:
+            next_theme = THEMES[0]
+        self.app.theme = next_theme
+        self.config.ui.theme = next_theme
+        save_theme(next_theme)
+        self.app.notify(f"Theme: {next_theme}", timeout=3)
 
     def action_download(self) -> None:
         results_list = self.query_one("#search-results", ListView)
