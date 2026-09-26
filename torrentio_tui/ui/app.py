@@ -133,12 +133,6 @@ ProgressBar > Bar { background: $primary; border: round $primary; }
 DataTable { background: $surface; }
 DataTable > .datatable--header { background: $panel; color: $primary; text-style: bold; }
 DataTable > .datatable--cursor { background: $panel; }
-
-@media (max-width: 100) {
-    #search-body { layout: vertical; }
-    .results-panel { width: 100%; height: 1fr; }
-    #detail-panel { width: 100%; height: 40%; margin: 0 2 2 2; }
-}
 """
 
 # Sentinel class: truthy for 'or' check, but iterates to empty list
