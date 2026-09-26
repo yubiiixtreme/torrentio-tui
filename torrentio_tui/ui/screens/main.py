@@ -20,6 +20,7 @@ from textual.widgets import (
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
+from torrentio_tui.images import PosterWidget
 from torrentio_tui.library import LibraryStore
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.player.registry import get_player
@@ -117,7 +118,7 @@ class MainScreen(Screen):
 
     def _build_detail_panel(self) -> Vertical:
         return Vertical(
-            Static(id="detail-poster"),
+            PosterWidget(id="detail-poster"),
             Static(id="detail-title"),
             Static(id="detail-meta"),
             Static(id="detail-genres"),
@@ -153,7 +154,7 @@ class MainScreen(Screen):
             list_view.append(ResultItem(item))
 
     def _show_detail(self, item: SearchResult | None) -> None:
-        poster = self.query_one("#detail-poster", Static)
+        poster = self.query_one("#detail-poster", PosterWidget)
         title = self.query_one("#detail-title", Static)
         meta = self.query_one("#detail-meta", Static)
         genres = self.query_one("#detail-genres", Static)
@@ -161,7 +162,7 @@ class MainScreen(Screen):
 
         if item is None:
             poster.styles.border = ("round", "gray")
-            poster.update("🍿")
+            poster.clear_poster()
             title.update("[dim]Select a title to preview[/dim]")
             meta.update("")
             genres.update("")
@@ -171,6 +172,10 @@ class MainScreen(Screen):
         icon, color, label = _kind_style(item.kind)
         poster.styles.border = ("round", color)
         poster.update(f"{icon}\n[b]{label}[/b]")
+
+        # Load poster image if available
+        if item.poster_url:
+            self.app.run_worker(poster.set_poster(item.poster_url), exclusive=True)
 
         title.update(f"[bold]{item.title}[/bold]")
         year = str(item.year) if item.year else "—"
@@ -182,6 +187,8 @@ class MainScreen(Screen):
 
     def show_error_detail(self, message: str) -> None:
         self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
+        poster = self.query_one("#detail-poster", PosterWidget)
+        poster.update("⚠️")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "search-input":

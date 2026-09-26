@@ -19,15 +19,63 @@ from torrentio_tui.sources.stremio import StremioSource
 _AVAILABLE: dict[str, type[Source]] = {
     "local": LocalSource,
     "stremio": StremioSource,
+    # --- Popular Stremio-compatible stream addons ---
     "mediafusion": StremioSource,
     "knightcrawler": StremioSource,
     "torrentio-selfhost": StremioSource,
+    "debridmediamanager": StremioSource,
+    "torrentio-mirror1": StremioSource,
+    "torrentio-mirror2": StremioSource,
+    "torrentio-mirror3": StremioSource,
+    "comet": StremioSource,
+    "jackett": StremioSource,
+    "prowlarr": StremioSource,
+    "radarr": StremioSource,
+    "sonarr": StremioSource,
+    "overseerr": StremioSource,
+    "jellyfin": StremioSource,
+    "plex": StremioSource,
+    "emby": StremioSource,
+    # --- IPTV / Live TV ---
     "iptv": IPTVSource,
+    # --- Anime-specific sources ---
     "anilist": AnilistSource,
     "nyaa": NyaaSource,
     "subsplease": SubsPleaseSource,
+    "kitsu": AnilistSource,
+    "animeflv": NyaaSource,
+    "crunchyroll": AnilistSource,
+    # --- Adult content (opt-in) ---
     "stremio-adult": StremioAdultSource,
     "hanime": HanimeSource,
+    "nhentai": HanimeSource,
+    "e-hentai": HanimeSource,
+    # --- Generic Stremio addon (configure via config) ---
+    "stremio-addon": StremioSource,
+}
+
+# Default stream URLs for known addons
+DEFAULT_STREAM_URLS: dict[str, str] = {
+    "mediafusion": "https://mediafusion.elfhosted.com",
+    "knightcrawler": "https://knightcrawler.ml",
+    "torrentio-selfhost": "http://localhost:7000",
+    "debridmediamanager": "https://debridmediamanager.com",
+    "torrentio-mirror1": "https://torrentio.strem.fun",
+    "torrentio-mirror2": "https://torrentio-cf.vercel.app",
+    "torrentio-mirror3": "https://torrentio.kavin.rocks",
+    "comet": "https://comet.strem.io",
+    "jackett": "http://localhost:9117",
+    "prowlarr": "http://localhost:9696",
+    "radarr": "http://localhost:7878",
+    "sonarr": "http://localhost:8989",
+    "overseerr": "http://localhost:5055",
+    "jellyfin": "http://localhost:8096",
+    "plex": "http://localhost:32400",
+    "emby": "http://localhost:8096",
+    "kitsu": "https://kitsu.io",
+    "animeflv": "https://animeflv.net",
+    "crunchyroll": "https://crunchyroll.com",
+    "stremio-addon": "https://torrentio.strem.fun",
 }
 
 
@@ -48,15 +96,8 @@ def load_sources(config: Config) -> list[Source]:
             if not cinemeta_url:
                 cinemeta_url = config.stremio.cinemeta_url
             if not stream_url:
-                # Use defaults for known alternative addons
-                if source_id == "mediafusion":
-                    stream_url = "https://mediafusion.elfhosted.com"
-                elif source_id == "knightcrawler":
-                    stream_url = "https://knightcrawler.ml"
-                elif source_id == "torrentio-selfhost":
-                    stream_url = "http://localhost:7000"
-                else:
-                    stream_url = config.stremio.stream_url
+                # Use defaults for known addons
+                stream_url = DEFAULT_STREAM_URLS.get(source_id, config.stremio.stream_url)
 
             sources.append(
                 cls(

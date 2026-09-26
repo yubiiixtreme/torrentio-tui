@@ -19,17 +19,43 @@ KEYBINDINGS = (
 )
 
 SOURCES_INFO = (
+    # Main streaming sources
     ("stremio", "Cinemeta + Torrentio (movies, series, anime)"),
-    ("mediafusion", "MediaFusion addon (debrid-friendly streams)"),
+    ("mediafusion", "MediaFusion addon — debrid-friendly, no proxy needed"),
     ("knightcrawler", "Knightcrawler addon (alt streams)"),
     ("torrentio-selfhost", "Self-hosted Torrentio instance"),
-    ("iptv", "Live TV channels from M3U playlist"),
+    ("debridmediamanager", "Debrid Media Manager (debridmediamanager.com)"),
+    ("torrentio-mirror1", "Torrentio mirror (Cloudflare)"),
+    ("torrentio-mirror2", "Torrentio mirror (Vercel)"),
+    ("torrentio-mirror3", "Torrentio mirror (Kavin)"),
+    ("comet", "Comet addon (comet.strem.io)"),
+    # Local indexers (need local instance)
+    ("jackett", "Jackett indexer (localhost:9117)"),
+    ("prowlarr", "Prowlarr indexer (localhost:9696)"),
+    ("radarr", "Radarr movie manager (localhost:7878)"),
+    ("sonarr", "Sonarr series manager (localhost:8989)"),
+    ("overseerr", "Overseerr request manager (localhost:5055)"),
+    # Media servers
+    ("jellyfin", "Jellyfin media server (localhost:8096)"),
+    ("plex", "Plex media server (localhost:32400)"),
+    ("emby", "Emby media server (localhost:8096)"),
+    # IPTV / Live TV
+    ("iptv", "Live TV channels from M3U playlist (URL or file)"),
+    # Anime-specific sources
     ("anilist", "Anime metadata from AniList (GraphQL)"),
     ("nyaa", "Anime torrents from Nyaa.si"),
     ("subsplease", "Latest anime releases from SubsPlease"),
-    ("local", "Local video files (~/Videos by default)"),
+    ("kitsu", "Kitsu anime metadata"),
+    ("animeflv", "AnimeFLV torrents"),
+    ("crunchyroll", "Crunchyroll metadata"),
+    # Adult content (opt-in)
     ("stremio-adult", "Adult content via Stremio (opt-in)"),
     ("hanime", "Hentai anime from Hanime.tv (opt-in)"),
+    ("nhentai", "NHentai (opt-in)"),
+    ("e-hentai", "E-Hentai (opt-in)"),
+    # Generic
+    ("stremio-addon", "Generic Stremio addon (configure stream_url)"),
+    ("local", "Local video files (~/Videos by default)"),
 )
 
 TIPS = (
@@ -37,9 +63,15 @@ TIPS = (
     "Torrentio may return magnet links — install webtorrent-cli or peerflix, or add a debrid key.",
     "If Torrentio is blocked (HTTP 403), set network.proxy_url (e.g., Cloudflare WARP).",
     "MediaFusion often works without proxy and returns direct debrid links.",
+    "Local indexers (Jackett, Prowlarr, Radarr, Sonarr) need running instances on your network.",
+    "Media servers (Jellyfin, Plex, Emby) need local instances with Stremio addon configured.",
     "Configure IPTV: add m3u_url or m3u_path under [sources.iptv].",
-    "Adult content (stremio-adult, hanime) requires [adult] enabled = true in config.",
+    "Adult content requires [adult] enabled = true in config (legal age only).",
+    "Anime sources: AniList for metadata, Nyaa/SubsPlease for torrents/releases.",
     "Use --doctor to check connectivity and installed tools.",
+    "Press 'i' on any result for detailed info including genres and source.",
+    "Press 'l' to save/unsave to your library (❤️ tab).",
+    "Press 'd' to download via yt-dlp (needs direct http links or debrid).",
 )
 
 

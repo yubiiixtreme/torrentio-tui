@@ -51,16 +51,35 @@ hwdec = "{_default_hwdec()}"
 # "stremio" = Cinemeta catalogue (movie/series/anime search) + Torrentio-style
 # streams, playable in mpv/vlc on the user's own machine.
 # "local" = local video files (indexes ~/Videos by default).
-# "mediafusion" = MediaFusion addon (https://mediafusion.elfhosted.com)
+# "mediafusion" = MediaFusion addon (https://mediafusion.elfhosted.com) - debrid-friendly
 # "knightcrawler" = Knightcrawler addon (https://knightcrawler.ml)
 # "torrentio-selfhost" = Self-hosted Torrentio instance
+# "debridmediamanager" = Debrid Media Manager (https://debridmediamanager.com)
+# "torrentio-mirror1" = Torrentio mirror (Cloudflare)
+# "torrentio-mirror2" = Torrentio mirror (Vercel)
+# "torrentio-mirror3" = Torrentio mirror (Kavin)
+# "comet" = Comet addon (https://comet.strem.io)
+# "jackett" = Jackett indexer (local instance)
+# "prowlarr" = Prowlarr indexer (local instance)
+# "radarr" = Radarr (local instance)
+# "sonarr" = Sonarr (local instance)
+# "overseerr" = Overseerr (local instance)
+# "jellyfin" = Jellyfin (local instance)
+# "plex" = Plex (local instance)
+# "emby" = Emby (local instance)
 # "iptv" = Live TV channels from M3U playlist
-# "anilist" = Anime metadata from AniList
+# "anilist" = Anime metadata from AniList (GraphQL)
 # "nyaa" = Anime torrents from Nyaa.si
 # "subsplease" = Latest anime from SubsPlease
+# "kitsu" = Kitsu anime metadata
+# "animeflv" = AnimeFLV torrents
+# "crunchyroll" = Crunchyroll metadata
 # "stremio-adult" = Adult content via Stremio (requires [adult] enabled)
 # "hanime" = Hentai anime from Hanime.tv (requires [adult] enabled)
-enabled = ["stremio", "local"]
+# "nhentai" = NHentai (requires [adult] enabled)
+# "e-hentai" = E-Hentai (requires [adult] enabled)
+# "stremio-addon" = Generic Stremio addon (configure stream_url)
+enabled = ["stremio", "mediafusion", "local"]
 
 [sources.stremio]
 # Metadata catalogue (search + episodes). Default is the public Cinemeta.
@@ -89,6 +108,71 @@ timeout_seconds = 15.0
 # cinemeta_url = "https://v3-cinemeta.strem.io"
 # stream_url = "http://localhost:7000"
 # timeout_seconds = 15.0
+#
+# [sources.debridmediamanager]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://debridmediamanager.com"
+# timeout_seconds = 15.0
+#
+# [sources.torrentio-mirror1]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://torrentio.strem.fun"
+# timeout_seconds = 15.0
+#
+# [sources.torrentio-mirror2]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://torrentio-cf.vercel.app"
+# timeout_seconds = 15.0
+#
+# [sources.torrentio-mirror3]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://torrentio.kavin.rocks"
+# timeout_seconds = 15.0
+#
+# [sources.comet]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://comet.strem.io"
+# timeout_seconds = 15.0
+#
+# [sources.jackett]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:9117"
+# timeout_seconds = 15.0
+#
+# [sources.prowlarr]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:9696"
+# timeout_seconds = 15.0
+#
+# [sources.radarr]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:7878"
+# timeout_seconds = 15.0
+#
+# [sources.sonarr]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:8989"
+# timeout_seconds = 15.0
+#
+# [sources.overseerr]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:5055"
+# timeout_seconds = 15.0
+#
+# [sources.jellyfin]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:8096"
+# timeout_seconds = 15.0
+#
+# [sources.plex]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:32400"
+# timeout_seconds = 15.0
+#
+# [sources.emby]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:8096"
+# timeout_seconds = 15.0
 
 # --- IPTV / Live TV ---
 # [sources.iptv]
@@ -103,6 +187,13 @@ timeout_seconds = 15.0
 # [sources.nyaa]
 #
 # [sources.subsplease]
+#
+# [sources.kitsu]
+# include_adult = false
+#
+# [sources.animeflv]
+#
+# [sources.crunchyroll]
 
 # --- Adult content (opt-in, requires [adult] enabled = true) ---
 # [sources.stremio-adult]
@@ -111,6 +202,16 @@ timeout_seconds = 15.0
 # timeout_seconds = 15.0
 #
 # [sources.hanime]
+#
+# [sources.nhentai]
+#
+# [sources.e-hentai]
+
+# --- Generic Stremio addon ---
+# [sources.stremio-addon]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://your-addon-url.com"
+# timeout_seconds = 15.0
 
 [network]
 # Route requests through a proxy — useful if Torrentio Cloudflare-blocks
@@ -124,7 +225,7 @@ timeout_seconds = 15.0
 directory = "~/Videos/torrentio-tui"
 
 [adult]
-# Enable adult content sources (stremio-adult, hanime)
+# Enable adult content sources (stremio-adult, hanime, nhentai, e-hentai)
 # ONLY enable if you are of legal age in your jurisdiction!
 enabled = false
 """
