@@ -50,6 +50,16 @@ hwdec = "{_default_hwdec()}"
 # Order controls search fan-out / result ranking.
 # "stremio" = Cinemeta catalogue (movie/series/anime search) + Torrentio-style
 # streams, playable in mpv/vlc on the user's own machine.
+# "local" = local video files (indexes ~/Videos by default).
+# "mediafusion" = MediaFusion addon (https://mediafusion.elfhosted.com)
+# "knightcrawler" = Knightcrawler addon (https://knightcrawler.ml)
+# "torrentio-selfhost" = Self-hosted Torrentio instance
+# "iptv" = Live TV channels from M3U playlist
+# "anilist" = Anime metadata from AniList
+# "nyaa" = Anime torrents from Nyaa.si
+# "subsplease" = Latest anime from SubsPlease
+# "stremio-adult" = Adult content via Stremio (requires [adult] enabled)
+# "hanime" = Hentai anime from Hanime.tv (requires [adult] enabled)
 enabled = ["stremio", "local"]
 
 [sources.stremio]
@@ -64,6 +74,44 @@ stream_url = "https://torrentio.strem.fun"
 # Env override: TORRENTIO_TUI_TIMEOUT (seconds).
 timeout_seconds = 15.0
 
+# --- Alternative stream addons (enable by adding to [sources].enabled) ---
+# [sources.mediafusion]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://mediafusion.elfhosted.com"
+# timeout_seconds = 15.0
+#
+# [sources.knightcrawler]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://knightcrawler.ml"
+# timeout_seconds = 15.0
+#
+# [sources.torrentio-selfhost]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:7000"
+# timeout_seconds = 15.0
+
+# --- IPTV / Live TV ---
+# [sources.iptv]
+# m3u_url = "https://example.com/playlist.m3u"  # or local file path
+# m3u_path = "~/Videos/iptv.m3u"
+# timeout_seconds = 15.0
+
+# --- Anime-specific sources ---
+# [sources.anilist]
+# include_adult = false
+#
+# [sources.nyaa]
+#
+# [sources.subsplease]
+
+# --- Adult content (opt-in, requires [adult] enabled = true) ---
+# [sources.stremio-adult]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://torrentio.strem.fun"
+# timeout_seconds = 15.0
+#
+# [sources.hanime]
+
 [network]
 # Route requests through a proxy — useful if Torrentio Cloudflare-blocks
 # your IP (HTTP 403). Cloudflare WARP's local proxy mode is a common fix:
@@ -74,6 +122,11 @@ timeout_seconds = 15.0
 
 [downloads]
 directory = "~/Videos/torrentio-tui"
+
+[adult]
+# Enable adult content sources (stremio-adult, hanime)
+# ONLY enable if you are of legal age in your jurisdiction!
+enabled = false
 """
 
 
@@ -125,6 +178,18 @@ class StremioConfig:
 
 
 @dataclass(slots=True)
+class IPTVConfig:
+    m3u_url: str | None = None
+    m3u_path: str | None = None
+    timeout_seconds: float = 15.0
+
+
+@dataclass(slots=True)
+class AdultConfig:
+    enabled: bool = False
+
+
+@dataclass(slots=True)
 class NetworkConfig:
     proxy_url: str | None = None
 
@@ -134,8 +199,11 @@ class Config:
     player: PlayerConfig = field(default_factory=PlayerConfig)
     enabled_sources: list[str] = field(default_factory=lambda: ["stremio", "local"])
     stremio: StremioConfig = field(default_factory=StremioConfig)
+    iptv: IPTVConfig = field(default_factory=IPTVConfig)
+    adult: AdultConfig = field(default_factory=AdultConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
+    sources_config: dict[str, dict] = field(default_factory=dict)
 
     @classmethod
     def load(cls) -> Config:
@@ -152,7 +220,13 @@ class Config:
 
             cfg.enabled_sources = data.get("sources", {}).get("enabled", cfg.enabled_sources)
 
-            stremio_cfg = data.get("sources", {}).get("stremio", {})
+            # Parse all source configs under [sources.*]
+            sources_data = data.get("sources", {})
+            for key, value in sources_data.items():
+                if key != "enabled" and isinstance(value, dict):
+                    cfg.sources_config[key] = value
+
+            stremio_cfg = sources_data.get("stremio", {})
             if "cinemeta_url" in stremio_cfg:
                 cfg.stremio.cinemeta_url = str(stremio_cfg["cinemeta_url"])
             if "stream_url" in stremio_cfg:
@@ -160,6 +234,21 @@ class Config:
             if "timeout_seconds" in stremio_cfg:
                 with contextlib.suppress(ValueError, TypeError):
                     cfg.stremio.timeout_seconds = float(stremio_cfg["timeout_seconds"])
+
+            # Parse IPTV config
+            iptv_cfg = sources_data.get("iptv", {})
+            if "m3u_url" in iptv_cfg:
+                cfg.iptv.m3u_url = str(iptv_cfg["m3u_url"])
+            if "m3u_path" in iptv_cfg:
+                cfg.iptv.m3u_path = str(iptv_cfg["m3u_path"])
+            if "timeout_seconds" in iptv_cfg:
+                with contextlib.suppress(ValueError, TypeError):
+                    cfg.iptv.timeout_seconds = float(iptv_cfg["timeout_seconds"])
+
+            # Parse adult config
+            adult_cfg = data.get("adult", {})
+            if "enabled" in adult_cfg:
+                cfg.adult.enabled = bool(adult_cfg["enabled"])
 
             network_cfg = data.get("network", {})
             if network_cfg.get("proxy_url"):
@@ -183,6 +272,8 @@ class Config:
             cfg.player.hwdec = env_hwdec
         if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
+        if env_adult := os.environ.get("TORRENTIO_TUI_ADULT"):
+            cfg.adult.enabled = env_adult.lower() in ("1", "true", "yes", "on")
 
         return cfg
 

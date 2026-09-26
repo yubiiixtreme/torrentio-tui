@@ -125,10 +125,26 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
         return 0
 
     sys.stdout.write("\nChecking connectivity (use --offline to skip)...\n")
+    # Check Cinemeta once
     _check_reachable("Cinemeta", f"{config.stremio.cinemeta_url}/manifest.json", 8.0, proxy_url)
-    _check_reachable(
-        "Torrentio/stream addon", f"{config.stremio.stream_url}/manifest.json", 8.0, proxy_url
-    )
+    # Check each enabled Stremio-like source's stream addon
+    seen_stream_urls = set()
+    for source_id in config.enabled_sources:
+        if source_id in ("stremio", "mediafusion", "knightcrawler", "torrentio-selfhost"):
+            source_cfg = config.sources_config.get(source_id, {})
+            stream_url = source_cfg.get("stream_url")
+            if not stream_url:
+                if source_id == "mediafusion":
+                    stream_url = "https://mediafusion.elfhosted.com"
+                elif source_id == "knightcrawler":
+                    stream_url = "https://knightcrawler.ml"
+                elif source_id == "torrentio-selfhost":
+                    stream_url = "http://localhost:7000"
+                else:
+                    stream_url = config.stremio.stream_url
+            if stream_url not in seen_stream_urls:
+                seen_stream_urls.add(stream_url)
+                _check_reachable(f"Stream addon ({source_id})", f"{stream_url}/manifest.json", 8.0, proxy_url)
     return 0
 
 
@@ -159,13 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.proxy:
         config.network.proxy_url = args.proxy
 
-    sources = load_sources(
-        config.enabled_sources,
-        stremio_cinemeta_url=config.stremio.cinemeta_url,
-        stremio_stream_url=config.stremio.stream_url,
-        stremio_timeout=config.stremio.timeout_seconds,
-        proxy_url=config.network.proxy_url,
-    )
+    sources = load_sources(config)
     if not sources:
         sys.stderr.write("No sources enabled. Edit sources.enabled in your config file.\n")
         return 1

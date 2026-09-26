@@ -48,7 +48,9 @@ class ResultItem(ListItem):
 
         overview = (item.overview or "").strip()
         snippet = f"{overview[:100]}…" if len(overview) > 100 else overview
-        line2 = f"   [{color}]{label}[/{color}] [dim]· {item.source_id}[/dim]"
+        # Show source with colored badge
+        source_color = self._source_color(item.source_id)
+        line2 = f"   [{color}]{label}[/{color}] [dim]·[/dim] [{source_color}]{item.source_id}[/{source_color}]"
         if snippet:
             line2 += f"  [dim]{snippet}[/dim]"
 
@@ -56,6 +58,22 @@ class ResultItem(ListItem):
             Static(f"{line1}\n{line2}", markup=True), classes=f"kind-{item.kind.value}"
         )
         self.item = item
+
+    def _source_color(self, source_id: str) -> str:
+        colors = {
+            "stremio": "yellow",
+            "mediafusion": "green",
+            "knightcrawler": "blue",
+            "torrentio-selfhost": "magenta",
+            "iptv": "red",
+            "anilist": "cyan",
+            "nyaa": "orange",
+            "subsplease": "purple",
+            "local": "gray",
+            "stremio-adult": "red",
+            "hanime": "magenta",
+        }
+        return colors.get(source_id, "white")
 
 
 class HistoryItem(ListItem):

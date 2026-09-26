@@ -11,16 +11,17 @@ from torrentio_tui.ui.screens.main import MainScreen
 
 TORRENTIO_THEME = Theme(
     name="torrentio",
-    primary="#F5C518",
-    secondary="#8B5CF6",
-    accent="#E50914",
+    primary="#F5C518",       # Warm gold/yellow
+    secondary="#A855F7",     # Purple
+    accent="#E11D48",        # Rose red
     warning="#F5C518",
-    error="#E74C3C",
-    success="#2ECC71",
-    foreground="#E8E8E8",
-    background="#090A0F",
-    surface="#12141C",
-    panel="#1A1D28",
+    error="#EF4444",
+    success="#22C55E",       # Emerald green
+    foreground="#F4F4F5",    # Zinc-100
+    background="#0F172A",    # Slate-950
+    surface="#1E293B",       # Slate-800
+    panel="#1E293B",         # Slate-800
+    boost="#334155",         # Slate-700
     dark=True,
 )
 
