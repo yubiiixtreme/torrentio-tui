@@ -8,11 +8,11 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-APP_NAME = "stream-tui"
+APP_NAME = "torrentio-tui"
 
 DEFAULT_CONFIG_TOML = """\
-# stream-tui config
-# Uncomment / edit as needed. Env vars (STREAM_TUI_*) always win over this file.
+# torrentio-tui config
+# Uncomment / edit as needed. Env vars (TORRENTIO_TUI_*) always win over this file.
 
 [player]
 backend = "mpv"          # mpv | vlc
@@ -31,13 +31,13 @@ cinemeta_url = "https://v3-cinemeta.strem.io"
 # Paste your *configured* URL from https://torrentio.strem.fun/configure
 # (it embeds providers + optional RealDebrid/AllDebrid key for direct links),
 # or a compatible alternative (MediaFusion / Knightcrawler / self-hosted).
-# Env override: STREAM_TUI_STREAM_URL (or STREAM_TUI_TORRENTIO_URL).
+# Env override: TORRENTIO_TUI_STREAM_URL.
 stream_url = "https://torrentio.strem.fun"
-# Env override: STREAM_TUI_TIMEOUT (seconds).
+# Env override: TORRENTIO_TUI_TIMEOUT (seconds).
 timeout_seconds = 15.0
 
 [downloads]
-directory = "~/Videos/stream-tui"
+directory = "~/Videos/torrentio-tui"
 """
 
 
@@ -77,7 +77,7 @@ class PlayerConfig:
 
 @dataclass(slots=True)
 class DownloadConfig:
-    directory: Path = field(default_factory=lambda: Path("~/Videos/stream-tui").expanduser())
+    directory: Path = field(default_factory=lambda: Path("~/Videos/torrentio-tui").expanduser())
 
 
 @dataclass(slots=True)
@@ -101,7 +101,7 @@ class Config:
         if path.exists():
             data = tomllib.loads(path.read_text())
             player = data.get("player", {})
-            cfg.player.backend = os.environ.get("STREAM_TUI_PLAYER", player.get("backend", cfg.player.backend))
+            cfg.player.backend = os.environ.get("TORRENTIO_TUI_PLAYER", player.get("backend", cfg.player.backend))
             cfg.player.default_quality = player.get("default_quality", cfg.player.default_quality)
 
             cfg.enabled_sources = data.get("sources", {}).get("enabled", cfg.enabled_sources)
@@ -118,11 +118,11 @@ class Config:
                     pass
 
         # Env vars always win (also honoured inside StremioSource itself).
-        if env_cinemeta := os.environ.get("STREAM_TUI_CINEMETA_URL"):
+        if env_cinemeta := os.environ.get("TORRENTIO_TUI_CINEMETA_URL"):
             cfg.stremio.cinemeta_url = env_cinemeta
-        if env_stream := os.environ.get("STREAM_TUI_STREAM_URL") or os.environ.get("STREAM_TUI_TORRENTIO_URL"):
+        if env_stream := os.environ.get("TORRENTIO_TUI_STREAM_URL"):
             cfg.stremio.stream_url = env_stream
-        if env_timeout := os.environ.get("STREAM_TUI_TIMEOUT"):
+        if env_timeout := os.environ.get("TORRENTIO_TUI_TIMEOUT"):
             try:
                 cfg.stremio.timeout_seconds = float(env_timeout)
             except ValueError:
@@ -132,7 +132,7 @@ class Config:
             if "directory" in downloads:
                 cfg.downloads.directory = Path(downloads["directory"]).expanduser()
 
-        if env_dir := os.environ.get("STREAM_TUI_DOWNLOAD_DIR"):
+        if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
 
         return cfg

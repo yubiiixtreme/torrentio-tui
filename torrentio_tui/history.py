@@ -10,8 +10,8 @@ import json
 import time
 from dataclasses import asdict
 
-from stream_tui.config import history_file
-from stream_tui.models import HistoryEntry
+from torrentio_tui.config import history_file
+from torrentio_tui.models import HistoryEntry
 
 
 class HistoryStore:

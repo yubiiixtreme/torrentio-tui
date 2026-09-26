@@ -12,7 +12,7 @@ How it fits together (standard Stremio pattern):
 
 Configure it (env vars win over ``config.toml``)::
 
-    # ~/.config/stream-tui/config.toml
+    # ~/.config/torrentio-tui/config.toml
     [sources]
     enabled = ["stremio", "local"]
 
@@ -23,7 +23,7 @@ Configure it (env vars win over ``config.toml``)::
     stream_url = "https://torrentio.strem.fun"
 
     # or via env:
-    # STREAM_TUI_CINEMETA_URL, STREAM_TUI_STREAM_URL, STREAM_TUI_TIMEOUT
+    # TORRENTIO_TUI_CINEMETA_URL, TORRENTIO_TUI_STREAM_URL, TORRENTIO_TUI_TIMEOUT
 
 Playback notes:
 
@@ -48,8 +48,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from stream_tui.models import Episode, MediaKind, SearchResult, StreamLink
-from stream_tui.sources.base import Source, SourceError
+from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
+from torrentio_tui.sources.base import Source, SourceError
 
 DEFAULT_CINEMETA_URL = "https://v3-cinemeta.strem.io"
 DEFAULT_STREAM_URL = "https://torrentio.strem.fun"
@@ -62,7 +62,7 @@ DEFAULT_TRACKERS = [
     "udp://exodus.desync.com:6969/announce",
 ]
 
-_USER_AGENT = "stream-tui/0.1 (+https://github.com/stream-tui)"
+_USER_AGENT = "torrentio-tui/0.2 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
 
 def _get_json(url: str, timeout: float) -> dict:
@@ -191,13 +191,12 @@ class StremioSource(Source):
     ) -> None:
         # Precedence: env vars > explicit args (config.toml) > defaults.
         self.cinemeta_url = (
-            os.environ.get("STREAM_TUI_CINEMETA_URL")
+            os.environ.get("TORRENTIO_TUI_CINEMETA_URL")
             or cinemeta_url
             or DEFAULT_CINEMETA_URL
         ).rstrip("/")
         raw_stream = (
-            os.environ.get("STREAM_TUI_STREAM_URL")
-            or os.environ.get("STREAM_TUI_TORRENTIO_URL")
+            os.environ.get("TORRENTIO_TUI_STREAM_URL")
             or stream_url
             or DEFAULT_STREAM_URL
         ).strip().rstrip("/")
@@ -209,7 +208,7 @@ class StremioSource(Source):
         self.stream_url = raw_stream
         try:
             self.timeout = float(
-                os.environ.get("STREAM_TUI_TIMEOUT", timeout))
+                os.environ.get("TORRENTIO_TUI_TIMEOUT", timeout))
         except ValueError:
             self.timeout = 15.0
         self.max_results = max_results

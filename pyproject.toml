@@ -1,5 +1,5 @@
 [project]
-name = "stream-tui"
+name = "torrentio-tui"
 version = "0.2.0"
 description = "Terminal UI for discovering and streaming movie/series/anime via Stremio (Cinemeta + Torrentio) into mpv/vlc"
 readme = "README.md"
@@ -19,16 +19,16 @@ dependencies = [
 dev = ["pytest", "pytest-asyncio", "build", "twine"]
 
 [project.scripts]
-stream-tui = "stream_tui.cli:main"
+torrentio-tui = "torrentio_tui.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/yubiiixtreme/stream-tui"
-Repository = "https://github.com/yubiiixtreme/stream-tui"
-Issues = "https://github.com/yubiiixtreme/stream-tui/issues"
+Homepage = "https://github.com/yubiiixtreme/torrentio-tui"
+Repository = "https://github.com/yubiiixtreme/torrentio-tui"
+Issues = "https://github.com/yubiiixtreme/torrentio-tui/issues"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["stream_tui*"]
+include = ["torrentio_tui*"]

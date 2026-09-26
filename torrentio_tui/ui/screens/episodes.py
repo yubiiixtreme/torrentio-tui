@@ -5,7 +5,7 @@ from textual.containers import Container
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, ListItem, ListView, Static
 
-from stream_tui.models import Episode
+from torrentio_tui.models import Episode
 
 
 class EpisodePicked(ListItem):

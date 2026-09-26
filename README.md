@@ -1,4 +1,4 @@
-# stream-tui
+# Torrentio TUI
 
 A terminal UI for discovering and streaming **movies, series & anime** —
 search a catalogue, pick an episode, pick a quality, and it plays instantly
@@ -40,36 +40,36 @@ and [ani-cli](https://github.com/pystardust/ani-cli) (search → pick → mpv).
 ### Option 1 — pip from GitHub (recommended)
 
 ```
-pip install git+https://github.com/yubiiixtreme/stream-tui.git
-stream-tui
+pip install git+https://github.com/yubiiixtreme/torrentio-tui.git
+torrentio-tui
 ```
 
 ### Option 2 — pipx (isolated, stays on PATH)
 
 ```
-pipx install git+https://github.com/yubiiixtreme/stream-tui.git
-stream-tui
+pipx install git+https://github.com/yubiiixtreme/torrentio-tui.git
+torrentio-tui
 ```
 
 ### Option 3 — from source
 
 ```
-git clone https://github.com/yubiiixtreme/stream-tui.git
-cd stream-tui
+git clone https://github.com/yubiiixtreme/torrentio-tui.git
+cd torrentio-tui
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/stream-tui
+.venv/bin/torrentio-tui
 ```
 
 ### Option 4 — PyPI (once the first release is published)
 
 ```
-pip install stream-tui
-stream-tui
+pip install torrentio-tui
+torrentio-tui
 ```
 
 ## Quickstart
 
-1. Launch `stream-tui`.
+1. Launch `torrentio-tui`.
 2. Type a title in **Search** and hit Enter — e.g. `breaking bad`.
 3. Select the show/movie → pick an episode (series/anime) → pick a quality.
 4. mpv (or vlc) opens and plays. Press `l` on a highlighted result to
@@ -96,7 +96,7 @@ The default `stremio` source splits the job the standard Stremio way:
 1. Open `https://torrentio.strem.fun/configure`.
 2. Pick providers, paste your RealDebrid/AllDebrid/Premiumize API key.
 3. Copy the configured URL and set it as `sources.stremio.stream_url` in
-   `~/.config/stream-tui/config.toml` (or `STREAM_TUI_STREAM_URL`).
+   `~/.config/torrentio-tui/config.toml` (or `TORRENTIO_TUI_STREAM_URL`).
 
 Without a debrid key you get `magnet:` links — install `webtorrent-cli`
 and the app streams them into mpv/vlc automatically.
@@ -107,8 +107,8 @@ and the app streams them into mpv/vlc automatically.
 
 ## Configuration
 
-Config lives at `~/.config/stream-tui/config.toml` (created on first run);
-history/library at `~/.local/share/stream-tui/`. Env vars always win.
+Config lives at `~/.config/torrentio-tui/config.toml` (created on first run);
+history/library at `~/.local/share/torrentio-tui/`. Env vars always win.
 
 ```toml
 [player]
@@ -124,23 +124,23 @@ stream_url = "https://torrentio.strem.fun"
 timeout_seconds = 15.0
 
 [downloads]
-directory = "~/Videos/stream-tui"
+directory = "~/Videos/torrentio-tui"
 ```
 
 | Env var | Purpose |
 |---------|---------|
-| `STREAM_TUI_STREAM_URL` (`STREAM_TUI_TORRENTIO_URL` also works) | custom stream addon URL |
-| `STREAM_TUI_CINEMETA_URL` | custom Cinemeta base |
-| `STREAM_TUI_TIMEOUT` | HTTP timeout (seconds) |
-| `STREAM_TUI_PLAYER` / `--player` | `mpv` or `vlc` |
-| `STREAM_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
-| `STREAM_TUI_DOWNLOAD_DIR` | download folder |
+| `TORRENTIO_TUI_STREAM_URL` | custom stream addon URL |
+| `TORRENTIO_TUI_CINEMETA_URL` | custom Cinemeta base |
+| `TORRENTIO_TUI_TIMEOUT` | HTTP timeout (seconds) |
+| `TORRENTIO_TUI_PLAYER` / `--player` | `mpv` or `vlc` |
+| `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
+| `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
 
 Useful commands:
 
 ```
-stream-tui --player vlc      # one-off backend override
-stream-tui --list-sources    # show registered source ids
+torrentio-tui --player vlc      # one-off backend override
+torrentio-tui --list-sources    # show registered source ids
 ```
 
 ## Keybindings
@@ -155,13 +155,13 @@ stream-tui --list-sources    # show registered source ids
 ## Project layout
 
 ```
-stream_tui/
+torrentio_tui/
   models.py        # Source-agnostic data types: SearchResult, Episode, StreamLink, HistoryEntry
   config.py        # XDG config/data/cache paths, config.toml loading
   history.py       # "Continue watching" store (JSON)
   library.py       # Saved/favorites store (JSON)
   downloads.py     # Batch download via yt-dlp subprocess
-  cli.py           # Entry point (`stream-tui`), argument parsing
+  cli.py           # Entry point (`torrentio-tui`), argument parsing
 
   sources/
     base.py        # Source ABC — the plugin contract (search / get_episodes / get_streams)
@@ -185,18 +185,18 @@ stream_tui/
 
 ## Adding another source
 
-1. Copy `stream_tui/sources/example.py` to e.g.
-   `stream_tui/sources/myscraper.py` and implement `search()`, optionally
+1. Copy `torrentio_tui/sources/example.py` to e.g.
+   `torrentio_tui/sources/myscraper.py` and implement `search()`, optionally
    `get_episodes()`, and `get_streams()`. Return `StreamLink`s with any
    `headers` (Referer/User-Agent/cookies) the CDN needs — the player
    backends forward those automatically.
-2. Register it in `stream_tui/sources/registry.py`:
+2. Register it in `torrentio_tui/sources/registry.py`:
    ```python
-   from stream_tui.sources.myscraper import MyScraperSource
+   from torrentio_tui.sources.myscraper import MyScraperSource
    _AVAILABLE["myscraper"] = MyScraperSource
    ```
 3. Add `"myscraper"` to `sources.enabled` in
-   `~/.config/stream-tui/config.toml`.
+   `~/.config/torrentio-tui/config.toml`.
 
 The rest of the app — search UI, episode/quality modals, playback, history,
 downloads — needs no changes; it only ever talks to the `Source`/`StreamLink`
@@ -207,7 +207,7 @@ abstractions in `models.py` and `sources/base.py`.
 ```
 python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/pytest
-.venv/bin/stream-tui
+.venv/bin/torrentio-tui
 ```
 
 To cut a release:

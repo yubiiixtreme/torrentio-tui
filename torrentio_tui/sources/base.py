@@ -3,7 +3,7 @@
 This is the ONLY interface the rest of the app talks to. Add a new source by:
 
   1. Subclassing `Source` below.
-  2. Registering an instance in `stream_tui/sources/registry.py`.
+  2. Registering an instance in `torrentio_tui/sources/registry.py`.
   3. Adding its `id` to `sources.enabled` in the config file.
 
 Nothing about scraping, auth, DRM, or which sites are legal to pull from is
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from stream_tui.models import Episode, SearchResult, StreamLink
+from torrentio_tui.models import Episode, SearchResult, StreamLink
 
 
 class SourceError(Exception):

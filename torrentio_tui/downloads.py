@@ -9,8 +9,8 @@ import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
-from stream_tui.models import StreamLink
-from stream_tui.player.torrent import is_torrent_link
+from torrentio_tui.models import StreamLink
+from torrentio_tui.player.torrent import is_torrent_link
 
 
 class DownloadError(Exception):

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from stream_tui.models import MediaKind
-from stream_tui.sources.local import LocalSource
+from torrentio_tui.models import MediaKind
+from torrentio_tui.sources.local import LocalSource
 
 
 def test_search_finds_video_files(tmp_path: Path) -> None:

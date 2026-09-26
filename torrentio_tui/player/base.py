@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from stream_tui.models import StreamLink
+from torrentio_tui.models import StreamLink
 
 
 class Player(ABC):

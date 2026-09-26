@@ -4,8 +4,8 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 
-from stream_tui.config import library_file
-from stream_tui.models import MediaKind, SearchResult
+from torrentio_tui.config import library_file
+from torrentio_tui.models import MediaKind, SearchResult
 
 
 class LibraryStore:

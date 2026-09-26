@@ -11,11 +11,11 @@ import io
 import json
 import urllib.error
 
-from stream_tui.models import Episode, MediaKind, SearchResult
-from stream_tui.player import torrent as torrent_mod
-from stream_tui.sources import stremio as stremio_mod
-from stream_tui.sources.base import SourceError
-from stream_tui.sources.stremio import StremioSource
+from torrentio_tui.models import Episode, MediaKind, SearchResult
+from torrentio_tui.player import torrent as torrent_mod
+from torrentio_tui.sources import stremio as stremio_mod
+from torrentio_tui.sources.base import SourceError
+from torrentio_tui.sources.stremio import StremioSource
 
 
 class _FakeResp:

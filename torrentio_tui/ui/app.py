@@ -4,14 +4,14 @@ from pathlib import Path
 
 from textual.app import App
 
-from stream_tui.config import Config
-from stream_tui.sources.base import Source
-from stream_tui.ui.screens.main import MainScreen
+from torrentio_tui.config import Config
+from torrentio_tui.sources.base import Source
+from torrentio_tui.ui.screens.main import MainScreen
 
 
-class StreamTuiApp(App):
+class TorrentioTuiApp(App):
     CSS_PATH = Path(__file__).parent / "app.tcss"
-    TITLE = "stream-tui"
+    TITLE = "Torrentio TUI"
 
     def __init__(self, sources: list[Source], config: Config) -> None:
         super().__init__()

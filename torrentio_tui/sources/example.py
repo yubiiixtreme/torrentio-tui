@@ -14,8 +14,8 @@ scraper wired in.
 """
 from __future__ import annotations
 
-from stream_tui.models import Episode, MediaKind, SearchResult, StreamLink
-from stream_tui.sources.base import Source, SourceError
+from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
+from torrentio_tui.sources.base import Source, SourceError
 
 
 class ExampleSource(Source):

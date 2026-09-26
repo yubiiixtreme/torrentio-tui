@@ -6,14 +6,14 @@ from textual.containers import Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Input, ListItem, ListView, Static, TabbedContent, TabPane
 
-from stream_tui.config import Config
-from stream_tui.history import HistoryStore
-from stream_tui.library import LibraryStore
-from stream_tui.models import Episode, MediaKind, SearchResult
-from stream_tui.player.registry import get_player
-from stream_tui.sources.base import Source, SourceError
-from stream_tui.ui.screens.episodes import EpisodeScreen
-from stream_tui.ui.screens.quality import QualityScreen
+from torrentio_tui.config import Config
+from torrentio_tui.history import HistoryStore
+from torrentio_tui.library import LibraryStore
+from torrentio_tui.models import Episode, MediaKind, SearchResult
+from torrentio_tui.player.registry import get_player
+from torrentio_tui.sources.base import Source, SourceError
+from torrentio_tui.ui.screens.episodes import EpisodeScreen
+from torrentio_tui.ui.screens.quality import QualityScreen
 
 
 class ResultItem(ListItem):
@@ -181,7 +181,7 @@ class MainScreen(Screen):
             self.play_stream(result, episode, streams[0], resume_seconds=entry.position_seconds)
 
     def play_stream(self, item: SearchResult, episode: Episode, stream, resume_seconds: float = 0.0) -> None:
-        from stream_tui.player.torrent import TorrentStreamError
+        from torrentio_tui.player.torrent import TorrentStreamError
 
         player = get_player(self.config.player.backend)
         try:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from stream_tui.player.base import Player
-from stream_tui.player.mpv import MpvPlayer
-from stream_tui.player.vlc import VlcPlayer
+from torrentio_tui.player.base import Player
+from torrentio_tui.player.mpv import MpvPlayer
+from torrentio_tui.player.vlc import VlcPlayer
 
 _BACKENDS: dict[str, type[Player]] = {
     "mpv": MpvPlayer,

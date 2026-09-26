@@ -3,12 +3,12 @@ from __future__ import annotations
 import argparse
 import sys
 
-from stream_tui.config import Config, ensure_dirs
-from stream_tui.sources.registry import available_source_ids, load_sources
+from torrentio_tui.config import Config, ensure_dirs
+from torrentio_tui.sources.registry import available_source_ids, load_sources
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="stream-tui", description="Terminal UI for streaming from pluggable sources")
+    parser = argparse.ArgumentParser(prog="torrentio-tui", description="Terminal UI for streaming from pluggable sources")
     parser.add_argument("--player", choices=["mpv", "vlc"], help="Override configured player backend")
     parser.add_argument("--list-sources", action="store_true", help="List registered source ids and exit")
     return parser
@@ -37,9 +37,9 @@ def main(argv: list[str] | None = None) -> int:
         print("No sources enabled. Edit sources.enabled in your config file.", file=sys.stderr)
         return 1
 
-    from stream_tui.ui.app import StreamTuiApp
+    from torrentio_tui.ui.app import TorrentioTuiApp
 
-    app = StreamTuiApp(sources, config)
+    app = TorrentioTuiApp(sources, config)
     app.run()
     return 0
 

@@ -2,14 +2,14 @@
 
 Add your own source here once it's implemented:
 
-    from stream_tui.sources.mysource import MySource
+    from torrentio_tui.sources.mysource import MySource
     _AVAILABLE["mysource"] = MySource
 """
 from __future__ import annotations
 
-from stream_tui.sources.base import Source
-from stream_tui.sources.local import LocalSource
-from stream_tui.sources.stremio import StremioSource
+from torrentio_tui.sources.base import Source
+from torrentio_tui.sources.local import LocalSource
+from torrentio_tui.sources.stremio import StremioSource
 
 _AVAILABLE: dict[str, type[Source]] = {
     "local": LocalSource,

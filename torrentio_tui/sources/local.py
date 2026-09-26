@@ -2,7 +2,7 @@
 
 Exists so the app is fully runnable end-to-end (search -> pick -> play)
 without needing any external/legally-sensitive scraper wired up yet. Point
-it at a folder of your own media via `STREAM_TUI_LOCAL_DIR` or the
+it at a folder of your own media via `TORRENTIO_TUI_LOCAL_DIR` or the
 `~/Videos` default.
 """
 from __future__ import annotations
@@ -10,8 +10,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from stream_tui.models import Episode, MediaKind, SearchResult, StreamLink
-from stream_tui.sources.base import Source
+from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
+from torrentio_tui.sources.base import Source
 
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v"}
 
@@ -21,7 +21,7 @@ class LocalSource(Source):
     name = "Local Files"
 
     def __init__(self, root: Path | None = None) -> None:
-        self.root = root or Path(os.environ.get("STREAM_TUI_LOCAL_DIR", "~/Videos")).expanduser()
+        self.root = root or Path(os.environ.get("TORRENTIO_TUI_LOCAL_DIR", "~/Videos")).expanduser()
 
     def _iter_files(self):
         if not self.root.exists():
