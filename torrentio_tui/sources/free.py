@@ -93,7 +93,9 @@ ANIME_FREE_SITES = {
 
 # YTS/YIFY movies
 YTS_API = "https://yts.mx/api/v2/list_movies.json?query_term={query}&limit=20&sort_by=rating"
-YTS_MOVIE_DETAIL = "https://yts.mx/api/v2/movie_details.json?movie_id={id}&with_images=true&with_cast=true"
+YTS_MOVIE_DETAIL = (
+    "https://yts.mx/api/v2/movie_details.json?movie_id={id}&with_images=true&with_cast=true"
+)
 
 # EZTV shows
 EZTV_API = "https://eztv.re/api/get-torrents?imdb_id={imdb_id}&limit=20"
@@ -111,7 +113,7 @@ POPCORNFLIX_API = "https://api.popcornflix.com/v2/search?q={query}&limit=20"
 VIKI_API = "https://api.viki.io/v4/search.json?q={query}&per_page=20"
 
 
-def _fetch_json(url: str, timeout: float = 10.0) -> Optional[dict]:
+def _fetch_json(url: str, timeout: float = 10.0) -> dict | None:
     """Fetch JSON from URL."""
     try:
         req = urllib.request.Request(
@@ -124,7 +126,7 @@ def _fetch_json(url: str, timeout: float = 10.0) -> Optional[dict]:
         return None
 
 
-def _fetch_html(url: str, timeout: float = 10.0) -> Optional[str]:
+def _fetch_html(url: str, timeout: float = 10.0) -> str | None:
     """Fetch HTML from URL."""
     try:
         req = urllib.request.Request(
@@ -231,7 +233,9 @@ def _parse_archive_results(data: dict) -> list[SearchResult]:
                 source_id="publicdomain",
                 year=int(doc.get("date", "0")[:4]) if doc.get("date") else None,
                 poster_url=f"https://archive.org/services/img/{doc['identifier']}",
-                overview=doc.get("description", [""])[0][:300] if isinstance(doc.get("description"), list) else doc.get("description", "")[:300],
+                overview=doc.get("description", [""])[0][:300]
+                if isinstance(doc.get("description"), list)
+                else doc.get("description", "")[:300],
                 genres=("public domain", "archive"),
             )
         )
@@ -243,10 +247,13 @@ def _parse_anime_html(html: str, source: str) -> list[SearchResult]:
     results = []
     # Generic anime site parsing
     from bs4 import BeautifulSoup
+
     try:
         soup = BeautifulSoup(html, "html.parser")
         # Common patterns for anime sites
-        for link in soup.select("a[href*='episode'], a[href*='watch'], a.anime-title, .anime-item a, .item a"):
+        for link in soup.select(
+            "a[href*='episode'], a[href*='watch'], a.anime-title, .anime-item a, .item a"
+        ):
             href = link.get("href", "")
             title = link.get_text(strip=True) or link.get("title", "")
             if not title or len(title) < 3:
@@ -273,10 +280,10 @@ def _parse_anime_html(html: str, source: str) -> list[SearchResult]:
 
 class FreeMoviesSource(Source):
     """Free movie streaming sources - scrapes multiple free sites."""
-    
+
     id = "freemovies"
     name = "Free Movies (Multi-Source)"
-    
+
     def __init__(self, source_id: str = "freemovies") -> None:
         self.source_id = source_id
         self.timeout = 10.0
@@ -285,19 +292,23 @@ class FreeMoviesSource(Source):
         query = query.strip()
         if not query:
             return []
-        
+
         results = []
         encoded_query = urllib.parse.quote(query)
-        
+
         # Try multiple free sources
         sources_to_try = [
             ("yts", YTS_API.format(query=encoded_query), _parse_yts_results),
             ("tubi", TUBI_API.format(query=encoded_query), _parse_tubi_results),
             ("crackle", CRACKLE_API.format(query=encoded_query), _parse_crackle_results),
             ("viki", VIKI_API.format(query=encoded_query), _parse_viki_results),
-            ("popcornflix", POPCORNFLIX_API.format(query=encoded_query), _parse_crackle_results),  # Similar API
+            (
+                "popcornflix",
+                POPCORNFLIX_API.format(query=encoded_query),
+                _parse_crackle_results,
+            ),  # Similar API
         ]
-        
+
         for source_name, url, parser in sources_to_try:
             try:
                 data = _fetch_json(url, self.timeout)
@@ -309,19 +320,24 @@ class FreeMoviesSource(Source):
                     results.extend(parsed)
             except Exception:
                 continue
-        
+
         # Also try VidSrc
         try:
             html = _fetch_html(f"https://vidsrc.xyz/search/{encoded_query}", self.timeout)
             if html:
                 # Parse VidSrc results
                 from bs4 import BeautifulSoup
+
                 soup = BeautifulSoup(html, "html.parser")
                 for item in soup.select(".movie-item, .result-item, .card"):
                     title_elem = item.select_one("h3, h4, .title, a")
                     if title_elem:
                         title = title_elem.get_text(strip=True)
-                        link = title_elem.get("href") if title_elem.name == "a" else item.select_one("a")
+                        link = (
+                            title_elem.get("href")
+                            if title_elem.name == "a"
+                            else item.select_one("a")
+                        )
                         href = link.get("href") if link else ""
                         img = item.select_one("img")
                         poster = img.get("src") or img.get("data-src") if img else None
@@ -340,7 +356,7 @@ class FreeMoviesSource(Source):
                             )
         except Exception:
             pass
-        
+
         return results[:30]
 
     def get_episodes(self, item: SearchResult) -> list[Episode]:
@@ -349,17 +365,15 @@ class FreeMoviesSource(Source):
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         """Get streams from free movie sources."""
         streams = []
-        
+
         # Try to get direct stream from VidSrc-like services
-        if item.source_id in ("vidsrc", "vidsrc_me", "autoembed", "multiembed"):
-            # Extract ID from item.id
-            if ":" in item.id:
-                _, path = item.id.split(":", 1)
-                base = FREE_MOVIE_SITES.get(item.source_id, FREE_MOVIE_SITES["vidsrc"])
-                if item.kind == MediaKind.MOVIE:
-                    url = base["movie_url"].format(id=path)
-                    streams.append(StreamLink(url=url, quality="auto", is_live=False))
-        
+        if item.source_id in ("vidsrc", "vidsrc_me", "autoembed", "multiembed") and ":" in item.id:
+            _, path = item.id.split(":", 1)
+            base = FREE_MOVIE_SITES.get(item.source_id, FREE_MOVIE_SITES["vidsrc"])
+            if item.kind == MediaKind.MOVIE:
+                url = base["movie_url"].format(id=path)
+                streams.append(StreamLink(url=url, quality="auto", is_live=False))
+
         # For YTS, we'd need to fetch movie details to get torrent links
         if item.source_id == "yts" and item.id.startswith("yts:"):
             movie_id = item.id.split(":")[1]
@@ -369,34 +383,38 @@ class FreeMoviesSource(Source):
                     quality = torrent.get("quality", "1080p")
                     magnet = f"magnet:?xt=urn:btih:{torrent.get('hash', '')}&dn={urllib.parse.quote(item.title)}&tr=udp://tracker.opentrackr.org:1337/announce"
                     streams.append(StreamLink(url=magnet, quality=quality, is_live=False))
-        
+
         # For Tubi, Crackle, etc. - they use HLS/DASH which need player support
         if item.source_id in ("tubi", "crackle", "popcornflix", "viki"):
             # These would need their specific player/token handling
             # For now, provide the web URL
-            streams.append(StreamLink(
-                url=f"https://{item.source_id}.com/watch/{item.id.split(':')[-1]}",
-                quality="web",
-                is_live=False
-            ))
-        
+            streams.append(
+                StreamLink(
+                    url=f"https://{item.source_id}.com/watch/{item.id.split(':')[-1]}",
+                    quality="web",
+                    is_live=False,
+                )
+            )
+
         # Fallback: search for magnet links via Torrentio
         if not streams:
-            streams.append(StreamLink(
-                url=f"https://torrentio.strem.fun/stream/movie/{item.id}.json",
-                quality="auto",
-                is_live=False
-            ))
-        
+            streams.append(
+                StreamLink(
+                    url=f"https://torrentio.strem.fun/stream/movie/{item.id}.json",
+                    quality="auto",
+                    is_live=False,
+                )
+            )
+
         return streams
 
 
 class FreeTVSource(Source):
     """Free TV show streaming sources."""
-    
+
     id = "freetv"
     name = "Free TV Shows (Multi-Source)"
-    
+
     def __init__(self, source_id: str = "freetv") -> None:
         self.source_id = source_id
         self.timeout = 10.0
@@ -405,18 +423,10 @@ class FreeTVSource(Source):
         query = query.strip()
         if not query:
             return []
-        
+
         results = []
         encoded_query = urllib.parse.quote(query)
-        
-        # Try EZTV for TV torrents
-        try:
-            # First search for IMDB ID via Cinemeta or similar
-            # For now, use a simple approach
-            pass
-        except Exception:
-            pass
-        
+
         # Use same sources as movies but filter for series
         free_movies = FreeMoviesSource(self.source_id)
         movie_results = free_movies.search(query)
@@ -427,14 +437,7 @@ class FreeTVSource(Source):
                 # Could be a TV show too
                 r.kind = MediaKind.SERIES
                 results.append(r)
-        
-        # Try TV-specific sources
-        try:
-            # EZTV search would need IMDB ID
-            pass
-        except Exception:
-            pass
-        
+
         return results[:30]
 
     def get_episodes(self, item: SearchResult) -> list[Episode]:
@@ -447,17 +450,17 @@ class FreeTVSource(Source):
             StreamLink(
                 url=f"https://torrentio.strem.fun/stream/series/{item.id}.json",
                 quality="auto",
-                is_live=False
+                is_live=False,
             )
         ]
 
 
 class PublicDomainSource(Source):
     """Public domain movies from Internet Archive."""
-    
+
     id = "publicdomain"
     name = "Public Domain (Archive.org)"
-    
+
     def __init__(self) -> None:
         self.timeout = 15.0
 
@@ -465,14 +468,14 @@ class PublicDomainSource(Source):
         query = query.strip()
         if not query:
             return []
-        
+
         encoded = urllib.parse.quote(query)
         url = f"https://archive.org/advancedsearch.php?q={encoded}&fl[]=identifier,title,creator,date,mediatype,description&rows=20&page=1&output=json"
-        
+
         data = _fetch_json(url, self.timeout)
         if not data:
             return []
-        
+
         return _parse_archive_results(data)
 
     def get_episodes(self, item: SearchResult) -> list[Episode]:
@@ -482,7 +485,7 @@ class PublicDomainSource(Source):
         """Get streams from Archive.org."""
         streams = []
         identifier = item.id.split(":")[-1] if ":" in item.id else item.id
-        
+
         # Get metadata to find video files
         data = _fetch_json(f"https://archive.org/metadata/{identifier}", self.timeout)
         if data:
@@ -497,27 +500,28 @@ class PublicDomainSource(Source):
                     elif "4K" in name.upper() or "2160" in name:
                         quality = "2160p"
                     streams.append(StreamLink(url=url, quality=quality, is_live=False))
-        
+
         return streams[:10]
 
 
 class FreeAnimeSource(FreeMoviesSource):
     """Free anime streaming sources."""
-    
+
     id = "freeanime"
     name = "Free Anime (Multi-Source)"
-    
+
     def search(self, query: str) -> list[SearchResult]:
         query = query.strip()
         if not query:
             return []
-        
+
         results = []
         encoded_query = urllib.parse.quote(query)
-        
+
         # Try AniList first for metadata
         try:
             from torrentio_tui.sources.anime import _fetch_anilist
+
             anilist_results = _fetch_anilist(query, is_adult=False)
             for m in anilist_results:
                 results.append(
@@ -534,7 +538,7 @@ class FreeAnimeSource(FreeMoviesSource):
                 )
         except Exception:
             pass
-        
+
         # Try free anime streaming sites
         for site_key, site_info in ANIME_FREE_SITES.items():
             try:
@@ -545,7 +549,7 @@ class FreeAnimeSource(FreeMoviesSource):
                     results.extend(parsed)
             except Exception:
                 continue
-        
+
         return results[:30]
 
 

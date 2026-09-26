@@ -38,13 +38,13 @@ def is_cached(url: str) -> bool:
     return _get_cached_path(url).exists()
 
 
-def get_cached_path(url: str) -> Optional[Path]:
+def get_cached_path(url: str) -> Path | None:
     """Get cached image path if exists."""
     path = _get_cached_path(url)
     return path if path.exists() else None
 
 
-async def download_image(app: App, url: str, timeout: float = 10.0) -> Optional[Path]:
+async def download_image(app: App, url: str, timeout: float = 10.0) -> Path | None:
     """Download an image and cache it. Returns cached path or None on failure."""
     cached = get_cached_path(url)
     if cached:
@@ -68,17 +68,17 @@ async def download_image(app: App, url: str, timeout: float = 10.0) -> Optional[
 
 class PosterWidget(Static):
     """Widget for displaying poster images with fallback.
-    
+
     Uses CSS background-image via inline styles. The widget expects
     to have a fixed width/height set via CSS.
     """
-    
+
     DEFAULT_CSS = """
     PosterWidget {
         background: $surface;
     }
     """
-    
+
     def __init__(self, url: str | None = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.poster_url = url

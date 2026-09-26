@@ -43,7 +43,7 @@ def load_sources(config: Config) -> list[Source]:
             cinemeta_url = source_cfg.get("cinemeta_url")
             stream_url = source_cfg.get("stream_url")
             timeout = source_cfg.get("timeout_seconds", config.stremio.timeout_seconds)
-            
+
             # Fall back to main stremio config if not specified
             if not cinemeta_url:
                 cinemeta_url = config.stremio.cinemeta_url
@@ -57,13 +57,14 @@ def load_sources(config: Config) -> list[Source]:
                     stream_url = "http://localhost:7000"
                 else:
                     stream_url = config.stremio.stream_url
-            
+
             sources.append(
                 cls(
                     cinemeta_url=cinemeta_url,
                     stream_url=stream_url,
                     timeout=timeout,
                     proxy_url=config.network.proxy_url,
+                    source_id=source_id,
                 )
             )
         elif cls is IPTVSource:
