@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 
 import pytest
@@ -5,7 +6,7 @@ import pytest
 from torrentio_tui.models import StreamLink
 from torrentio_tui.player.mpv import MpvPlayer
 from torrentio_tui.player.registry import available_player_ids, get_player
-from torrentio_tui.player.torrent import TorrentStreamError
+from torrentio_tui.player.torrent import TorrentStreamError, find_streamer
 from torrentio_tui.player.vlc_android import _VLC_ACTIVITY, VlcAndroidPlayer
 
 
@@ -101,3 +102,25 @@ def test_vlc_android_builds_correct_intent(monkeypatch):
     assert value_after("-e") == "title"
     assert value_after("--el") == "position"
     assert value_after("position") == "90000"
+
+
+def test_find_streamer_prefers_peerflix(monkeypatch):
+    # When both are available, peerflix should be preferred
+    monkeypatch.setattr(shutil, "which", lambda x: "/usr/bin/" + x)
+    assert find_streamer() == "peerflix"
+
+
+def test_find_streamer_fallback_to_webtorrent(monkeypatch):
+    # When only webtorrent is available, it should be used
+    def fake_which(x):
+        if x == "peerflix":
+            return None
+        return "/usr/bin/" + x
+
+    monkeypatch.setattr(shutil, "which", fake_which)
+    assert find_streamer() == "webtorrent"
+
+
+def test_find_streamer_none_when_missing(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _x: None)
+    assert find_streamer() is None

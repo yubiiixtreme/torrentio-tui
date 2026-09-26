@@ -60,9 +60,9 @@ SOURCES_INFO = (
 
 TIPS = (
     "Enable multiple sources in config.toml [sources].enabled for wider results.",
-    "Torrentio may return magnet links — install webtorrent-cli or peerflix, or add a debrid key.",
+    "Torrentio may return magnet links — install peerflix (preferred) or webtorrent-cli, or add a debrid key.",
     "If Torrentio is blocked (HTTP 403), set network.proxy_url (e.g., Cloudflare WARP).",
-    "MediaFusion often works without proxy and returns direct debrid links.",
+    "MediaFusion often works without proxy and returns direct debrid links (configure at mediafusion.elfhosted.com/configure).",
     "Local indexers (Jackett, Prowlarr, Radarr, Sonarr) need running instances on your network.",
     "Media servers (Jellyfin, Plex, Emby) need local instances with Stremio addon configured.",
     "Configure IPTV: add m3u_url or m3u_path under [sources.iptv].",

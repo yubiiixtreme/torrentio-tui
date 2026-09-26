@@ -5,32 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - 2026-09-26
-
-### Added
-- **30+ Streaming Sources** — Massive expansion of available sources:
-  - **Debrid-friendly addons**: MediaFusion, Debrid Media Manager, Comet
-  - **Torrentio mirrors**: 3 alternative mirrors (Cloudflare, Vercel, Kavin)
-  - **Local indexers**: Jackett, Prowlarr, Radarr, Sonarr, Overseerr (need local instances)
-  - **Media servers**: Jellyfin, Plex, Emby (need local Stremio addon configured)
-  - **Anime sources**: AniList, Nyaa.si, SubsPlease, Kitsu, AnimeFLV, Crunchyroll
-  - **Adult sources** (opt-in): Hanime, NHentai, E-Hentai
-  - **Generic Stremio addon**: Configure any Stremio-compatible addon URL
-- **Poster Images in Catalogue** — Movie/series/anime posters now display in the detail panel with automatic caching
-  - Images cached locally at `~/.cache/torrentio-tui/posters/`
-  - Async loading with placeholder/loading states
-  - Works with all sources that provide poster URLs (Cinemeta, AniList, etc.)
-- **Enhanced source configuration** — Every source now has documented config section in default config.toml
-- **Updated help screen** — Complete source listing with 30+ sources categorized and described
-
-### Changed
-- Default enabled sources now include `mediafusion` alongside `stremio` and `local` for better out-of-box streaming
-- Source badges updated for all new sources with distinct colors
-- Config.toml comprehensively documents all 30+ sources with commented examples
+## [0.5.1] - 2026-09-26
 
 ### Fixed
-- Poster loading no longer blocks UI — uses async background workers
-- Image cache persists across sessions for fast subsequent loads
+- **Magnet streaming now works** — Fixed torrent streamer preference to use `peerflix` (more reliable) over `webtorrent` (has Node.js native module issues on newer Node versions). Install with `npm install -g peerflix`.
+- **Torrentio Cloudflare 403 workaround** — MediaFusion now works when configured at https://mediafusion.elfhosted.com/configure (add your debrid services and providers).
+- **Doctor command** — Now recommends `peerflix` as preferred torrent streamer.
+
+### Added
+- **Peerflix preference** — `find_streamer()` now checks for `peerflix` first, falls back to `webtorrent`.
+- **MediaFusion configuration docs** — Added notes about configuring MediaFusion for debrid links.
+- **Tests** — New tests for torrent streamer selection logic.
+
+### Changed
+- Updated help screen and doctor output to recommend `peerflix`.
+- Default config.toml now has `mediafusion` enabled by default.
+
+## [0.5.0] - 2026-09-26
 
 ## [0.4.0] - 2026-09-26
 
