@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from textual.app import App
-from textual.css.stylesheet import CssSource
 from textual.theme import Theme
 
 from torrentio_tui.config import Config
@@ -611,6 +610,7 @@ class _EmptyCssPath(list):
 
 class TorrentioTuiApp(App):
     CSS_PATH = []  # Empty list disables auto-discovery (None triggers it)
+    CSS = TORRENTIO_CSS  # Embedded CSS via class variable (standard Textual way)
     TITLE = "🎬 Torrentio TUI"
     SUB_TITLE = "search · stream · watch"
 
@@ -623,6 +623,4 @@ class TorrentioTuiApp(App):
     def on_mount(self) -> None:
         self.register_theme(TORRENTIO_THEME)
         self.theme = "torrentio"
-        # Inject embedded CSS directly into stylesheet
-        self.stylesheet.add_source(CssSource(TORRENTIO_CSS, ("torrentio-tui", "app.tcss")))
         self.push_screen(MainScreen(self.sources, self.config))
