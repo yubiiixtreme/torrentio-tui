@@ -3,7 +3,7 @@ name = "torrentio-tui"
 version = "0.2.0"
 description = "Terminal UI for discovering and streaming movie/series/anime via Stremio (Cinemeta + Torrentio) into mpv/vlc"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.10"
 keywords = ["tui", "streaming", "stremio", "torrentio", "cinemeta", "mpv", "anime"]
 classifiers = [
@@ -32,3 +32,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["torrentio_tui*"]
+
+[tool.setuptools.package-data]
+"torrentio_tui.ui" = ["*.tcss"]

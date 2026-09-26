@@ -117,6 +117,10 @@ class Config:
                 except (ValueError, TypeError):
                     pass
 
+            downloads = data.get("downloads", {})
+            if "directory" in downloads:
+                cfg.downloads.directory = Path(downloads["directory"]).expanduser()
+
         # Env vars always win (also honoured inside StremioSource itself).
         if env_cinemeta := os.environ.get("TORRENTIO_TUI_CINEMETA_URL"):
             cfg.stremio.cinemeta_url = env_cinemeta
@@ -127,11 +131,6 @@ class Config:
                 cfg.stremio.timeout_seconds = float(env_timeout)
             except ValueError:
                 pass
-
-            downloads = data.get("downloads", {})
-            if "directory" in downloads:
-                cfg.downloads.directory = Path(downloads["directory"]).expanduser()
-
         if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
 
