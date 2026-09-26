@@ -22,10 +22,8 @@ TORRENTIO_THEME = Theme(
     dark=True,
 )
 
-# Ultra-minimal CSS for Textual 8.2.8 — only basic properties that work
+# Absolute minimal CSS for Textual 8.2.8 — only guaranteed working properties
 TORRENTIO_CSS = r"""
-/* Torrentio TUI — Minimal Theme (Textual 8.2.8) */
-
 Screen { background: $background; }
 * { color: $foreground; }
 
@@ -36,40 +34,33 @@ Header {
     height: 3;
     border-bottom: thick $primary;
 }
-Header > .header-title {
-    color: $primary;
-    text-style: bold;
-    padding: 0 2;
-}
+Header > .header-title { color: $primary; text-style: bold; padding: 0 2; }
 Header > .header-clock { color: $warning; text-style: bold; }
 
 Footer { background: $panel; border-top: thick $secondary; }
 .footer-key-foreground { color: $primary; text-style: bold; }
 .footer-key-background { background: $surface; color: $secondary; text-style: bold; }
 
-Tabs { background: $panel; border-bottom: thick $foreground 20%; }
-Tab { padding: 0 4; margin: 0 1; color: $foreground 40%; text-style: bold; border: round transparent; }
+Tabs { background: $panel; border-bottom: thick $foreground; }
+Tab { padding: 0 4; margin: 0 1; color: $foreground; text-style: bold; border: round transparent; }
 Tab:hover { color: $primary; background: $surface; border: round $primary; }
 Tab.-active { color: $primary; background: $panel; border: round $primary; text-style: bold underline; }
 Underline { color: $primary; background: $primary; height: 2; }
 
-#search-input {
-    border: thick $panel; background: $surface; margin: 1 2; padding: 1 2; color: $foreground;
-}
+#search-input { border: thick $panel; background: $surface; margin: 1 2; padding: 1 2; color: $foreground; }
 #search-input:focus { border: thick $primary; background: $panel; }
-#search-input::placeholder { color: $foreground 20%; text-style: italic; }
 
 #search-loading { height: 3; content-align: center middle; color: $primary; text-style: bold; }
 
 #search-body { layout: horizontal; height: 1fr; margin: 1 2 2 2; }
 .results-panel {
-    width: 2fr; background: $panel; border: round $foreground 20%;
+    width: 2fr; background: $panel; border: round $foreground;
     scrollbar-color: $primary; scrollbar-background: $surface; scrollbar-size: 1 1;
 }
 .results-panel:focus, .results-panel:hover { border: round $primary; }
 #detail-panel {
-    width: 1fr; min-width: 38; margin: 1 2 2 1; padding: 1 2;
-    background: $panel; border: round $foreground 20%;
+    width: 1fr; margin: 1 2 2 1; padding: 1 2;
+    background: $panel; border: round $foreground;
 }
 #detail-panel:focus, #detail-panel:hover { border: round $secondary; }
 
@@ -92,52 +83,32 @@ ResultItem Static, HistoryItem Static { height: auto; padding: 0 1; }
 .kind-badge.anime { background: $secondary; color: $foreground; }
 .kind-badge.live { background: $error; color: $foreground; }
 
-#detail-poster {
-    height: 18; width: 100%; content-align: center middle;
-    background: $surface; border: round $foreground 20%; margin-bottom: 1; overflow: hidden;
-}
+#detail-poster { height: 18; width: 100%; content-align: center middle; background: $surface; border: round $foreground; margin-bottom: 1; overflow: hidden; }
 #detail-poster > Static { width: 100%; height: 100%; background: $panel; }
-.poster-placeholder { color: $foreground 40%; text-style: bold; }
+.poster-placeholder { color: $foreground; text-style: bold; }
 
 #detail-title { text-style: bold; height: auto; margin-bottom: 1; color: $primary; }
-#detail-meta { color: $foreground 60%; height: auto; margin-bottom: 1; line-height: 1.5; }
+#detail-meta { color: $foreground; height: auto; margin-bottom: 1; line-height: 1.5; }
 #detail-meta > Span { margin-right: 2; }
 .meta-year { color: $warning; }
 .meta-kind { color: $primary; }
 .meta-source { color: $secondary; }
-#detail-genres { height: auto; margin-bottom: 1; color: $foreground 40%; }
-.genre-tag { background: $surface; color: $warning; padding: 0 1; margin-right: 1; border: round $foreground 20%; text-style: bold; }
-#detail-overview {
-    height: 1fr; color: $foreground 60%; line-height: 1.4;
-    overflow-y: auto; scrollbar-color: $secondary; scrollbar-background: transparent; scrollbar-size: 1 1;
-}
+#detail-genres { height: auto; margin-bottom: 1; color: $foreground; }
+.genre-tag { background: $surface; color: $warning; padding: 0 1; margin-right: 1; border: round $foreground; text-style: bold; }
+#detail-overview { height: 1fr; color: $foreground; line-height: 1.4; overflow-y: auto; scrollbar-color: $secondary; scrollbar-size: 1 1; }
 
-#status-line {
-    dock: bottom; height: 1; padding: 0 2;
-    background: $panel; color: $foreground 40%; border-top: thick $foreground 20%; text-style: italic;
-}
+#status-line { dock: bottom; height: 1; padding: 0 2; background: $panel; color: $foreground; border-top: thick $foreground; text-style: italic; }
 
-ModalScreen { background: $background 85%; }
+ModalScreen { background: $background; }
 #episode-list-container, #quality-list-container {
     width: 70%; height: 70%; margin: 4 8; border: thick $primary; background: $panel;
 }
-#episode-title, #quality-title {
-    height: 1; padding: 0 2; background: $primary; color: $background; text-style: bold; border-bottom: thick $primary;
-}
-#episode-list-container ListView, #quality-list-container ListView {
-    background: $surface; scrollbar-color: $primary; scrollbar-background: transparent; scrollbar-size: 1 1; height: 1fr;
-}
-#episode-list-container ListItem, #quality-list-container ListItem {
-    height: auto; min-height: 2; padding: 0 2; margin: 0 1; border-left: thick transparent;
-}
-#episode-list-container ListItem.--highlight, #quality-list-container ListItem.--highlight {
-    background: $panel; border-left: thick $warning;
-}
+#episode-title, #quality-title { height: 1; padding: 0 2; background: $primary; color: $background; text-style: bold; border-bottom: thick $primary; }
+#episode-list-container ListView, #quality-list-container ListView { background: $surface; scrollbar-color: $primary; scrollbar-background: transparent; scrollbar-size: 1 1; height: 1fr; }
+#episode-list-container ListItem, #quality-list-container ListItem { height: auto; min-height: 2; padding: 0 2; margin: 0 1; border-left: thick transparent; }
+#episode-list-container ListItem.--highlight, #quality-list-container ListItem.--highlight { background: $panel; border-left: thick $warning; }
 
-.quality-tag {
-    background: $panel; color: $success; padding: 0 1; margin-right: 1;
-    border: round $foreground 20%; text-style: bold;
-}
+.quality-tag { background: $panel; color: $success; padding: 0 1; margin-right: 1; border: round $foreground; text-style: bold; }
 .quality-tag.direct { color: $primary; }
 .quality-tag.magnet { color: $warning; }
 .quality-tag.debrid { color: $warning; }
@@ -152,11 +123,11 @@ Toast { background: $panel; border: round $primary; color: $foreground; padding:
 Input { border: thick $panel; background: $surface; }
 Input:focus { border: thick $primary; }
 
-Button { background: $panel; color: $foreground; border: round $foreground 20%; padding: 0 3; margin: 0 1; }
+Button { background: $panel; color: $foreground; border: round $foreground; padding: 0 3; margin: 0 1; }
 Button:hover { background: $primary; color: $background; border: round $primary; text-style: bold; }
 Button:focus { border: thick $warning; }
 
-ProgressBar { background: $surface; border: round $foreground 20%; }
+ProgressBar { background: $surface; border: round $foreground; }
 ProgressBar > Bar { background: $primary; border: round $primary; }
 
 DataTable { background: $surface; }
@@ -166,7 +137,7 @@ DataTable > .datatable--cursor { background: $panel; }
 @media (max-width: 100) {
     #search-body { layout: vertical; }
     .results-panel { width: 100%; height: 1fr; }
-    #detail-panel { width: 100%; min-width: 0; height: 40%; margin: 0 2 2 2; }
+    #detail-panel { width: 100%; height: 40%; margin: 0 2 2 2; }
 }
 """
 
