@@ -205,19 +205,7 @@ class StremioSource(Source):
         timeout: float = 15.0,
         max_results: int = 40,
         proxy_url: str | None = None,
-        source_id: str | None = None,
-        display_name: str | None = None,
     ) -> None:
-        # Several config entries (stremio, mediafusion, knightcrawler,
-        # torrentio-selfhost, ...) all instantiate this same class with
-        # different stream_urls. Without an explicit id/name override here,
-        # every instance would report the class-level "stremio" id — making
-        # them indistinguishable to _find_source() (always resolves to
-        # whichever one loaded first) and doubling up identical Cinemeta
-        # search results across every config entry that shares this class.
-        self.id = source_id or type(self).id
-        self.name = display_name or type(self).name
-
         # Precedence: env vars > explicit args (config.toml) > defaults.
         self.cinemeta_url = (
             os.environ.get("TORRENTIO_TUI_CINEMETA_URL") or cinemeta_url or DEFAULT_CINEMETA_URL

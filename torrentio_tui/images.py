@@ -16,7 +16,7 @@ from textual.widgets import Static
 
 from torrentio_tui.config import cache_dir
 
-_USER_AGENT = "torrentio-tui/0.4 (+https://github.com/yubiiixtreme/torrentio-tui)"
+_USER_AGENT = "torrentio-tui/0.6 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
 # Image cache directory
 IMAGE_CACHE_DIR = cache_dir() / "posters"
@@ -38,13 +38,13 @@ def is_cached(url: str) -> bool:
     return _get_cached_path(url).exists()
 
 
-def get_cached_path(url: str) -> Path | None:
+def get_cached_path(url: str) -> Optional[Path]:
     """Get cached image path if exists."""
     path = _get_cached_path(url)
     return path if path.exists() else None
 
 
-async def download_image(app: App, url: str, timeout: float = 10.0) -> Path | None:
+async def download_image(app: App, url: str, timeout: float = 10.0) -> Optional[Path]:
     """Download an image and cache it. Returns cached path or None on failure."""
     cached = get_cached_path(url)
     if cached:
@@ -67,8 +67,18 @@ async def download_image(app: App, url: str, timeout: float = 10.0) -> Path | No
 
 
 class PosterWidget(Static):
-    """Widget for displaying poster images with fallback."""
-
+    """Widget for displaying poster images with fallback.
+    
+    Uses CSS background-image via inline styles. The widget expects
+    to have a fixed width/height set via CSS.
+    """
+    
+    DEFAULT_CSS = """
+    PosterWidget {
+        background: $surface;
+    }
+    """
+    
     def __init__(self, url: str | None = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.poster_url = url
@@ -98,18 +108,20 @@ class PosterWidget(Static):
                 self._show_placeholder()
 
     def _display_image(self, path: Path) -> None:
-        """Display cached image."""
+        """Display cached image via CSS background."""
         try:
-            # Textual 0.80+ supports images via Static
-            self.styles.background = f"url('{path}')"
+            # Convert to file:// URL for CSS
+            file_url = path.resolve().as_uri()
+            self.styles.background_image = f"url('{file_url}')"
             self.styles.background_size = "cover"
             self.styles.background_position = "center"
+            self.styles.background_repeat = "no-repeat"
             self.update("")
         except Exception:
             self._show_placeholder()
 
     def _show_loading(self) -> None:
-        self.update("📥 Loading poster...")
+        self.update("📥")
 
     def _show_placeholder(self) -> None:
         self.update("🎬")
@@ -117,7 +129,7 @@ class PosterWidget(Static):
     def clear_poster(self) -> None:
         """Clear the poster."""
         self.poster_url = None
-        self.styles.background = ""
+        self.styles.background_image = ""
         self.update("🍿")
 
 

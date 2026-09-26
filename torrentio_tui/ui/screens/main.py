@@ -20,7 +20,6 @@ from textual.widgets import (
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
-from torrentio_tui.images import PosterWidget
 from torrentio_tui.library import LibraryStore
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.player.registry import get_player
@@ -118,7 +117,7 @@ class MainScreen(Screen):
 
     def _build_detail_panel(self) -> Vertical:
         return Vertical(
-            PosterWidget(id="detail-poster"),
+            Static(id="detail-poster"),
             Static(id="detail-title"),
             Static(id="detail-meta"),
             Static(id="detail-genres"),
@@ -154,7 +153,7 @@ class MainScreen(Screen):
             list_view.append(ResultItem(item))
 
     def _show_detail(self, item: SearchResult | None) -> None:
-        poster = self.query_one("#detail-poster", PosterWidget)
+        poster = self.query_one("#detail-poster", Static)
         title = self.query_one("#detail-title", Static)
         meta = self.query_one("#detail-meta", Static)
         genres = self.query_one("#detail-genres", Static)
@@ -162,7 +161,7 @@ class MainScreen(Screen):
 
         if item is None:
             poster.styles.border = ("round", "gray")
-            poster.clear_poster()
+            poster.update("🍿")
             title.update("[dim]Select a title to preview[/dim]")
             meta.update("")
             genres.update("")
@@ -172,10 +171,6 @@ class MainScreen(Screen):
         icon, color, label = _kind_style(item.kind)
         poster.styles.border = ("round", color)
         poster.update(f"{icon}\n[b]{label}[/b]")
-
-        # Load poster image if available
-        if item.poster_url:
-            self.app.run_worker(poster.set_poster(item.poster_url), exclusive=True)
 
         title.update(f"[bold]{item.title}[/bold]")
         year = str(item.year) if item.year else "—"
@@ -187,8 +182,6 @@ class MainScreen(Screen):
 
     def show_error_detail(self, message: str) -> None:
         self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
-        poster = self.query_one("#detail-poster", PosterWidget)
-        poster.update("⚠️")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "search-input":
@@ -282,20 +275,8 @@ class MainScreen(Screen):
 
     @work(exclusive=True)
     async def _download_item(self, item: SearchResult) -> None:
-        try:
-            await self._download_item_inner(item)
-        except Exception as exc:  # noqa: BLE001 -- same rationale as open_item's wrapper
-            message = f"Download failed ({type(exc).__name__}): {exc}"
-            self.app.notify(message, severity="error", timeout=10)
-
-    async def _download_item_inner(self, item: SearchResult) -> None:
         source = self._find_source(item.source_id)
         if source is None:
-            self.app.notify(
-                f"No loaded source matches '{item.source_id}' — is it still enabled?",
-                severity="error",
-                timeout=10,
-            )
             return
 
         episode: Episode
@@ -354,19 +335,8 @@ class MainScreen(Screen):
 
     @work(exclusive=True)
     async def open_item(self, item: SearchResult) -> None:
-        try:
-            await self._open_item(item)
-        except Exception as exc:  # noqa: BLE001 -- last resort so a click never just does nothing
-            message = f"Couldn't open '{item.title}' ({type(exc).__name__}): {exc}"
-            self.app.notify(message, severity="error", timeout=10)
-            self.show_error_detail(message)
-
-    async def _open_item(self, item: SearchResult) -> None:
         source = self._find_source(item.source_id)
         if source is None:
-            message = f"No loaded source matches '{item.source_id}' — is it still enabled?"
-            self.app.notify(message, severity="error", timeout=10)
-            self.show_error_detail(message)
             return
 
         episode: Episode
@@ -426,51 +396,35 @@ class MainScreen(Screen):
     def play_stream(
         self, item: SearchResult, episode: Episode, stream, resume_seconds: float = 0.0
     ) -> None:
-        from textual.app import SuspendNotSupported
-
         from torrentio_tui.player.torrent import TorrentStreamError
 
         player = get_player(self.config.player.backend, hwdec=self.config.player.hwdec)
 
         # Textual's App.suspend() only resumes/refreshes the terminal driver
         # if the code inside the `with` block returns *normally* — it has no
-        # try/finally around its internal yield. Any exception raised by
-        # player.play() (TorrentStreamError, a missing player binary, or
-        # anything else — a bug here should never be able to take the whole
-        # app down silently) would otherwise propagate straight through the
+        # try/finally around its internal yield. An exception raised by
+        # player.play() (e.g. TorrentStreamError for a magnet link with no
+        # torrent streamer installed, or FileNotFoundError for a missing
+        # player binary) would otherwise propagate straight through the
         # `with` block and skip resume_application_mode()/refresh() entirely,
         # leaving the terminal stuck in suspended raw mode — blank screen,
-        # no redraw, effectively dead. So player.play() is wrapped *inside*
-        # the `with` block and every exception it could raise is caught
-        # there, letting suspend() complete its normal resume path first.
-        #
-        # suspend() itself can also raise SuspendNotSupported — from its own
-        # __enter__, before anything is actually suspended (some terminal
-        # drivers don't support it) — which is safe to catch around the
-        # whole `with` since no raw-mode switch ever happened in that case.
+        # no redraw, effectively dead — even though the app is still alive
+        # and this method's own except below would still run. So the
+        # play() call is wrapped *inside* the `with` block instead, letting
+        # suspend() complete its normal resume path before we handle errors.
         error: Exception | None = None
-        try:
-            with self.app.suspend():
-                try:
-                    player.play(stream, title=item.title, resume_seconds=resume_seconds)
-                except Exception as exc:  # noqa: BLE001 -- must never escape suspend()
-                    error = exc
-        except SuspendNotSupported as exc:
-            error = exc
+        with self.app.suspend():
+            try:
+                player.play(stream, title=item.title, resume_seconds=resume_seconds)
+            except (TorrentStreamError, FileNotFoundError, OSError) as exc:
+                error = exc
 
+        if isinstance(error, TorrentStreamError):
+            self.app.notify(str(error), severity="error", timeout=10)
+            self.show_error_detail(str(error))
+            return
         if error is not None:
-            if isinstance(error, TorrentStreamError):
-                message = str(error)
-            elif isinstance(error, SuspendNotSupported):
-                message = (
-                    "This terminal doesn't support suspending the app for playback "
-                    "(needed to hand the terminal to mpv/vlc) — try a different "
-                    "terminal emulator."
-                )
-            elif isinstance(error, OSError):
-                message = f"Player '{self.config.player.backend}' not found — install mpv or vlc."
-            else:
-                message = f"Playback failed ({type(error).__name__}): {error}"
+            message = f"Player '{self.config.player.backend}' not found — install mpv or vlc."
             self.app.notify(message, severity="error", timeout=10)
             self.show_error_detail(message)
             return

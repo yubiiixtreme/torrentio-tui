@@ -106,9 +106,9 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
         "yt-dlp", shutil.which("yt-dlp") is not None, "pip install yt-dlp — needed for downloads"
     )
     _check(
-        "peerflix or webtorrent",
-        shutil.which("peerflix") is not None or shutil.which("webtorrent") is not None,
-        "npm install -g peerflix — preferred for magnet streams without a debrid key",
+        "webtorrent or peerflix",
+        shutil.which("webtorrent") is not None or shutil.which("peerflix") is not None,
+        "npm install -g webtorrent-cli — only needed for magnet streams without a debrid key",
     )
     sys.stdout.write(f"\nPlayer backend: {config.player.backend}\n")
     sys.stdout.write(f"mpv hwdec: {config.player.hwdec or '(disabled)'}\n")
@@ -144,9 +144,7 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
                     stream_url = config.stremio.stream_url
             if stream_url not in seen_stream_urls:
                 seen_stream_urls.add(stream_url)
-                _check_reachable(
-                    f"Stream addon ({source_id})", f"{stream_url}/manifest.json", 8.0, proxy_url
-                )
+                _check_reachable(f"Stream addon ({source_id})", f"{stream_url}/manifest.json", 8.0, proxy_url)
     return 0
 
 

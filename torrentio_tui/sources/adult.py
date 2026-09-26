@@ -17,7 +17,6 @@ from torrentio_tui.sources.base import Source, SourceError
 
 _USER_AGENT = "torrentio-tui/0.3 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
-
 # Check if adult content is allowed
 def _adult_allowed(config: Config | None = None) -> bool:
     """Check if adult content is enabled in config."""
@@ -35,7 +34,8 @@ class AdultSourceBase(Source):
         self.config = config or Config.load()
         if not _adult_allowed(self.config):
             raise SourceError(
-                "Adult content is disabled. Enable it in config.toml: [adult] enabled = true"
+                "Adult content is disabled. Enable it in config.toml: "
+                "[adult] enabled = true"
             )
 
     def _check_enabled(self) -> None:
@@ -176,9 +176,7 @@ class StremioAdultSource(AdultSourceBase):
                         url=str(s["url"]),
                         quality=name or "auto",
                         headers=dict(s.get("behaviorHints", {}).get("headers", {}) or {}),
-                        subtitle_url=s.get("subtitles")
-                        if isinstance(s.get("subtitles"), str)
-                        else None,
+                        subtitle_url=s.get("subtitles") if isinstance(s.get("subtitles"), str) else None,
                     )
                 )
             elif s.get("infoHash"):

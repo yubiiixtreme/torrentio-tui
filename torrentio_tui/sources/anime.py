@@ -190,7 +190,10 @@ class AnilistSource(Source):
         if not query:
             return []
 
-        media_list = _fetch_anilist(query, is_adult=self.include_adult)
+        try:
+            media_list = _fetch_anilist(query, is_adult=self.include_adult)
+        except SourceError:
+            raise
 
         results = []
         for m in media_list:
@@ -210,7 +213,6 @@ class AnilistSource(Source):
             if m.description:
                 # Strip HTML tags from description
                 import re
-
                 desc = re.sub(r"<[^>]+>", "", m.description)
                 overview += f"\n{desc[:200]}..."
 
