@@ -22,8 +22,9 @@ dev = ["pytest", "pytest-asyncio", "build", "twine"]
 stream-tui = "stream_tui.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/stream-tui/stream-tui"
-Issues = "https://github.com/stream-tui/stream-tui/issues"
+Homepage = "https://github.com/yubiiixtreme/stream-tui"
+Repository = "https://github.com/yubiiixtreme/stream-tui"
+Issues = "https://github.com/yubiiixtreme/stream-tui/issues"
 
 [build-system]
 requires = ["setuptools>=68"]
