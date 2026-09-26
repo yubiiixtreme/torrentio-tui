@@ -9,6 +9,7 @@ the magnet to a local torrent streamer if one is installed:
 
 Direct http(s) URLs (debrid unrestricts) play natively and never touch this.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -21,8 +22,7 @@ class TorrentStreamError(Exception):
 
 def is_torrent_link(url: str) -> bool:
     u = url.lower()
-    return (u.startswith("magnet:?") or u.endswith(".torrent")
-            or "btih:" in u)
+    return u.startswith("magnet:?") or u.endswith(".torrent") or "btih:" in u
 
 
 def find_streamer() -> str | None:
@@ -43,8 +43,7 @@ def play_magnet(magnet: str, title: str, backend: str = "mpv") -> int:
         )
     if streamer == "webtorrent":
         player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
-        cmd = ["webtorrent", magnet, player_flag,
-               f"--title={title}"]
+        cmd = ["webtorrent", magnet, player_flag, f"--title={title}"]
     else:  # peerflix
         player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
         cmd = ["peerflix", magnet, player_flag]

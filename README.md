@@ -1,5 +1,11 @@
 # Torrentio TUI
 
+[![PyPI version](https://img.shields.io/pypi/v/torrentio-tui?label=PyPI)](https://pypi.org/project/torrentio-tui/)
+[![Python](https://img.shields.io/pypi/pyversions/torrentio-tui)](https://pypi.org/project/torrentio-tui/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/yubiiixtreme/torrentio-tui/workflows/CI/badge.svg)](https://github.com/yubiiixtreme/torrentio-tui/actions)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 A terminal UI for discovering and streaming **movies, series & anime** —
 search a catalogue, pick an episode, pick a quality, and it plays instantly
 in **mpv / vlc** on your own machine.
@@ -7,6 +13,10 @@ in **mpv / vlc** on your own machine.
 Built with Python + [Textual](https://textual.textualize.io/). Inspired by
 [MovieBox-TUI](https://github.com/mesamirh/MovieBox-TUI) (multi-source feel)
 and [ani-cli](https://github.com/pystardust/ani-cli) (search → pick → mpv).
+
+## Screenshots
+
+*Coming soon — run `torrentio-tui` to see the beautiful Textual TUI!*
 
 ## Features
 
@@ -193,6 +203,7 @@ torrentio_tui/
 2. Register it in `torrentio_tui/sources/registry.py`:
    ```python
    from torrentio_tui.sources.myscraper import MyScraperSource
+
    _AVAILABLE["myscraper"] = MyScraperSource
    ```
 3. Add `"myscraper"` to `sources.enabled` in

@@ -1,4 +1,5 @@
 """Saved/favorited items, stored as flat JSON (same rationale as history.py)."""
+
 from __future__ import annotations
 
 import json

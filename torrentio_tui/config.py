@@ -1,12 +1,15 @@
 """Config + on-disk paths (XDG-friendly), following the ani-cli/MovieBox-TUI
 pattern of "sane defaults, everything overridable by a config file or env var".
 """
+
 from __future__ import annotations
 
+import contextlib
 import os
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import tomllib
 
 APP_NAME = "torrentio-tui"
 
@@ -95,13 +98,15 @@ class Config:
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
 
     @classmethod
-    def load(cls) -> "Config":
+    def load(cls) -> Config:
         cfg = cls()
         path = config_file()
         if path.exists():
             data = tomllib.loads(path.read_text())
             player = data.get("player", {})
-            cfg.player.backend = os.environ.get("TORRENTIO_TUI_PLAYER", player.get("backend", cfg.player.backend))
+            cfg.player.backend = os.environ.get(
+                "TORRENTIO_TUI_PLAYER", player.get("backend", cfg.player.backend)
+            )
             cfg.player.default_quality = player.get("default_quality", cfg.player.default_quality)
 
             cfg.enabled_sources = data.get("sources", {}).get("enabled", cfg.enabled_sources)
@@ -112,10 +117,8 @@ class Config:
             if "stream_url" in stremio_cfg:
                 cfg.stremio.stream_url = str(stremio_cfg["stream_url"])
             if "timeout_seconds" in stremio_cfg:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     cfg.stremio.timeout_seconds = float(stremio_cfg["timeout_seconds"])
-                except (ValueError, TypeError):
-                    pass
 
             downloads = data.get("downloads", {})
             if "directory" in downloads:
@@ -127,10 +130,8 @@ class Config:
         if env_stream := os.environ.get("TORRENTIO_TUI_STREAM_URL"):
             cfg.stremio.stream_url = env_stream
         if env_timeout := os.environ.get("TORRENTIO_TUI_TIMEOUT"):
-            try:
+            with contextlib.suppress(ValueError):
                 cfg.stremio.timeout_seconds = float(env_timeout)
-            except ValueError:
-                pass
         if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
 

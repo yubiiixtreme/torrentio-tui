@@ -1,10 +1,25 @@
 from __future__ import annotations
 
+import urllib.request
+from io import BytesIO
+from pathlib import Path
+
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.image import Image
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, ListItem, ListView, LoadingIndicator, Static, TabbedContent, TabPane
+from textual.widgets import (
+    Footer,
+    Header,
+    Input,
+    ListItem,
+    ListView,
+    LoadingIndicator,
+    Static,
+    TabbedContent,
+    TabPane,
+)
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
@@ -34,12 +49,14 @@ class ResultItem(ListItem):
         line1 = f"{icon} [bold]{item.title}[/bold]{year}"
 
         overview = (item.overview or "").strip()
-        snippet = f"{overview[:90]}…" if len(overview) > 90 else overview
+        snippet = f"{overview[:100]}…" if len(overview) > 100 else overview
         line2 = f"   [{color}]{label}[/{color}] [dim]· {item.source_id}[/dim]"
         if snippet:
             line2 += f"  [dim]{snippet}[/dim]"
 
-        super().__init__(Static(f"{line1}\n{line2}", markup=True), classes=f"kind-{item.kind.value}")
+        super().__init__(
+            Static(f"{line1}\n{line2}", markup=True), classes=f"kind-{item.kind.value}"
+        )
         self.item = item
 
 
@@ -53,6 +70,8 @@ class HistoryItem(ListItem):
 class MainScreen(Screen):
     BINDINGS = [
         ("l", "toggle_library", "Save/unsave"),
+        ("d", "download", "Download"),
+        ("i", "info", "Info"),
         ("q", "app.quit", "Quit"),
     ]
 
@@ -63,36 +82,38 @@ class MainScreen(Screen):
         self.history = HistoryStore()
         self.library = LibraryStore()
         self._last_results: list[SearchResult] = []
+        self._poster_cache: dict[str, bytes] = {}
 
     def compose(self) -> ComposeResult:
         yield Header()
         with TabbedContent(initial="search"):
-            with TabPane("Search", id="search"):
-                with Vertical():
-                    yield Input(placeholder="Search titles...", id="search-input")
-                    yield LoadingIndicator(id="search-loading")
-                    with Horizontal(id="search-body"):
-                        yield ListView(id="search-results")
-                        yield self._build_detail_panel()
-            with TabPane("Continue Watching", id="continue"):
-                yield ListView(id="continue-results")
-            with TabPane("Library", id="library"):
-                yield ListView(id="library-results")
+            with TabPane("🔍  Search", id="search"), Vertical():
+                yield Input(placeholder="Search movies, series, anime...", id="search-input")
+                yield LoadingIndicator(id="search-loading")
+                with Horizontal(id="search-body"):
+                    yield ListView(id="search-results", classes="results-panel")
+                    yield self._build_detail_panel()
+            with TabPane("⏯  Continue Watching", id="continue"):
+                yield ListView(id="continue-results", classes="results-panel")
+            with TabPane("❤️  Library", id="library"):
+                yield ListView(id="library-results", classes="results-panel")
         yield Footer()
+        yield Static(id="status-line")
 
     def _build_detail_panel(self) -> Vertical:
-        panel = Vertical(
+        return Vertical(
             Static(id="detail-poster"),
             Static(id="detail-title"),
             Static(id="detail-meta"),
+            Static(id="detail-genres"),
             Static(id="detail-overview"),
             id="detail-panel",
         )
-        return panel
 
     def on_mount(self) -> None:
         self._show_detail(None)
         self.query_one("#search-loading", LoadingIndicator).display = False
+        self.query_one("#search-input", Input).focus()
 
     def on_screen_resume(self) -> None:
         self.refresh_continue_watching()
@@ -104,7 +125,7 @@ class MainScreen(Screen):
         for entry in self.history.recent():
             label = entry.title
             if entry.episode_label:
-                label += f" - {entry.episode_label}"
+                label += f" — {entry.episode_label}"
             pct = ""
             if entry.duration_seconds:
                 pct = f" ({entry.position_seconds / entry.duration_seconds:.0%})"
@@ -120,23 +141,47 @@ class MainScreen(Screen):
         poster = self.query_one("#detail-poster", Static)
         title = self.query_one("#detail-title", Static)
         meta = self.query_one("#detail-meta", Static)
+        genres = self.query_one("#detail-genres", Static)
         overview = self.query_one("#detail-overview", Static)
 
         if item is None:
             poster.styles.border = ("round", "gray")
-            poster.update("🍿")
+            poster.update("[dim]🎬  Torrentio TUI[/dim]\n[dim]Select a title to preview[/dim]")
             title.update("[dim]Select a title to preview[/dim]")
             meta.update("")
-            overview.update("[dim]Use ↑/↓ to browse results.[/dim]")
+            genres.update("")
+            overview.update("[dim]Use ↑/↓ to browse results. Enter to play.[/dim]")
             return
 
         icon, color, label = _kind_style(item.kind)
         poster.styles.border = ("round", color)
-        poster.update(f"{icon}\n[b]{label}[/b]")
+
+        # Try to load poster image if available
+        if item.poster_url:
+            self._load_poster_async(item.poster_url, poster)
+        else:
+            poster.update(f"{icon}\n\n[b]{label}[/b]")
+
         title.update(f"[bold]{item.title}[/bold]")
         year = str(item.year) if item.year else "—"
         meta.update(f"[{color}]{label}[/{color}]  ·  {year}  ·  [dim]{item.source_id}[/dim]")
-        overview.update(item.overview.strip() if item.overview else "[dim]No synopsis available.[/dim]")
+
+        # Genres placeholder - would need meta API call for real genres
+        genres.update("[dim]Genres: loading...[/dim]")
+
+        overview.update(
+            item.overview.strip() if item.overview else "[dim]No synopsis available.[/dim]"
+        )
+
+    @work(exclusive=True, thread=True)
+    def _load_poster_async(self, url: str, poster_widget: Static) -> None:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "torrentio-tui/0.2"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = resp.read()
+            self.call_from_thread(poster_widget.update, Image(data, format="auto"))
+        except Exception:
+            self.call_from_thread(poster_widget.update, "[dim]🖼  Poster unavailable[/dim]")
 
     def show_error_detail(self, message: str) -> None:
         self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
@@ -174,7 +219,7 @@ class MainScreen(Screen):
             if errors:
                 self.app.notify(" | ".join(errors), severity="error", timeout=8)
             elif not results:
-                self.app.notify("No results", severity="warning")
+                self.app.notify("No results found", severity="warning")
         finally:
             loading.display = False
 
@@ -206,6 +251,23 @@ class MainScreen(Screen):
                 self.app.notify(f"Saved to library: {highlighted.item.title}")
             self.refresh_library()
 
+    def action_download(self) -> None:
+        results_list = self.query_one("#search-results", ListView)
+        highlighted = results_list.highlighted_child
+        if isinstance(highlighted, ResultItem):
+            self.app.notify("Download: select quality first (Enter on item)", severity="info")
+
+    def action_info(self) -> None:
+        results_list = self.query_one("#search-results", ListView)
+        highlighted = results_list.highlighted_child
+        if isinstance(highlighted, ResultItem):
+            item = highlighted.item
+            self.app.notify(
+                f"{item.title} ({item.year or '—'})\nKind: {item.kind.value}\nSource: {item.source_id}\nID: {item.id}",
+                title="Info",
+                timeout=8,
+            )
+
     @work(exclusive=True)
     async def open_item(self, item: SearchResult) -> None:
         source = self._find_source(item.source_id)
@@ -234,7 +296,11 @@ class MainScreen(Screen):
             self.show_error_detail("No playable streams found for this title/episode.")
             return
 
-        stream = streams[0] if len(streams) == 1 else await self.app.push_screen_wait(QualityScreen(streams))
+        stream = (
+            streams[0]
+            if len(streams) == 1
+            else await self.app.push_screen_wait(QualityScreen(streams))
+        )
         if stream is None:
             return
 
@@ -247,7 +313,12 @@ class MainScreen(Screen):
         entry = self.history.get(hist_item.source_id, hist_item.item_id)
         if entry is None:
             return
-        result = SearchResult(id=hist_item.item_id, title=entry.title, kind=MediaKind.MOVIE, source_id=hist_item.source_id)
+        result = SearchResult(
+            id=hist_item.item_id,
+            title=entry.title,
+            kind=MediaKind.MOVIE,
+            source_id=hist_item.source_id,
+        )
         episode = Episode(id=hist_item.item_id, title=entry.title)
         try:
             streams = source.get_streams(result, episode)
@@ -257,7 +328,9 @@ class MainScreen(Screen):
         if streams:
             self.play_stream(result, episode, streams[0], resume_seconds=entry.position_seconds)
 
-    def play_stream(self, item: SearchResult, episode: Episode, stream, resume_seconds: float = 0.0) -> None:
+    def play_stream(
+        self, item: SearchResult, episode: Episode, stream, resume_seconds: float = 0.0
+    ) -> None:
         from torrentio_tui.player.torrent import TorrentStreamError
 
         player = get_player(self.config.player.backend)

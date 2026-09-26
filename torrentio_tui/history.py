@@ -4,6 +4,7 @@ Deliberately not a database — this is meant to be easy to inspect/edit by
 hand, matching the "no telemetry, everything local" spirit of both
 reference projects.
 """
+
 from __future__ import annotations
 
 import json

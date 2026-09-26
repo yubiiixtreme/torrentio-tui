@@ -5,6 +5,7 @@ without needing any external/legally-sensitive scraper wired up yet. Point
 it at a folder of your own media via `TORRENTIO_TUI_LOCAL_DIR` or the
 `~/Videos` default.
 """
+
 from __future__ import annotations
 
 import os

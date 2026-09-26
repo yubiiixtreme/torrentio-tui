@@ -5,6 +5,7 @@ Add your own source here once it's implemented:
     from torrentio_tui.sources.mysource import MySource
     _AVAILABLE["mysource"] = MySource
 """
+
 from __future__ import annotations
 
 from torrentio_tui.sources.base import Source
@@ -29,11 +30,13 @@ def load_sources(
         if cls is None:
             continue
         if cls is StremioSource:
-            sources.append(cls(
-                cinemeta_url=stremio_cinemeta_url,
-                stream_url=stremio_stream_url,
-                timeout=stremio_timeout,
-            ))
+            sources.append(
+                cls(
+                    cinemeta_url=stremio_cinemeta_url,
+                    stream_url=stremio_stream_url,
+                    timeout=stremio_timeout,
+                )
+            )
         else:
             sources.append(cls())
     return sources

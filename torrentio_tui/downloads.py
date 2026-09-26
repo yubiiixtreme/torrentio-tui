@@ -2,6 +2,7 @@
 yt-dlp (handles HLS/m3u8, resumes, range requests) rather than
 reimplementing an HTTP downloader.
 """
+
 from __future__ import annotations
 
 import shutil

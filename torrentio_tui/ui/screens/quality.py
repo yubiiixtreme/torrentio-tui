@@ -6,15 +6,17 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, ListItem, ListView, Static
 
 from torrentio_tui.models import StreamLink
+from torrentio_tui.player.torrent import is_torrent_link
 
 _QUALITY_COLOR = (
-    ("2160", "#F5C518"),
-    ("4K", "#F5C518"),
+    ("2160", "gold"),
+    ("4K", "gold"),
     ("1080", "cyan"),
-    ("720", "#2ECC71"),
-    ("480", "#E67E22"),
-    ("CAM", "#E74C3C"),
-    ("SCR", "#E74C3C"),
+    ("720", "green"),
+    ("480", "orange"),
+    ("CAM", "red"),
+    ("SCR", "red"),
+    ("TS", "red"),
 )
 
 
@@ -26,14 +28,42 @@ def _quality_color(label: str) -> str:
     return "white"
 
 
+def _stream_type(stream: StreamLink) -> tuple[str, str, str]:
+    """Return (icon, type_label, type_color) for the stream."""
+    url = stream.url.lower()
+    if is_torrent_link(url):
+        return "🧲", "MAGNET", "orange"
+    if any(
+        d in url
+        for d in (
+            "realdebrid",
+            "alldebrid",
+            "premiumize",
+            "debridlink",
+            "offcloud",
+            "put.io",
+            "torbox",
+        )
+    ):
+        return "⚡", "DEBRID", "gold"
+    if url.startswith(("http://", "https://")):
+        return "📡", "DIRECT", "cyan"
+    return "🎞", "STREAM", "white"
+
+
 class StreamPicked(ListItem):
     def __init__(self, stream: StreamLink) -> None:
-        color = _quality_color(stream.quality)
-        icon = "📡" if stream.is_live else "🎞"
-        label = f"{icon} [bold {color}]{stream.quality}[/bold {color}]"
+        qcolor = _quality_color(stream.quality)
+        sicon, stype, scolor = _stream_type(stream)
+        label = (
+            f"{sicon}  [{scolor}]{stype}[/{scolor}]  "
+            f"[bold {qcolor}]{stream.quality}[/bold {qcolor}]"
+        )
         if stream.is_live:
             label += " [dim](live)[/dim]"
-        super().__init__(Static(label))
+        if stream.subtitle_url:
+            label += "  💬"
+        super().__init__(Static(label, markup=True))
         self.stream = stream
 
 
@@ -49,7 +79,7 @@ class QualityScreen(ModalScreen[StreamLink | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="quality-list-container"):
-            yield Static("Choose a stream", id="quality-title")
+            yield Static("⚡  Choose Stream Quality", id="quality-title")
             yield ListView(*[StreamPicked(s) for s in self.streams])
         yield Footer()
 

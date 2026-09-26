@@ -12,6 +12,7 @@ a license for, content you own, sites whose ToS permit this kind of
 automated access, etc). This scaffold intentionally ships with no real
 scraper wired in.
 """
+
 from __future__ import annotations
 
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink

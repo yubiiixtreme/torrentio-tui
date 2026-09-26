@@ -40,8 +40,10 @@ Torrentio-style addons scrape third-party torrents; pointing this source
 at them to fetch infringing copies may violate copyright law and/or the
 sites' terms. That choice — and any debrid keys / self-hosting — is yours.
 """
+
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import urllib.error
@@ -102,9 +104,7 @@ def _parse_year(release_info: str | None) -> int | None:
 
 def _classify_kind(stremio_type: str, genres: list[str] | None) -> MediaKind:
     genre_set = {g.lower() for g in (genres or [])}
-    if "anime" in genre_set or (
-        "animation" in genre_set and stremio_type in ("series", "movie")
-    ):
+    if "anime" in genre_set or ("animation" in genre_set and stremio_type in ("series", "movie")):
         # Keep it visible as anime in the UI; wire format stays movie/series.
         return MediaKind.ANIME
     if stremio_type == "series":
@@ -126,8 +126,16 @@ def _decode_id(item_id: str) -> tuple[str, str]:
 
 def _quality_rank(text: str) -> int:
     t = text.lower()
-    for token, rank in (("2160", 50), ("4k", 50), ("1080", 40), ("720", 30),
-                        ("480", 20), ("cam", 5), ("scr", 6), ("ts", 6)):
+    for token, rank in (
+        ("2160", 50),
+        ("4k", 50),
+        ("1080", 40),
+        ("720", 30),
+        ("480", 20),
+        ("cam", 5),
+        ("scr", 6),
+        ("ts", 6),
+    ):
         if token in t:
             return rank
     return 25
@@ -161,12 +169,10 @@ def _parse_quality(name: str, title: str) -> str:
     return (label + seeds + size).strip()
 
 
-def _build_magnet(info_hash: str, name: str,
-                  sources: list[str] | None) -> str:
+def _build_magnet(info_hash: str, name: str, sources: list[str] | None) -> str:
     trackers = list(sources) if sources else []
     # Addon `sources` are usually already tracker URLs; keep http(s)/udp ones.
-    trackers = [t for t in trackers
-                if t.startswith(("udp://", "http://", "https://"))]
+    trackers = [t for t in trackers if t.startswith(("udp://", "http://", "https://"))]
     for t in DEFAULT_TRACKERS:
         if t not in trackers:
             trackers.append(t)
@@ -191,15 +197,13 @@ class StremioSource(Source):
     ) -> None:
         # Precedence: env vars > explicit args (config.toml) > defaults.
         self.cinemeta_url = (
-            os.environ.get("TORRENTIO_TUI_CINEMETA_URL")
-            or cinemeta_url
-            or DEFAULT_CINEMETA_URL
+            os.environ.get("TORRENTIO_TUI_CINEMETA_URL") or cinemeta_url or DEFAULT_CINEMETA_URL
         ).rstrip("/")
         raw_stream = (
-            os.environ.get("TORRENTIO_TUI_STREAM_URL")
-            or stream_url
-            or DEFAULT_STREAM_URL
-        ).strip().rstrip("/")
+            (os.environ.get("TORRENTIO_TUI_STREAM_URL") or stream_url or DEFAULT_STREAM_URL)
+            .strip()
+            .rstrip("/")
+        )
         # Accept a pasted /manifest.json or /configure URL gracefully.
         if raw_stream.endswith("/manifest.json"):
             raw_stream = raw_stream[: -len("/manifest.json")]
@@ -207,8 +211,7 @@ class StremioSource(Source):
             raw_stream = raw_stream[: -len("/configure")]
         self.stream_url = raw_stream
         try:
-            self.timeout = float(
-                os.environ.get("TORRENTIO_TUI_TIMEOUT", timeout))
+            self.timeout = float(os.environ.get("TORRENTIO_TUI_TIMEOUT", timeout))
         except ValueError:
             self.timeout = 15.0
         self.max_results = max_results
@@ -217,8 +220,7 @@ class StremioSource(Source):
     def _catalog(self, stremio_type: str, query: str) -> list[dict]:
         if query:
             extra = f"search={urllib.parse.quote(query)}"
-            url = (f"{self.cinemeta_url}/catalog/{stremio_type}/top/"
-                   f"{extra}.json")
+            url = f"{self.cinemeta_url}/catalog/{stremio_type}/top/{extra}.json"
         else:
             url = f"{self.cinemeta_url}/catalog/{stremio_type}/top.json"
         try:
@@ -245,18 +247,18 @@ class StremioSource(Source):
                 tt = meta.get("id") or meta.get("imdb_id")
                 if not tt:
                     continue
-                kind = _classify_kind(
-                    stremio_type, meta.get("genres") or meta.get("genre"))
-                results.append(SearchResult(
-                    id=_encode_id(stremio_type, tt),
-                    title=str(meta.get("name", tt)),
-                    kind=kind,
-                    source_id=self.id,
-                    year=_parse_year(meta.get("releaseInfo")
-                                     or meta.get("year")),
-                    poster_url=meta.get("poster"),
-                    overview=meta.get("description"),
-                ))
+                kind = _classify_kind(stremio_type, meta.get("genres") or meta.get("genre"))
+                results.append(
+                    SearchResult(
+                        id=_encode_id(stremio_type, tt),
+                        title=str(meta.get("name", tt)),
+                        kind=kind,
+                        source_id=self.id,
+                        year=_parse_year(meta.get("releaseInfo") or meta.get("year")),
+                        poster_url=meta.get("poster"),
+                        overview=meta.get("description"),
+                    )
+                )
                 if len(results) >= self.max_results:
                     break
             if len(results) >= self.max_results:
@@ -279,24 +281,23 @@ class StremioSource(Source):
             vid = v.get("id", tt)
             title = v.get("name") or v.get("title") or vid
             try:
-                season = (int(v["season"]) if v.get("season") is not None
-                          else None)
+                season = int(v["season"]) if v.get("season") is not None else None
             except (ValueError, TypeError):
                 season = None
             try:
-                number = (int(v.get("number", v.get("episode")))
-                          if v.get("number", v.get("episode")) is not None
-                          else None)
+                number = (
+                    int(v.get("number", v.get("episode")))
+                    if v.get("number", v.get("episode")) is not None
+                    else None
+                )
             except (ValueError, TypeError):
                 number = None
-            episodes.append(Episode(id=str(vid), title=str(title),
-                                    season=season, number=number))
+            episodes.append(Episode(id=str(vid), title=str(title), season=season, number=number))
         episodes.sort(key=lambda e: (e.season or 0, e.number or 0))
         return episodes or [Episode(id=item.id, title=item.title)]
 
     # -- streams ----------------------------------------------------------
-    def get_streams(self, item: SearchResult,
-                    episode: Episode) -> list[StreamLink]:
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         stremio_type, tt = _decode_id(item.id)
         stream_type = "movie" if stremio_type == "movie" else "series"
         video_id = episode.id
@@ -307,8 +308,7 @@ class StremioSource(Source):
                 video_id = tt if stremio_type == "movie" else f"{tt}"
                 # For series the API needs season/episode; if we only have
                 # the series id the addon returns season packs / latest.
-                if (stremio_type == "series" and ":" not in episode.id
-                        and episode.id != item.id):
+                if stremio_type == "series" and ":" not in episode.id and episode.id != item.id:
                     video_id = episode.id
         url = f"{self.stream_url}/stream/{stream_type}/{video_id}.json"
         data = _get_json(url, self.timeout)
@@ -320,6 +320,7 @@ class StremioSource(Source):
             label_src = f"{name}\n{title}"
             seeds = 0
             import re
+
             m = re.search(r"👤\s*(\d+)", label_src)
             if m:
                 try:
@@ -328,29 +329,43 @@ class StremioSource(Source):
                     seeds = 0
             quality = _parse_quality(name, title)
             if s.get("url"):
-                links.append((_quality_rank(label_src), seeds, StreamLink(
-                    url=str(s["url"]),
-                    quality=quality or "auto",
-                    headers=dict(s.get("behaviorHints", {}).get("headers", {})
-                                 or {}),
-                    subtitle_url=s.get("subtitles") if isinstance(
-                        s.get("subtitles"), str) else None,
-                )))
+                links.append(
+                    (
+                        _quality_rank(label_src),
+                        seeds,
+                        StreamLink(
+                            url=str(s["url"]),
+                            quality=quality or "auto",
+                            headers=dict(s.get("behaviorHints", {}).get("headers", {}) or {}),
+                            subtitle_url=s.get("subtitles")
+                            if isinstance(s.get("subtitles"), str)
+                            else None,
+                        ),
+                    )
+                )
             elif s.get("infoHash"):
-                magnet = _build_magnet(str(s["infoHash"]),
-                                       f"{item.title} {title}".strip(),
-                                       s.get("sources"))
+                magnet = _build_magnet(
+                    str(s["infoHash"]), f"{item.title} {title}".strip(), s.get("sources")
+                )
                 if s.get("fileIdx") is not None:
                     # Largest-file autoplay covers most cases; keep the
                     # index visible so advanced users can pick files.
-                    try:
+                    with contextlib.suppress(ValueError, TypeError):
                         quality += f" [f{int(s['fileIdx'])}]"
-                    except (ValueError, TypeError):
-                        pass
-                links.append((_quality_rank(label_src), seeds, StreamLink(
-                    url=magnet, quality=quality or "magnet")))
+                links.append(
+                    (
+                        _quality_rank(label_src),
+                        seeds,
+                        StreamLink(url=magnet, quality=quality or "magnet"),
+                    )
+                )
             elif s.get("magnetUrl"):
-                links.append((_quality_rank(label_src), seeds, StreamLink(
-                    url=str(s["magnetUrl"]), quality=quality or "magnet")))
+                links.append(
+                    (
+                        _quality_rank(label_src),
+                        seeds,
+                        StreamLink(url=str(s["magnetUrl"]), quality=quality or "magnet"),
+                    )
+                )
         links.sort(key=lambda t: (t[0], t[1]), reverse=True)
         return [link for _, _, link in links]

@@ -3,6 +3,7 @@
 Every `Source` implementation speaks these types so the rest of the app
 never needs to know which site or scraper produced them.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -11,6 +11,7 @@ decided here on purpose — that's the part left to you. See `example.py` for
 an annotated stub, and `local.py` for a real, working reference
 implementation (it just indexes a folder on disk).
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -49,4 +50,4 @@ class Source(ABC):
 
     def close(self) -> None:
         """Override to release sessions/connections. No-op by default."""
-        return None
+        return

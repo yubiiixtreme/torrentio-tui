@@ -5,11 +5,14 @@ mapping, stream parsing (direct url + infoHash magnet), and quality
 ranking without hitting the live APIs (Torrentio Cloudflare-blocks
 datacenter IPs anyway).
 """
+
 from __future__ import annotations
 
 import io
 import json
 import urllib.error
+
+import pytest
 
 from torrentio_tui.models import Episode, MediaKind, SearchResult
 from torrentio_tui.player import torrent as torrent_mod
@@ -19,20 +22,20 @@ from torrentio_tui.sources.stremio import StremioSource
 
 
 class _FakeResp:
-    def __init__(self, payload: dict):
+    def __init__(self, payload: dict) -> None:
         self._data = json.dumps(payload).encode()
 
-    def read(self):
+    def read(self) -> bytes:
         return self._data
 
-    def __enter__(self):
+    def __enter__(self) -> _FakeResp:
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> bool:
         return False
 
 
-def _mock_urlopen_factory(routes: dict, monkeypatch):
+def _mock_urlopen_factory(routes: dict, monkeypatch) -> None:
     def fake_urlopen(req, timeout=None):
         url = req.full_url if hasattr(req, "full_url") else str(req)
         for prefix, payload in routes.items():
@@ -40,25 +43,34 @@ def _mock_urlopen_factory(routes: dict, monkeypatch):
                 if isinstance(payload, Exception):
                     raise payload
                 return _FakeResp(payload)
-        raise AssertionError(f"unexpected URL: {url}")
+        raise AssertionError("unexpected URL")
 
     monkeypatch.setattr(stremio_mod.urllib.request, "urlopen", fake_urlopen)
 
 
-def test_search_merges_movie_and_series(monkeypatch):
+def test_search_merges_movie_and_series(monkeypatch) -> None:
     routes = {
         "https://c/catalog/movie/top/search=q": {
-            "metas": [{
-                "id": "tt0111161", "name": "The Shawshank Redemption",
-                "releaseInfo": "1994", "poster": "http://p/1.jpg",
-                "description": "Hope.", "genres": ["Drama"],
-            }]
+            "metas": [
+                {
+                    "id": "tt0111161",
+                    "name": "The Shawshank Redemption",
+                    "releaseInfo": "1994",
+                    "poster": "http://p/1.jpg",
+                    "description": "Hope.",
+                    "genres": ["Drama"],
+                }
+            ]
         },
         "https://c/catalog/series/top/search=q": {
-            "metas": [{
-                "id": "tt0903747", "name": "Breaking Bad",
-                "releaseInfo": "2008–2013", "genres": ["Drama"],
-            }]
+            "metas": [
+                {
+                    "id": "tt0903747",
+                    "name": "Breaking Bad",
+                    "releaseInfo": "2008–2013",
+                    "genres": ["Drama"],
+                }
+            ]
         },
     }
     _mock_urlopen_factory(routes, monkeypatch)
@@ -75,14 +87,18 @@ def test_search_merges_movie_and_series(monkeypatch):
     assert series.year == 2008
 
 
-def test_search_classifies_anime(monkeypatch):
+def test_search_classifies_anime(monkeypatch) -> None:
     routes = {
         "https://c/catalog/movie/top/search=naruto": {"metas": []},
         "https://c/catalog/series/top/search=naruto": {
-            "metas": [{
-                "id": "tt0409591", "name": "Naruto",
-                "releaseInfo": "2002", "genres": ["Animation", "Anime"],
-            }]
+            "metas": [
+                {
+                    "id": "tt0409591",
+                    "name": "Naruto",
+                    "releaseInfo": "2002",
+                    "genres": ["Animation", "Anime"],
+                }
+            ]
         },
     }
     _mock_urlopen_factory(routes, monkeypatch)
@@ -92,55 +108,58 @@ def test_search_classifies_anime(monkeypatch):
     assert item.id == "series:tt0409591"
 
 
-def test_get_episodes_series(monkeypatch):
+def test_get_episodes_series(monkeypatch) -> None:
     routes = {
         "https://c/meta/series/tt0903747.json": {
-            "meta": {"videos": [
-                {"id": "tt0903747:1:2", "name": "Ep2", "season": 1,
-                 "number": 2},
-                {"id": "tt0903747:1:1", "name": "Pilot", "season": 1,
-                 "number": 1},
-            ]}
+            "meta": {
+                "videos": [
+                    {"id": "tt0903747:1:2", "name": "Ep2", "season": 1, "number": 2},
+                    {"id": "tt0903747:1:1", "name": "Pilot", "season": 1, "number": 1},
+                ]
+            }
         }
     }
     _mock_urlopen_factory(routes, monkeypatch)
     src = StremioSource(cinemeta_url="https://c", stream_url="https://s")
-    item = SearchResult(id="series:tt0903747", title="Breaking Bad",
-                        kind=MediaKind.SERIES, source_id="stremio")
+    item = SearchResult(
+        id="series:tt0903747", title="Breaking Bad", kind=MediaKind.SERIES, source_id="stremio"
+    )
     eps = src.get_episodes(item)
     assert [e.id for e in eps] == ["tt0903747:1:1", "tt0903747:1:2"]
-    assert eps[0].season == 1 and eps[0].number == 1
+    assert eps[0].season == 1
+    assert eps[0].number == 1
 
 
-def test_get_episodes_movie_returns_single(monkeypatch):
-    routes = {
-        "https://c/meta/movie/tt0111161.json": {"meta": {"videos": []}}
-    }
+def test_get_episodes_movie_returns_single(monkeypatch) -> None:
+    routes = {"https://c/meta/movie/tt0111161.json": {"meta": {"videos": []}}}
     _mock_urlopen_factory(routes, monkeypatch)
     src = StremioSource(cinemeta_url="https://c", stream_url="https://s")
-    item = SearchResult(id="movie:tt0111161", title="Shawshank",
-                        kind=MediaKind.MOVIE, source_id="stremio")
+    item = SearchResult(
+        id="movie:tt0111161", title="Shawshank", kind=MediaKind.MOVIE, source_id="stremio"
+    )
     [ep] = src.get_episodes(item)
     assert ep.id == item.id
 
 
-def test_get_streams_direct_and_magnet_sorted(monkeypatch):
+def test_get_streams_direct_and_magnet_sorted(monkeypatch) -> None:
     routes = {
         "https://s/stream/movie/tt0111161.json": {
             "streams": [
-                {"name": "YTS", "title": "720p 👤10 💾800 MB",
-                 "infoHash": "ab" * 20, "fileIdx": 0},
-                {"name": "RD", "title": "Shawshank 1080p BluRay",
-                 "url": "https://debrid.example/file.mp4"},
-                {"name": "CAM", "title": "CAM 👤500",
-                 "infoHash": "cd" * 20},
+                {"name": "YTS", "title": "720p 👤10 💾800 MB", "infoHash": "ab" * 20, "fileIdx": 0},
+                {
+                    "name": "RD",
+                    "title": "Shawshank 1080p BluRay",
+                    "url": "https://debrid.example/file.mp4",
+                },
+                {"name": "CAM", "title": "CAM 👤500", "infoHash": "cd" * 20},
             ]
         }
     }
     _mock_urlopen_factory(routes, monkeypatch)
     src = StremioSource(cinemeta_url="https://c", stream_url="https://s")
-    item = SearchResult(id="movie:tt0111161", title="Shawshank",
-                        kind=MediaKind.MOVIE, source_id="stremio")
+    item = SearchResult(
+        id="movie:tt0111161", title="Shawshank", kind=MediaKind.MOVIE, source_id="stremio"
+    )
     streams = src.get_streams(item, Episode(id=item.id, title=item.title))
     assert len(streams) == 3
     # 1080p direct link ranks first.
@@ -151,41 +170,29 @@ def test_get_streams_direct_and_magnet_sorted(monkeypatch):
     assert "tr=" in streams[1].url
 
 
-def test_get_streams_empty_returns_empty(monkeypatch):
-    _mock_urlopen_factory(
-        {"https://s/stream/series/tt1:1:1.json": {"streams": []}},
-        monkeypatch)
+def test_get_streams_empty_returns_empty(monkeypatch) -> None:
+    _mock_urlopen_factory({"https://s/stream/series/tt1:1:1.json": {"streams": []}}, monkeypatch)
     src = StremioSource(cinemeta_url="https://c", stream_url="https://s")
-    item = SearchResult(id="series:tt1", title="X",
-                        kind=MediaKind.SERIES, source_id="stremio")
+    item = SearchResult(id="series:tt1", title="X", kind=MediaKind.SERIES, source_id="stremio")
     assert src.get_streams(item, Episode(id="tt1:1:1", title="E1")) == []
 
 
-def test_torrentio_403_gives_helpful_error(monkeypatch):
+def test_torrentio_403_gives_helpful_error(monkeypatch) -> None:
     err = urllib.error.HTTPError(
-        "https://torrentio.strem.fun/stream/movie/tt1.json", 403,
-        "Forbidden", {}, io.BytesIO(b""))
-    _mock_urlopen_factory(
-        {"https://torrentio.strem.fun": err}, monkeypatch)
-    src = StremioSource(cinemeta_url="https://c",
-                        stream_url="https://torrentio.strem.fun")
-    item = SearchResult(id="movie:tt1", title="X",
-                        kind=MediaKind.MOVIE, source_id="stremio")
-    try:
+        "https://torrentio.strem.fun/stream/movie/tt1.json", 403, "Forbidden", {}, io.BytesIO(b"")
+    )
+    _mock_urlopen_factory({"https://torrentio.strem.fun": err}, monkeypatch)
+    src = StremioSource(cinemeta_url="https://c", stream_url="https://torrentio.strem.fun")
+    item = SearchResult(id="movie:tt1", title="X", kind=MediaKind.MOVIE, source_id="stremio")
+    with pytest.raises(SourceError) as exc_info:
         src.get_streams(item, Episode(id=item.id, title="X"))
-    except SourceError as exc:
-        assert "403" in str(exc)
-    else:
-        raise AssertionError("expected SourceError")
+    assert "403" in str(exc_info.value)
 
 
-def test_magnet_detection_and_missing_streamer(monkeypatch):
+def test_magnet_detection_and_missing_streamer(monkeypatch) -> None:
     assert torrent_mod.is_torrent_link("magnet:?xt=urn:btih:abc")
     assert not torrent_mod.is_torrent_link("https://cdn.example/v.mp4")
     monkeypatch.setattr(torrent_mod.shutil, "which", lambda _: None)
-    try:
+    with pytest.raises(torrent_mod.TorrentStreamError) as exc_info:
         torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T")
-    except torrent_mod.TorrentStreamError as exc:
-        assert "webtorrent" in str(exc).lower() or "debrid" in str(exc).lower()
-    else:
-        raise AssertionError("expected TorrentStreamError")
+    assert "webtorrent" in str(exc_info.value).lower() or "debrid" in str(exc_info.value).lower()

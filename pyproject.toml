@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "build", "twine"]
+dev = ["pytest", "pytest-asyncio", "build", "twine", "ruff"]
 
 [project.scripts]
 torrentio-tui = "torrentio_tui.cli:main"
@@ -25,6 +25,7 @@ torrentio-tui = "torrentio_tui.cli:main"
 Homepage = "https://github.com/yubiiixtreme/torrentio-tui"
 Repository = "https://github.com/yubiiixtreme/torrentio-tui"
 Issues = "https://github.com/yubiiixtreme/torrentio-tui/issues"
+Changelog = "https://github.com/yubiiixtreme/torrentio-tui/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -35,3 +36,28 @@ include = ["torrentio_tui*"]
 
 [tool.setuptools.package-data]
 "torrentio_tui.ui" = ["*.tcss"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+lint.select = ["I", "UP", "C4", "T20", "PTH", "ERA", "FIX", "NPY", "PT", "RET", "SIM", "T10", "TID", "TRY"]
+lint.ignore = ["TRY003"]
+lint.fixable = ["ALL"]
+lint.unfixable = []
+
+[tool.ruff.per-file-ignores]
+"torrentio_tui/sources/example.py" = ["ERA001", "FIX002"]
+
+[tool.ruff.lint.isort]
+known-third-party = ["textual", "pytest"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
