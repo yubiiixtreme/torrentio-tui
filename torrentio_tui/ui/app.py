@@ -22,15 +22,13 @@ TORRENTIO_THEME = Theme(
     dark=True,
 )
 
-# Minimal CSS for Textual 8.2.8 compatibility — no animations, keyframes, gradients, or :root
+# Ultra-minimal CSS for Textual 8.2.8 — only basic properties that work
 TORRENTIO_CSS = r"""
-/* Torrentio TUI — Minimal Theme (Textual 8.2.8 compatible) */
+/* Torrentio TUI — Minimal Theme (Textual 8.2.8) */
 
-/* ─── Global ─── */
 Screen { background: $background; }
 * { color: $foreground; }
 
-/* ─── Header ─── */
 Header {
     background: $panel;
     color: $primary;
@@ -39,38 +37,30 @@ Header {
     border-bottom: thick $primary;
 }
 Header > .header-title {
-    background: $primary;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: $primary;
     text-style: bold;
     padding: 0 2;
 }
 Header > .header-clock { color: $warning; text-style: bold; }
 
-/* ─── Footer ─── */
 Footer { background: $panel; border-top: thick $secondary; }
 .footer-key-foreground { color: $primary; text-style: bold; }
 .footer-key-background { background: $surface; color: $secondary; text-style: bold; }
 
-/* ─── Tabs ─── */
 Tabs { background: $panel; border-bottom: thick $foreground 20%; }
 Tab { padding: 0 4; margin: 0 1; color: $foreground 40%; text-style: bold; border: round transparent; }
 Tab:hover { color: $primary; background: $surface; border: round $primary; }
 Tab.-active { color: $primary; background: $panel; border: round $primary; text-style: bold underline; }
 Underline { color: $primary; background: $primary; height: 2; }
 
-/* ─── Input ─── */
 #search-input {
     border: thick $panel; background: $surface; margin: 1 2; padding: 1 2; color: $foreground;
 }
 #search-input:focus { border: thick $primary; background: $panel; }
 #search-input::placeholder { color: $foreground 20%; text-style: italic; }
 
-/* ─── Loading spinner ─── */
 #search-loading { height: 3; content-align: center middle; color: $primary; text-style: bold; }
 
-/* ─── Results panels ─── */
 #search-body { layout: horizontal; height: 1fr; margin: 1 2 2 2; }
 .results-panel {
     width: 2fr; background: $panel; border: round $foreground 20%;
@@ -83,7 +73,6 @@ Underline { color: $primary; background: $primary; height: 2; }
 }
 #detail-panel:focus, #detail-panel:hover { border: round $secondary; }
 
-/* ─── List items ─── */
 ListView > ResultItem, ListView > HistoryItem {
     height: auto; min-height: 3; background: transparent;
     border-left: thick transparent; margin: 0 1; padding: 0 1;
@@ -97,23 +86,19 @@ ListView > ListItem.--highlight { background: $panel; border-left: thick $primar
 ListView:focus > ListItem.--highlight { background: $surface; border-left: thick $warning; }
 ResultItem Static, HistoryItem Static { height: auto; padding: 0 1; }
 
-/* Kind badges */
 .kind-badge { width: 6; height: 1; content-align: center middle; text-style: bold; margin-right: 1; border: round $panel; }
 .kind-badge.movie { background: $primary; color: $background; }
 .kind-badge.series { background: $success; color: $background; }
 .kind-badge.anime { background: $secondary; color: $foreground; }
 .kind-badge.live { background: $error; color: $foreground; }
 
-/* ─── Poster art ─── */
 #detail-poster {
     height: 18; width: 100%; content-align: center middle;
     background: $surface; border: round $foreground 20%; margin-bottom: 1; overflow: hidden;
 }
 #detail-poster > Static { width: 100%; height: 100%; background: $panel; }
 .poster-placeholder { color: $foreground 40%; text-style: bold; }
-.poster-image { width: 100%; height: 100%; background-size: cover; background-position: center; border: round $foreground 20%; }
 
-/* ─── Detail panel content ─── */
 #detail-title { text-style: bold; height: auto; margin-bottom: 1; color: $primary; }
 #detail-meta { color: $foreground 60%; height: auto; margin-bottom: 1; line-height: 1.5; }
 #detail-meta > Span { margin-right: 2; }
@@ -127,17 +112,14 @@ ResultItem Static, HistoryItem Static { height: auto; padding: 0 1; }
     overflow-y: auto; scrollbar-color: $secondary; scrollbar-background: transparent; scrollbar-size: 1 1;
 }
 
-/* ─── Status line ─── */
 #status-line {
     dock: bottom; height: 1; padding: 0 2;
     background: $panel; color: $foreground 40%; border-top: thick $foreground 20%; text-style: italic;
 }
 
-/* ─── Modals ─── */
-ModalScreen { background: rgba(9, 10, 15, 0.85); }
+ModalScreen { background: $background 85%; }
 #episode-list-container, #quality-list-container {
-    width: 70%; max-width: 100; height: 70%; max-height: 30;
-    margin: 4 8; border: thick $primary; background: $panel;
+    width: 70%; height: 70%; margin: 4 8; border: thick $primary; background: $panel;
 }
 #episode-title, #quality-title {
     height: 1; padding: 0 2; background: $primary; color: $background; text-style: bold; border-bottom: thick $primary;
@@ -152,7 +134,6 @@ ModalScreen { background: rgba(9, 10, 15, 0.85); }
     background: $panel; border-left: thick $warning;
 }
 
-/* Quality tags */
 .quality-tag {
     background: $panel; color: $success; padding: 0 1; margin-right: 1;
     border: round $foreground 20%; text-style: bold;
@@ -161,34 +142,27 @@ ModalScreen { background: rgba(9, 10, 15, 0.85); }
 .quality-tag.magnet { color: $warning; }
 .quality-tag.debrid { color: $warning; }
 
-/* ─── Scrollbars ─── */
 ScrollBar { background: $surface; }
 ScrollBar > Slider { background: $primary; border: round $primary; min-height: 20; }
 ScrollBar > Slider:hover { background: $secondary; border: round $secondary; }
 ScrollBar > Button { display: none; }
 
-/* ─── Toast ─── */
 Toast { background: $panel; border: round $primary; color: $foreground; padding: 1 2; }
 
-/* ─── Input ─── */
 Input { border: thick $panel; background: $surface; }
 Input:focus { border: thick $primary; }
 
-/* ─── Button ─── */
 Button { background: $panel; color: $foreground; border: round $foreground 20%; padding: 0 3; margin: 0 1; }
 Button:hover { background: $primary; color: $background; border: round $primary; text-style: bold; }
 Button:focus { border: thick $warning; }
 
-/* ─── Progress bar ─── */
 ProgressBar { background: $surface; border: round $foreground 20%; }
 ProgressBar > Bar { background: $primary; border: round $primary; }
 
-/* ─── DataTable ─── */
 DataTable { background: $surface; }
 DataTable > .datatable--header { background: $panel; color: $primary; text-style: bold; }
 DataTable > .datatable--cursor { background: $panel; }
 
-/* ─── Responsive ─── */
 @media (max-width: 100) {
     #search-body { layout: vertical; }
     .results-panel { width: 100%; height: 1fr; }
