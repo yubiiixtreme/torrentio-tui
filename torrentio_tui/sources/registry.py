@@ -105,6 +105,7 @@ def load_sources(config: Config) -> list[Source]:
                     stream_url=stream_url,
                     timeout=timeout,
                     proxy_url=config.network.proxy_url,
+                    source_id=source_id,
                 )
             )
         elif cls is IPTVSource:
