@@ -144,7 +144,9 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
                     stream_url = config.stremio.stream_url
             if stream_url not in seen_stream_urls:
                 seen_stream_urls.add(stream_url)
-                _check_reachable(f"Stream addon ({source_id})", f"{stream_url}/manifest.json", 8.0, proxy_url)
+                _check_reachable(
+                    f"Stream addon ({source_id})", f"{stream_url}/manifest.json", 8.0, proxy_url
+                )
     return 0
 
 

@@ -17,9 +17,7 @@ from torrentio_tui.sources.base import Source, SourceError
 _USER_AGENT = "torrentio-tui/0.3 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
 # Regex to parse M3U EXTINF lines
-EXTINF_RE = re.compile(
-    r"#EXTINF:-?\d+(?:\s+([^=]+)=\"([^\"]*)\")*\s*,(.+)$"
-)
+EXTINF_RE = re.compile(r"#EXTINF:-?\d+(?:\s+([^=]+)=\"([^\"]*)\")*\s*,(.+)$")
 
 # Common attribute patterns
 ATTR_RE = re.compile(r'(\w+)="([^"]*)"')

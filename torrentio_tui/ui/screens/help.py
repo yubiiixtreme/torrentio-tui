@@ -52,11 +52,13 @@ class HelpScreen(ModalScreen[None]):
             yield Static("⌨  Keybindings", id="help-title")
             lines = "\n".join(f"[bold]{key:<10}[/bold]  {desc}" for key, desc in KEYBINDINGS)
             yield Static(lines, id="help-body", markup=True)
-            
+
             yield Static("\n📡  Available Sources", id="help-title", markup=True)
-            source_lines = "\n".join(f"[bold cyan]{src:<18}[/bold cyan]  {desc}" for src, desc in SOURCES_INFO)
+            source_lines = "\n".join(
+                f"[bold cyan]{src:<18}[/bold cyan]  {desc}" for src, desc in SOURCES_INFO
+            )
             yield Static(source_lines, id="help-body", markup=True)
-            
+
             yield Static("\n💡  Tips", id="help-title", markup=True)
             tip_lines = "\n".join(f"  • {tip}" for tip in TIPS)
             yield Static(tip_lines, id="help-body", markup=True)
