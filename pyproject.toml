@@ -35,7 +35,7 @@ build-backend = "setuptools.build_meta"
 include = ["torrentio_tui*"]
 
 [tool.setuptools.package-data]
-"torrentio_tui.ui" = ["*.tcss"]
+"*" = ["*.tcss"]
 
 [tool.ruff]
 line-length = 100

@@ -1,0 +1,3 @@
+include torrentio_tui/ui/*.tcss
+include torrentio_tui/ui/**/*.tcss
+recursive-include torrentio_tui/ui *.tcss
