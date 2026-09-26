@@ -7,7 +7,6 @@ from pathlib import Path
 from textual import work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.image import Image
 from textual.screen import Screen
 from textual.widgets import (
     Footer,
@@ -20,6 +19,16 @@ from textual.widgets import (
     TabbedContent,
     TabPane,
 )
+
+# textual.image was added in newer versions; fallback for older versions
+try:
+    from textual.image import Image
+except ImportError:
+    class Image:  # type: ignore
+        def __init__(self, data, format="auto"):
+            self.data = data
+        def __rich__(self):
+            return "[dim]🖼  Poster unavailable[/dim]"
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
