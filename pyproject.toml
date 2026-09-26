@@ -1,11 +1,11 @@
 [project]
 name = "torrentio-tui"
-version = "0.3.0"
-description = "Terminal UI for discovering and streaming movie/series/anime via Stremio (Cinemeta + Torrentio) into mpv/vlc"
+version = "0.4.0"
+description = "Terminal UI for discovering and streaming movie/series/anime/live-tv via Stremio (Cinemeta + Torrentio/MediaFusion/Knightcrawler), IPTV, and anime sources into mpv/vlc"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-keywords = ["tui", "streaming", "stremio", "torrentio", "cinemeta", "mpv", "anime"]
+keywords = ["tui", "streaming", "stremio", "torrentio", "cinemeta", "mpv", "anime", "iptv", "live-tv"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Environment :: Console :: Curses",

@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-26
+
+### Added
+- **Alternative stream addons** — MediaFusion (`mediafusion`), Knightcrawler (`knightcrawler`), and self-hosted Torrentio (`torrentio-selfhost`) as drop-in replacements for the default Torrentio stream source. MediaFusion works without proxy and often returns direct debrid links.
+- **IPTV/Live TV source** (`iptv`) — Load live TV channels from M3U playlists (URL or local file). Configure via `[sources.iptv]` with `m3u_url` or `m3u_path`.
+- **Anime-specific sources** — AniList (`anilist`, GraphQL API for rich metadata), Nyaa.si (`nyaa`, anime torrents), SubsPlease (`subsplease`, latest simulcast releases).
+- **Adult content sources** (opt-in) — Stremio Adult (`stremio-adult`) and Hanime.tv (`hanime`). Requires `[adult] enabled = true` in config.toml.
+- **Improved proxy support** — Doctor command now checks all enabled stream addons; better SOCKS5 proxy handling with PySocks.
+- **Cozy UI theme** — Warmer color palette (slate-950 background, gold primary, purple secondary, rose accent), larger modals, better scrollbars, toast notifications.
+- **Enhanced help screen** — Now includes source listing with descriptions, usage tips, and troubleshooting hints.
+- **Source badges in search results** — Color-coded source identifiers (yellow=stremio, green=mediafusion, red=iptv, cyan=anilist, etc.).
+- **Environment variable for adult content** — `TORRENTIO_TUI_ADULT=1` to enable adult sources without editing config.
+- **Config sections for IPTV and adult** — `[sources.iptv]`, `[sources.anilist]`, `[sources.nyaa]`, `[sources.subsplease]`, `[sources.stremio-adult]`, `[sources.hanime]`, `[adult]`.
+
+### Fixed
+- **Torrentio Cloudflare 403 workaround** — By adding MediaFusion as default alternative, most users can now stream without needing a proxy. Torrentio still works with proxy for those who prefer it.
+- **Doctor command** — Now reports connectivity for all enabled Stremio-like sources, not just the first one.
+- **Library refresh crash** — Fixed `NameError` when refreshing library with results from new sources.
+
+### Changed
+- Default config.toml now includes commented examples for all new sources.
+- Theme colors updated for better readability and "coziness".
+- Help screen (`?`) is now a comprehensive reference with keybindings, sources, and tips.
+
 ## [0.3.0] - 2026-09-26
 
 ### Fixed
