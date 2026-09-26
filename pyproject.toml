@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio", "build", "twine", "ruff"]
+proxy = ["pysocks"]
 
 [project.scripts]
 torrentio-tui = "torrentio_tui.cli:main"

@@ -17,6 +17,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--player", choices=["mpv", "vlc", "termux"], help="Override configured player backend"
     )
     parser.add_argument(
+        "--proxy",
+        metavar="URL",
+        help="Route Cinemeta/Torrentio requests through a proxy for this run "
+        "(e.g. socks5://127.0.0.1:40000 for Cloudflare WARP's proxy mode)",
+    )
+    parser.add_argument(
         "--list-sources", action="store_true", help="List registered source ids and exit"
     )
     parser.add_argument(
@@ -36,8 +42,13 @@ def _check(label: str, ok: bool, hint: str = "") -> None:
     sys.stdout.write(line + "\n")
 
 
-def run_doctor() -> int:
+def run_doctor(proxy_override: str | None = None) -> int:
+    from torrentio_tui.proxy import pysocks_available
+
     ensure_dirs()
+    config = Config.load()
+    if proxy_override:
+        config.network.proxy_url = proxy_override
     env = "Termux" if is_termux() else sys.platform
     sys.stdout.write(f"torrentio-tui — environment check ({env})\n")
     sys.stdout.write(f"Config file: {config_file()}\n\n")
@@ -57,6 +68,17 @@ def run_doctor() -> int:
         shutil.which("webtorrent") is not None or shutil.which("peerflix") is not None,
         "npm install -g webtorrent-cli — only needed for magnet streams without a debrid key",
     )
+    proxy_url = config.network.proxy_url
+    if proxy_url:
+        sys.stdout.write(f"\nProxy configured: {proxy_url}\n")
+        if proxy_url.startswith("socks"):
+            _check("pysocks (for socks5:// proxy)", pysocks_available(), "pip install pysocks")
+    else:
+        sys.stdout.write(
+            "\nNo proxy configured. If Torrentio returns HTTP 403 for you, set "
+            "network.proxy_url in config.toml (or --proxy) — see "
+            "torrentio_tui/proxy.py.\n"
+        )
     return 0
 
 
@@ -76,18 +98,21 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.doctor:
-        return run_doctor()
+        return run_doctor(args.proxy)
 
     ensure_dirs()
     config = Config.load()
     if args.player:
         config.player.backend = args.player
+    if args.proxy:
+        config.network.proxy_url = args.proxy
 
     sources = load_sources(
         config.enabled_sources,
         stremio_cinemeta_url=config.stremio.cinemeta_url,
         stremio_stream_url=config.stremio.stream_url,
         stremio_timeout=config.stremio.timeout_seconds,
+        proxy_url=config.network.proxy_url,
     )
     if not sources:
         sys.stderr.write("No sources enabled. Edit sources.enabled in your config file.\n")

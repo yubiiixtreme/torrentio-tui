@@ -47,6 +47,14 @@ stream_url = "https://torrentio.strem.fun"
 # Env override: TORRENTIO_TUI_TIMEOUT (seconds).
 timeout_seconds = 15.0
 
+[network]
+# Route requests through a proxy — useful if Torrentio Cloudflare-blocks
+# your IP (HTTP 403). Cloudflare WARP's local proxy mode is a common fix:
+#   warp-cli mode proxy && warp-cli connect   # starts a SOCKS5 proxy on :40000
+# socks5:// needs `pip install pysocks` (or install as torrentio-tui[proxy]).
+# Env override: TORRENTIO_TUI_PROXY.
+# proxy_url = "socks5://127.0.0.1:40000"
+
 [downloads]
 directory = "~/Videos/torrentio-tui"
 """
@@ -99,10 +107,16 @@ class StremioConfig:
 
 
 @dataclass(slots=True)
+class NetworkConfig:
+    proxy_url: str | None = None
+
+
+@dataclass(slots=True)
 class Config:
     player: PlayerConfig = field(default_factory=PlayerConfig)
     enabled_sources: list[str] = field(default_factory=lambda: ["stremio", "local"])
     stremio: StremioConfig = field(default_factory=StremioConfig)
+    network: NetworkConfig = field(default_factory=NetworkConfig)
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
 
     @classmethod
@@ -128,6 +142,10 @@ class Config:
                 with contextlib.suppress(ValueError, TypeError):
                     cfg.stremio.timeout_seconds = float(stremio_cfg["timeout_seconds"])
 
+            network_cfg = data.get("network", {})
+            if network_cfg.get("proxy_url"):
+                cfg.network.proxy_url = str(network_cfg["proxy_url"])
+
             downloads = data.get("downloads", {})
             if "directory" in downloads:
                 cfg.downloads.directory = Path(downloads["directory"]).expanduser()
@@ -140,6 +158,8 @@ class Config:
         if env_timeout := os.environ.get("TORRENTIO_TUI_TIMEOUT"):
             with contextlib.suppress(ValueError):
                 cfg.stremio.timeout_seconds = float(env_timeout)
+        if env_proxy := os.environ.get("TORRENTIO_TUI_PROXY"):
+            cfg.network.proxy_url = env_proxy
         if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
 

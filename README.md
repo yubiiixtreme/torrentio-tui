@@ -149,8 +149,40 @@ Without a debrid key you get `magnet:` links — install `webtorrent-cli`
 and the app streams them into mpv/vlc automatically.
 
 > ⚠️ Torrentio Cloudflare-blocks some datacenter/VPN IPs (HTTP 403). On a
-> blocked network the app tells you — switch to a residential IP, self-host
-> Torrentio, or point `stream_url` at another compatible addon.
+> blocked network the app tells you — either point `stream_url` at another
+> compatible addon / self-host Torrentio, or route requests through a proxy
+> (see [Routing around the 403](#routing-around-the-403) below).
+
+### Routing around the 403
+
+If the official Stremio app works for you on the same network but
+torrentio-tui gets blocked, it's almost always that Stremio's app and this
+CLI are leaving from different IPs (a VPN active for one but not the
+other, a container/remote box without your usual VPN, etc). Point
+`network.proxy_url` at whatever gives Torrentio a clean IP — for example
+[Cloudflare WARP](https://developers.cloudflare.com/warp-client/) in proxy
+mode, which runs a local SOCKS5 proxy without taking over your whole
+system's routing the way WARP's VPN mode does:
+
+```bash
+warp-cli mode proxy        # one-time: switch WARP to local-proxy mode
+warp-cli set-proxy-port 40000
+warp-cli connect
+```
+
+```toml
+# ~/.config/torrentio-tui/config.toml
+[network]
+proxy_url = "socks5://127.0.0.1:40000"
+```
+
+Or one-off, without touching the config file: `torrentio-tui --proxy
+socks5://127.0.0.1:40000`. A plain HTTP/HTTPS proxy (`http://host:port`)
+works too and needs nothing extra installed; `socks5://` needs
+[PySocks](https://pypi.org/project/PySocks/) — install with
+`pip install pysocks` or `pip install "torrentio-tui[proxy]"`.
+`torrentio-tui --doctor` confirms whether a proxy is configured and
+whether PySocks is available.
 
 ## Configuration
 
@@ -170,6 +202,9 @@ cinemeta_url = "https://v3-cinemeta.strem.io"
 stream_url = "https://torrentio.strem.fun"
 timeout_seconds = 15.0
 
+[network]
+# proxy_url = "socks5://127.0.0.1:40000"   # see "Routing around the 403"
+
 [downloads]
 directory = "~/Videos/torrentio-tui"
 ```
@@ -179,6 +214,7 @@ directory = "~/Videos/torrentio-tui"
 | `TORRENTIO_TUI_STREAM_URL` | custom stream addon URL |
 | `TORRENTIO_TUI_CINEMETA_URL` | custom Cinemeta base |
 | `TORRENTIO_TUI_TIMEOUT` | HTTP timeout (seconds) |
+| `TORRENTIO_TUI_PROXY` / `--proxy` | proxy URL for Cinemeta/Torrentio requests |
 | `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, or `termux` |
 | `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
 | `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
@@ -186,9 +222,10 @@ directory = "~/Videos/torrentio-tui"
 Useful commands:
 
 ```
-torrentio-tui --player vlc      # one-off backend override
+torrentio-tui --player vlc                        # one-off backend override
+torrentio-tui --proxy socks5://127.0.0.1:40000     # one-off proxy override
 torrentio-tui --list-sources    # show registered source ids
-torrentio-tui --doctor          # check mpv/vlc/yt-dlp/termux-open + config path
+torrentio-tui --doctor          # check mpv/vlc/yt-dlp/termux-open/proxy + config path
 torrentio-tui --version         # print the installed version
 ```
 
@@ -212,6 +249,7 @@ torrentio_tui/
   models.py        # Source-agnostic data types: SearchResult, Episode, StreamLink, HistoryEntry
   config.py        # XDG config/data/cache paths, config.toml loading
   termux.py        # Termux (Android) environment detection
+  proxy.py         # Optional outbound proxy (http/https/socks5) for Cinemeta/Torrentio
   history.py       # "Continue watching" store (JSON)
   library.py       # Saved/favorites store (JSON)
   downloads.py     # Batch download via yt-dlp subprocess

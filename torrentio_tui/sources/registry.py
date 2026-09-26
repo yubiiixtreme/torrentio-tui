@@ -23,6 +23,7 @@ def load_sources(
     stremio_cinemeta_url: str | None = None,
     stremio_stream_url: str | None = None,
     stremio_timeout: float = 15.0,
+    proxy_url: str | None = None,
 ) -> list[Source]:
     sources = []
     for source_id in enabled_ids:
@@ -35,6 +36,7 @@ def load_sources(
                     cinemeta_url=stremio_cinemeta_url,
                     stream_url=stremio_stream_url,
                     timeout=stremio_timeout,
+                    proxy_url=proxy_url,
                 )
             )
         else:

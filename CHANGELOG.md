@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-09-26
 
 ### Added
+- **Outbound proxy support** (`network.proxy_url` / `TORRENTIO_TUI_PROXY` /
+  `--proxy`) for Cinemeta and Torrentio requests — `http://`/`https://`
+  proxies work out of the box, `socks5://` needs the optional `pysocks`
+  dependency (`torrentio-tui[proxy]`). Documented against Cloudflare WARP's
+  local proxy mode, for when Torrentio's Cloudflare 403 hits an IP that
+  the official Stremio app on the same machine doesn't trigger it on.
+  `--doctor` reports whether a proxy is configured and whether PySocks is
+  installed.
 - **Termux (Android) support** — a `termux` player backend that hands the
   stream URL to Android via `termux-open` instead of trying to run mpv in
   the (headless) terminal; auto-selected as the default backend when

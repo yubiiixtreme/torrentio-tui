@@ -25,6 +25,11 @@ Configure it (env vars win over ``config.toml``)::
     # or via env:
     # TORRENTIO_TUI_CINEMETA_URL, TORRENTIO_TUI_STREAM_URL, TORRENTIO_TUI_TIMEOUT
 
+Torrentio Cloudflare-blocks some datacenter/VPN IP ranges (HTTP 403). If
+you hit that, route requests through a proxy instead — see
+``torrentio_tui/proxy.py`` and the ``[network] proxy_url`` config option
+(e.g. Cloudflare WARP's local proxy mode).
+
 Playback notes:
 
 * If your stream addon returns direct ``http(s)`` URLs (typical when a
@@ -51,6 +56,7 @@ import urllib.parse
 import urllib.request
 
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
+from torrentio_tui.proxy import ProxyError, build_opener, socks_proxy
 from torrentio_tui.sources.base import Source, SourceError
 
 DEFAULT_CINEMETA_URL = "https://v3-cinemeta.strem.io"
@@ -67,21 +73,41 @@ DEFAULT_TRACKERS = [
 _USER_AGENT = "torrentio-tui/0.2 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
 
-def _get_json(url: str, timeout: float) -> dict:
+def _get_json(url: str, timeout: float, proxy_url: str | None = None) -> dict:
     req = urllib.request.Request(
         url,
         headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
     )
+    scheme = urllib.parse.urlsplit(proxy_url).scheme.lower() if proxy_url else ""
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8", errors="replace"))
+        with socks_proxy(proxy_url):
+            # Only build a dedicated opener when an http(s) proxy is actually
+            # configured; otherwise use urlopen() directly (also what tests
+            # patch). A socks5:// proxy needs no opener — socks_proxy() above
+            # routes the plain urlopen() call through it at the socket level.
+            opener_open = build_opener(proxy_url).open if scheme in ("http", "https") else None
+            response_cm = (
+                opener_open(req, timeout=timeout)
+                if opener_open
+                else urllib.request.urlopen(req, timeout=timeout)
+            )
+            with response_cm as resp:
+                return json.loads(resp.read().decode("utf-8", errors="replace"))
+    except ProxyError as exc:
+        raise SourceError(str(exc)) from exc
     except urllib.error.HTTPError as exc:
         if exc.code == 403 and "torrentio" in url.lower():
+            hint = (
+                "Already routed through your configured proxy — try a different "
+                "one, or self-host Torrentio"
+                if proxy_url
+                else "Try setting network.proxy_url (e.g. Cloudflare WARP's local "
+                "proxy mode) in config.toml, self-host Torrentio, or point "
+                "stream_url at a compatible addon (MediaFusion/Knightcrawler)"
+            )
             raise SourceError(
-                "Torrentio blocked this request (HTTP 403 — Cloudflare often "
-                "blocks datacenter/VPN IPs). Try a residential IP, self-host "
-                "Torrentio, or point stream_url at a compatible addon "
-                "(MediaFusion/Knightcrawler)."
+                f"Torrentio blocked this request (HTTP 403 — Cloudflare often "
+                f"blocks datacenter/VPN IPs). {hint}."
             ) from exc
         raise SourceError(f"Request failed ({exc.code}): {url}") from exc
     except urllib.error.URLError as exc:
@@ -194,6 +220,7 @@ class StremioSource(Source):
         stream_url: str | None = None,
         timeout: float = 15.0,
         max_results: int = 40,
+        proxy_url: str | None = None,
     ) -> None:
         # Precedence: env vars > explicit args (config.toml) > defaults.
         self.cinemeta_url = (
@@ -215,6 +242,7 @@ class StremioSource(Source):
         except ValueError:
             self.timeout = 15.0
         self.max_results = max_results
+        self.proxy_url = os.environ.get("TORRENTIO_TUI_PROXY") or proxy_url or None
 
     # -- catalogue ------------------------------------------------------
     def _catalog(self, stremio_type: str, query: str) -> list[dict]:
@@ -224,7 +252,7 @@ class StremioSource(Source):
         else:
             url = f"{self.cinemeta_url}/catalog/{stremio_type}/top.json"
         try:
-            data = _get_json(url, self.timeout)
+            data = _get_json(url, self.timeout, self.proxy_url)
         except SourceError:
             if query:
                 raise
@@ -273,7 +301,7 @@ class StremioSource(Source):
     def get_episodes(self, item: SearchResult) -> list[Episode]:
         stremio_type, tt = _decode_id(item.id)
         url = f"{self.cinemeta_url}/meta/{stremio_type}/{tt}.json"
-        data = _get_json(url, self.timeout)
+        data = _get_json(url, self.timeout, self.proxy_url)
         meta = data.get("meta", {})
         videos = meta.get("videos") or []
         if stremio_type == "movie" or not videos:
@@ -313,7 +341,7 @@ class StremioSource(Source):
                 if stremio_type == "series" and ":" not in episode.id and episode.id != item.id:
                     video_id = episode.id
         url = f"{self.stream_url}/stream/{stream_type}/{video_id}.json"
-        data = _get_json(url, self.timeout)
+        data = _get_json(url, self.timeout, self.proxy_url)
         raw = data.get("streams", []) or []
         links: list[tuple[int, int, StreamLink]] = []
         for s in raw:
