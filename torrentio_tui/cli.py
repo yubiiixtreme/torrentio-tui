@@ -5,6 +5,7 @@ import shutil
 import sys
 
 from torrentio_tui.config import Config, config_file, ensure_dirs
+from torrentio_tui.player.registry import available_player_ids
 from torrentio_tui.sources.registry import available_source_ids, load_sources
 from torrentio_tui.termux import is_termux
 
@@ -14,7 +15,12 @@ def build_parser() -> argparse.ArgumentParser:
         prog="torrentio-tui", description="Terminal UI for streaming from pluggable sources"
     )
     parser.add_argument(
-        "--player", choices=["mpv", "vlc", "termux"], help="Override configured player backend"
+        "--player", choices=available_player_ids(), help="Override configured player backend"
+    )
+    parser.add_argument(
+        "--hwdec",
+        metavar="MODE",
+        help="Override mpv's --hwdec mode for this run (e.g. auto-safe, auto, no)",
     )
     parser.add_argument(
         "--proxy",
@@ -89,6 +95,13 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
             shutil.which("termux-open") is not None,
             "pkg install termux-api, then install the Termux:API app",
         )
+        from torrentio_tui.player.vlc_android import VlcAndroidPlayer
+
+        _check(
+            "VLC for Android (vlc-android backend)",
+            VlcAndroidPlayer().is_available(),
+            "install VLC from F-Droid/Play Store to use --player vlc-android",
+        )
     _check(
         "yt-dlp", shutil.which("yt-dlp") is not None, "pip install yt-dlp — needed for downloads"
     )
@@ -97,6 +110,8 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
         shutil.which("webtorrent") is not None or shutil.which("peerflix") is not None,
         "npm install -g webtorrent-cli — only needed for magnet streams without a debrid key",
     )
+    sys.stdout.write(f"\nPlayer backend: {config.player.backend}\n")
+    sys.stdout.write(f"mpv hwdec: {config.player.hwdec or '(disabled)'}\n")
     proxy_url = config.network.proxy_url
     if proxy_url:
         sys.stdout.write(f"\nProxy configured: {proxy_url}\n")
@@ -139,6 +154,8 @@ def main(argv: list[str] | None = None) -> int:
     config = Config.load()
     if args.player:
         config.player.backend = args.player
+    if args.hwdec is not None:
+        config.player.hwdec = args.hwdec
     if args.proxy:
         config.network.proxy_url = args.proxy
 

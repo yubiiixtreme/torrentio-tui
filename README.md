@@ -114,6 +114,13 @@ open this way — either configure a debrid key in your Torrentio addon URL
 (see [Torrentio setup](#torrentio-setup)) or install a torrent app that
 registers as a magnet handler.
 
+**Prefer VLC specifically?** Set `--player vlc-android` (or
+`player.backend = "vlc-android"` in config.toml). Instead of asking
+Android to pick whatever app is registered for video (which can pop an
+app-chooser dialog), it launches VLC for Android directly via an `am
+start` intent and passes along the resume position. Needs VLC for Android
+installed — `torrentio-tui --doctor` checks for it.
+
 ## Quickstart
 
 1. Launch `torrentio-tui`.
@@ -193,8 +200,9 @@ history/library at `~/.local/share/torrentio-tui/`. Env vars always win.
 
 ```toml
 [player]
-backend = "mpv"          # mpv | vlc | termux
+backend = "mpv"          # mpv | vlc | termux | vlc-android
 default_quality = "1080p"
+hwdec = "auto-safe"       # mpv hardware decoding; "" to disable, "auto" for more aggressive
 
 [sources]
 enabled = ["stremio", "local"]
@@ -217,7 +225,8 @@ directory = "~/Videos/torrentio-tui"
 | `TORRENTIO_TUI_CINEMETA_URL` | custom Cinemeta base |
 | `TORRENTIO_TUI_TIMEOUT` | HTTP timeout (seconds) |
 | `TORRENTIO_TUI_PROXY` / `--proxy` | proxy URL for Cinemeta/Torrentio requests |
-| `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, or `termux` |
+| `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, `termux`, or `vlc-android` |
+| `TORRENTIO_TUI_HWDEC` / `--hwdec` | mpv `--hwdec` mode (`auto-safe`, `auto`, `""` to disable) |
 | `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
 | `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
 
@@ -267,8 +276,9 @@ torrentio_tui/
 
   player/
     base.py        # Player ABC
-    mpv.py, vlc.py # Subprocess backends (headers, subtitles, resume)
-    termux.py      # Hands the stream URL to Android via termux-open
+    mpv.py, vlc.py # Subprocess backends (headers, subtitles, resume, mpv hwdec)
+    termux.py      # Hands the stream URL to Android via termux-open (any registered app)
+    vlc_android.py # Launches VLC for Android directly via an `am start` intent
     torrent.py     # magnet: → webtorrent/peerflix bridge for mpv/vlc
     registry.py    # Maps config backend id -> Player
 

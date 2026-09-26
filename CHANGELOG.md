@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-09-26
 
 ### Added
+- **`vlc-android` player backend** — launches VLC for Android directly via
+  an `am start` intent (per VLC's documented Android intent API) instead
+  of the generic `termux` backend's app-chooser hand-off, and carries the
+  resume position across. `--doctor` checks whether VLC for Android is
+  installed when run inside Termux.
+- **mpv hardware decoding** (`player.hwdec` / `TORRENTIO_TUI_HWDEC` /
+  `--hwdec`) — defaults to mpv's own recommended `auto-safe` mode
+  everywhere; most impactful on Android but harmless on desktop.
 - **Outbound proxy support** (`network.proxy_url` / `TORRENTIO_TUI_PROXY` /
   `--proxy`) for Cinemeta and Torrentio requests — `http://`/`https://`
   proxies work out of the box, `socks5://` needs the optional `pysocks`

@@ -11,6 +11,9 @@ from torrentio_tui.player.torrent import is_torrent_link, play_magnet
 class MpvPlayer(Player):
     id = "mpv"
 
+    def __init__(self, hwdec: str = "") -> None:
+        self.hwdec = hwdec
+
     def is_available(self) -> bool:
         return shutil.which("mpv") is not None
 
@@ -19,6 +22,9 @@ class MpvPlayer(Player):
             return play_magnet(stream.url, title, backend="mpv")
 
         cmd = ["mpv", f"--force-media-title={title}", "--save-position-on-quit"]
+
+        if self.hwdec:
+            cmd.append(f"--hwdec={self.hwdec}")
 
         if resume_seconds > 0:
             cmd.append(f"--start={resume_seconds}")

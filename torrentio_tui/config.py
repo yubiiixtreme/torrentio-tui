@@ -20,14 +20,27 @@ def _default_player_backend() -> str:
     return "termux" if is_termux() else "mpv"
 
 
+def _default_hwdec() -> str:
+    # mpv's own recommended safe default: enables hardware decoding where
+    # supported, silently falls back to software otherwise. Most useful on
+    # Android (Termux + the `mpv`/`vlc-android` backends), but harmless
+    # anywhere mpv runs, so it's the default everywhere.
+    return "auto-safe"
+
+
 def _default_config_toml() -> str:
     return f"""\
 # torrentio-tui config
 # Uncomment / edit as needed. Env vars (TORRENTIO_TUI_*) always win over this file.
 
 [player]
-backend = "{_default_player_backend()}"          # mpv | vlc | termux
+backend = "{_default_player_backend()}"          # mpv | vlc | termux | vlc-android
 default_quality = "1080p"
+# Hardware decoding for mpv (ignored by other backends). "auto-safe" is
+# mpv's own recommended default — cleanly falls back to software decoding
+# where unsupported. Set to "" to disable, or "auto" for a more aggressive
+# (occasionally unstable) mode. Most impactful on Android/Termux.
+hwdec = "{_default_hwdec()}"
 
 [sources]
 # Order controls search fan-out / result ranking.
@@ -92,6 +105,7 @@ def library_file() -> Path:
 class PlayerConfig:
     backend: str = field(default_factory=_default_player_backend)
     default_quality: str = "1080p"
+    hwdec: str = field(default_factory=_default_hwdec)
 
 
 @dataclass(slots=True)
@@ -130,6 +144,7 @@ class Config:
                 "TORRENTIO_TUI_PLAYER", player.get("backend", cfg.player.backend)
             )
             cfg.player.default_quality = player.get("default_quality", cfg.player.default_quality)
+            cfg.player.hwdec = player.get("hwdec", cfg.player.hwdec)
 
             cfg.enabled_sources = data.get("sources", {}).get("enabled", cfg.enabled_sources)
 
@@ -160,6 +175,8 @@ class Config:
                 cfg.stremio.timeout_seconds = float(env_timeout)
         if env_proxy := os.environ.get("TORRENTIO_TUI_PROXY"):
             cfg.network.proxy_url = env_proxy
+        if (env_hwdec := os.environ.get("TORRENTIO_TUI_HWDEC")) is not None:
+            cfg.player.hwdec = env_hwdec
         if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
 

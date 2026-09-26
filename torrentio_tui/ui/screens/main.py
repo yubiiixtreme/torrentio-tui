@@ -380,7 +380,7 @@ class MainScreen(Screen):
     ) -> None:
         from torrentio_tui.player.torrent import TorrentStreamError
 
-        player = get_player(self.config.player.backend)
+        player = get_player(self.config.player.backend, hwdec=self.config.player.hwdec)
         try:
             with self.app.suspend():
                 player.play(stream, title=item.title, resume_seconds=resume_seconds)
