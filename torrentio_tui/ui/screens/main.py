@@ -381,14 +381,31 @@ class MainScreen(Screen):
         from torrentio_tui.player.torrent import TorrentStreamError
 
         player = get_player(self.config.player.backend, hwdec=self.config.player.hwdec)
-        try:
-            with self.app.suspend():
+
+        # Textual's App.suspend() only resumes/refreshes the terminal driver
+        # if the code inside the `with` block returns *normally* — it has no
+        # try/finally around its internal yield. An exception raised by
+        # player.play() (e.g. TorrentStreamError for a magnet link with no
+        # torrent streamer installed, or FileNotFoundError for a missing
+        # player binary) would otherwise propagate straight through the
+        # `with` block and skip resume_application_mode()/refresh() entirely,
+        # leaving the terminal stuck in suspended raw mode — blank screen,
+        # no redraw, effectively dead — even though the app is still alive
+        # and this method's own except below would still run. So the
+        # play() call is wrapped *inside* the `with` block instead, letting
+        # suspend() complete its normal resume path before we handle errors.
+        error: Exception | None = None
+        with self.app.suspend():
+            try:
                 player.play(stream, title=item.title, resume_seconds=resume_seconds)
-        except TorrentStreamError as exc:
-            self.app.notify(str(exc), severity="error", timeout=10)
-            self.show_error_detail(str(exc))
+            except (TorrentStreamError, FileNotFoundError, OSError) as exc:
+                error = exc
+
+        if isinstance(error, TorrentStreamError):
+            self.app.notify(str(error), severity="error", timeout=10)
+            self.show_error_detail(str(error))
             return
-        except FileNotFoundError:
+        if error is not None:
             message = f"Player '{self.config.player.backend}' not found — install mpv or vlc."
             self.app.notify(message, severity="error", timeout=10)
             self.show_error_detail(message)

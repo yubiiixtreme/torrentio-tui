@@ -44,6 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ruff linting + formatting config, CONTRIBUTING.md, CODE_OF_CONDUCT.md
 
 ### Fixed
+- **Terminal left dead after a failed magnet playback attempt.** Textual's
+  `App.suspend()` only resumes the terminal driver if the code inside its
+  `with` block returns normally (its implementation has no try/finally
+  around its internal `yield`). `play_stream()` called `player.play()`
+  inside that block, and `player.play()` deliberately raises
+  `TorrentStreamError` for a magnet stream with no `webtorrent`/`peerflix`
+  installed — so the exception skipped Textual's resume/refresh entirely,
+  leaving a blank, unresponsive terminal even though the app was still
+  alive and the error was (uselessly) caught one level up. Player errors
+  are now caught *inside* the `suspend()` block instead, so the terminal
+  always comes back and the error actually reaches the toast/detail panel.
+  Covered by a regression test that fails against the old code.
 - Restyled search results/detail panel with a valid Textual theme and
   stylesheet. (Between 0.2.0 and this release the CSS briefly grew
   web-only properties Textual doesn't support — gradients, animations,
