@@ -9,9 +9,9 @@ from torrentio_tui.ui.screens.main import MainScreen
 
 TORRENTIO_THEME = Theme(
     name="torrentio",
-    primary="#F5C518",
-    secondary="#8B5CF6",
-    accent="#E50914",
+    primary="#F5C518",      # Gold
+    secondary="#8B5CF6",    # Purple
+    accent="#E50914",       # Netflix red
     warning="#F5C518",
     error="#E74C3C",
     success="#2ECC71",
@@ -22,61 +22,19 @@ TORRENTIO_THEME = Theme(
     dark=True,
 )
 
-# Embedded CSS — works in all installation modes (pipx, pip, dev, etc.)
+# Embedded CSS — compatible with Textual 8.2.8+
+# Uses Textual's $variable syntax and hardcoded colors for compatibility
 TORRENTIO_CSS = r"""
-/* ═══════════════════════════════════════════════════════════════════════════
-   Torrentio TUI — Fancy Theme
-   Modern, animated, colorful Textual CSS with poster art support
-   ════════════════════════════════════════════════════════════════════════════ */
-
-/* ─── Color palette (Dracula-inspired with cyberpunk accents) ─── */
-:root {
-    /* Base surfaces */
-    --bg-deep:          #0d0d1a;
-    --bg-surface:       #1a1a2e;
-    --bg-panel:         #24243e;
-    --bg-boost:         #2d2d4e;
-    --bg-hover:         #32325a;
-
-    /* Accents */
-    --accent-cyan:      #00ffff;
-    --accent-magenta:   #ff00ff;
-    --accent-gold:      #ffd700;
-    --accent-orange:    #ff6b00;
-    --accent-green:     #00ff88;
-    --accent-red:       #ff3366;
-    --accent-blue:      #0088ff;
-    --accent-purple:    #aa00ff;
-
-    /* Text */
-    --fg-primary:       #f8f8f2;
-    --fg-secondary:     #b8b8d0;
-    --fg-muted:         #626282;
-    --fg-dim:           #444466;
-
-    /* Kind colors */
-    --kind-movie:       #00ffff;
-    --kind-series:      #00ff88;
-    --kind-anime:       #ff00ff;
-    --kind-live:        #ff3366;
-
-    /* Gradients */
-    --grad-primary:     linear-gradient(135deg, #00ffff 0%, #ff00ff 100%);
-    --grad-secondary:   linear-gradient(135deg, #ffd700 0%, #ff6b00 100%);
-    --grad-success:     linear-gradient(135deg, #00ff88 0%, #00ccaa 100%);
-    --grad-danger:      linear-gradient(135deg, #ff3366 0%, #ff0099 100%);
-    --grad-panel:       linear-gradient(180deg, #24243e 0%, #1a1a2e 100%);
-    --grad-glass:       linear-gradient(135deg, rgba(36,36,62,0.9) 0%, rgba(26,26,46,0.7) 100%);
-}
+/* Torrentio TUI — Fancy Theme (Textual 8.2.8+ compatible) */
 
 /* ─── Global ─── */
 Screen {
-    background: var(--bg-deep);
+    background: $background;
     layers: base overlays popovers;
 }
 
 * {
-    color: var(--fg-primary);
+    color: $foreground;
 }
 
 /* ─── Animations ─── */
@@ -91,8 +49,8 @@ Screen {
 }
 
 @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 0 var(--accent-cyan); }
-    50% { box-shadow: 0 0 8 var(--accent-cyan); }
+    0%, 100% { box-shadow: 0 0 0 $primary; }
+    50% { box-shadow: 0 0 8 $primary; }
 }
 
 @keyframes shimmer {
@@ -100,24 +58,12 @@ Screen {
     100% { background-position: 200% 0; }
 }
 
-@keyframes spin {
-    to { rotate: 360deg; }
-}
-
-.animate-fade-in {
-    animation: fade-in 300ms ease-out;
-}
-
-.animate-slide-up {
-    animation: slide-up 400ms ease-out;
-}
-
-.animate-pulse {
-    animation: pulse-glow 2s ease-in-out infinite;
-}
+.animate-fade-in { animation: fade-in 300ms ease-out; }
+.animate-slide-up { animation: slide-up 400ms ease-out; }
+.animate-pulse { animation: pulse-glow 2s ease-in-out infinite; }
 
 .animate-shimmer {
-    background: var(--grad-primary);
+    background: linear-gradient(135deg, $primary 0%, $secondary 100%);
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
     -webkit-background-clip: text;
@@ -127,16 +73,16 @@ Screen {
 
 /* ─── Header ─── */
 Header {
-    background: var(--grad-panel);
-    color: var(--fg-primary);
+    background: $panel;
+    color: $primary;
     text-style: bold;
     height: 3;
-    border-bottom: thick var(--accent-cyan);
+    border-bottom: thick $primary;
     animation: fade-in 400ms ease-out;
 }
 
 Header > .header-title {
-    background: var(--grad-primary);
+    background: linear-gradient(135deg, $primary 0%, $secondary 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -145,457 +91,216 @@ Header > .header-title {
 }
 
 Header > .header-clock {
-    color: var(--accent-gold);
+    color: $warning;
     text-style: bold;
 }
 
 /* ─── Footer ─── */
 Footer {
-    background: var(--grad-panel);
-    border-top: thick var(--accent-magenta);
+    background: $panel;
+    border-top: thick $secondary;
 }
 
-.footer-key-foreground {
-    color: var(--accent-cyan);
-    text-style: bold;
-}
-
-.footer-key-background {
-    background: var(--bg-surface);
-    color: var(--accent-magenta);
-    text-style: bold;
-}
+.footer-key-foreground { color: $primary; text-style: bold; }
+.footer-key-background { background: $surface; color: $secondary; text-style: bold; }
 
 /* ─── Tabs ─── */
-Tabs {
-    background: var(--bg-panel);
-    border-bottom: thick var(--fg-dim);
-}
-
+Tabs { background: $panel; border-bottom: thick $foreground 20%; }
 Tab {
-    padding: 0 4;
-    margin: 0 1;
-    color: var(--fg-muted);
+    padding: 0 4; margin: 0 1;
+    color: $foreground 40%;
     text-style: bold;
     border: round transparent;
     transition: color 150ms, background 150ms, border 150ms;
 }
-
-Tab:hover {
-    color: var(--accent-cyan);
-    background: var(--bg-hover);
-    border: round var(--accent-cyan);
-}
-
-Tab.-active {
-    color: var(--accent-cyan);
-    background: var(--bg-boost);
-    border: round var(--accent-cyan);
-    text-style: bold underline;
-}
-
-Underline {
-    color: var(--accent-cyan);
-    background: var(--grad-primary);
-    height: 2;
-}
+Tab:hover { color: $primary; background: $surface; border: round $primary; }
+Tab.-active { color: $primary; background: $panel; border: round $primary; text-style: bold underline; }
+Underline { color: $primary; background: linear-gradient(135deg, $primary 0%, $secondary 100%); height: 2; }
 
 /* ─── Input ─── */
 #search-input {
-    border: thick var(--bg-panel);
-    background: var(--bg-surface);
+    border: thick $panel;
+    background: $surface;
     margin: 1 2;
     padding: 1 2;
-    color: var(--fg-primary);
+    color: $foreground;
     transition: border 200ms, background 200ms, box-shadow 200ms;
 }
-
-#search-input:focus {
-    border: thick var(--accent-cyan);
-    background: var(--bg-panel);
-    box-shadow: 0 0 4 var(--accent-cyan);
-}
-
-#search-input::placeholder {
-    color: var(--fg-dim);
-    text-style: italic;
-}
+#search-input:focus { border: thick $primary; background: $panel; box-shadow: 0 0 4 $primary; }
+#search-input::placeholder { color: $foreground 20%; text-style: italic; }
 
 /* ─── Loading spinner ─── */
-#search-loading {
-    height: 3;
-    content-align: center middle;
-    color: var(--accent-cyan);
-    text-style: bold;
-}
+#search-loading { height: 3; content-align: center middle; color: $primary; text-style: bold; }
 
 /* ─── Results panels ─── */
-#search-body {
-    layout: horizontal;
-    height: 1fr;
-    margin: 1 2 2 2;
-}
+#search-body { layout: horizontal; height: 1fr; margin: 1 2 2 2; }
 
 .results-panel {
     width: 2fr;
-    background: var(--grad-glass);
-    border: round var(--fg-dim);
-    scrollbar-color: var(--accent-cyan);
-    scrollbar-background: var(--bg-surface);
+    background: $panel;
+    border: round $foreground 20%;
+    scrollbar-color: $primary;
+    scrollbar-background: $surface;
     scrollbar-size: 1 1;
     transition: border 200ms, box-shadow 200ms;
 }
-
-.results-panel:focus,
-.results-panel:hover {
-    border: round var(--accent-cyan);
-    box-shadow: 0 0 8 var(--accent-cyan);
-}
+.results-panel:focus, .results-panel:hover { border: round $primary; box-shadow: 0 0 8 $primary; }
 
 #detail-panel {
     width: 1fr;
     min-width: 38;
     margin: 1 2 2 1;
     padding: 1 2;
-    background: var(--grad-glass);
-    border: round var(--fg-dim);
+    background: $panel;
+    border: round $foreground 20%;
     transition: border 200ms, box-shadow 200ms;
 }
-
-#detail-panel:focus,
-#detail-panel:hover {
-    border: round var(--accent-magenta);
-    box-shadow: 0 0 8 var(--accent-magenta);
-}
+#detail-panel:focus, #detail-panel:hover { border: round $secondary; box-shadow: 0 0 8 $secondary; }
 
 /* ─── List items ─── */
-ListView > ResultItem,
-ListView > HistoryItem {
-    height: auto;
-    min-height: 3;
+ListView > ResultItem, ListView > HistoryItem {
+    height: auto; min-height: 3;
     background: transparent;
     border-left: thick transparent;
-    margin: 0 1;
-    padding: 0 1;
+    margin: 0 1; padding: 0 1;
     transition: background 150ms, border 150ms, transform 150ms;
 }
-
-ResultItem.kind-movie { border-left-color: var(--kind-movie); }
-ResultItem.kind-series { border-left-color: var(--kind-series); }
-ResultItem.kind-anime { border-left-color: var(--kind-anime); }
-ResultItem.kind-live { border-left-color: var(--kind-live); }
-
-HistoryItem { border-left-color: var(--accent-gold); }
+ResultItem.kind-movie { border-left-color: $primary; }
+ResultItem.kind-series { border-left-color: $success; }
+ResultItem.kind-anime { border-left-color: $secondary; }
+ResultItem.kind-live { border-left-color: $error; }
+HistoryItem { border-left-color: $warning; }
 
 ListView > ListItem.--highlight {
-    background: var(--bg-boost);
-    border-left: thick var(--accent-cyan);
+    background: $panel;
+    border-left: thick $primary;
     transform: scale(1.01);
 }
-
 ListView:focus > ListItem.--highlight {
-    background: var(--bg-hover);
-    border-left: thick var(--accent-gold);
+    background: $surface;
+    border-left: thick $warning;
 }
+ResultItem Static, HistoryItem Static { height: auto; padding: 0 1; }
 
-ResultItem Static, HistoryItem Static {
-    height: auto;
-    padding: 0 1;
-}
-
-/* Kind badges in list items */
-.kind-badge {
-    width: 6;
-    height: 1;
-    content-align: center middle;
-    text-style: bold;
-    margin-right: 1;
-    border: round var(--bg-panel);
-}
-
-.kind-badge.movie { background: var(--kind-movie); color: var(--bg-deep); }
-.kind-badge.series { background: var(--kind-series); color: var(--bg-deep); }
-.kind-badge.anime { background: var(--kind-anime); color: var(--fg-primary); }
-.kind-badge.live { background: var(--kind-live); color: var(--fg-primary); }
+/* Kind badges */
+.kind-badge { width: 6; height: 1; content-align: center middle; text-style: bold; margin-right: 1; border: round $panel; }
+.kind-badge.movie { background: $primary; color: $background; }
+.kind-badge.series { background: $success; color: $background; }
+.kind-badge.anime { background: $secondary; color: $foreground; }
+.kind-badge.live { background: $error; color: $foreground; }
 
 /* ─── Poster art ─── */
 #detail-poster {
-    height: 18;
-    width: 100%;
+    height: 18; width: 100%;
     content-align: center middle;
-    background: var(--bg-surface);
-    border: round var(--fg-dim);
-    margin-bottom: 1;
-    overflow: hidden;
+    background: $surface;
+    border: round $foreground 20%;
+    margin-bottom: 1; overflow: hidden;
 }
-
-#detail-poster > Static {
-    width: 100%;
-    height: 100%;
-    background: var(--grad-panel);
-}
-
-/* Placeholder when no poster */
-.poster-placeholder {
-    color: var(--fg-muted);
-    text-style: bold;
-}
-
-.poster-image {
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    border: round var(--fg-dim);
-}
+#detail-poster > Static { width: 100%; height: 100%; background: $panel; }
+.poster-placeholder { color: $foreground 40%; text-style: bold; }
+.poster-image { width: 100%; height: 100%; background-size: cover; background-position: center; border: round $foreground 20%; }
 
 /* ─── Detail panel content ─── */
 #detail-title {
-    text-style: bold;
-    height: auto;
-    margin-bottom: 1;
-    background: var(--grad-primary);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    text-style: bold; height: auto; margin-bottom: 1;
+    background: linear-gradient(135deg, $primary 0%, $secondary 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
     line-height: 1.2;
 }
-
-#detail-meta {
-    color: var(--fg-secondary);
-    height: auto;
-    margin-bottom: 1;
-    line-height: 1.5;
-}
-
-#detail-meta > Span {
-    margin-right: 2;
-}
-
-.meta-year { color: var(--accent-gold); }
-.meta-kind { color: var(--accent-cyan); }
-.meta-source { color: var(--accent-magenta); }
-
-#detail-genres {
-    height: auto;
-    margin-bottom: 1;
-    color: var(--fg-muted);
-}
-
-.genre-tag {
-    background: var(--bg-surface);
-    color: var(--accent-orange);
-    padding: 0 1;
-    margin-right: 1;
-    border: round var(--fg-dim);
-    text-style: bold;
-}
-
+#detail-meta { color: $foreground 60%; height: auto; margin-bottom: 1; line-height: 1.5; }
+#detail-meta > Span { margin-right: 2; }
+.meta-year { color: $warning; }
+.meta-kind { color: $primary; }
+.meta-source { color: $secondary; }
+#detail-genres { height: auto; margin-bottom: 1; color: $foreground 40%; }
+.genre-tag { background: $surface; color: $warning; padding: 0 1; margin-right: 1; border: round $foreground 20%; text-style: bold; }
 #detail-overview {
-    height: 1fr;
-    color: var(--fg-secondary);
-    line-height: 1.4;
+    height: 1fr; color: $foreground 60%; line-height: 1.4;
     overflow-y: auto;
-    scrollbar-color: var(--accent-magenta);
-    scrollbar-background: transparent;
-    scrollbar-size: 1 1;
+    scrollbar-color: $secondary; scrollbar-background: transparent; scrollbar-size: 1 1;
 }
 
 /* ─── Status line ─── */
 #status-line {
-    dock: bottom;
-    height: 1;
-    padding: 0 2;
-    background: var(--bg-panel);
-    color: var(--fg-muted);
-    border-top: thick var(--fg-dim);
-    text-style: italic;
+    dock: bottom; height: 1; padding: 0 2;
+    background: $panel; color: $foreground 40%;
+    border-top: thick $foreground 20%; text-style: italic;
 }
 
-/* ─── Modals (Episode / Quality pickers) ─── */
-ModalScreen {
-    background: rgba(13, 13, 26, 0.85);
-    animation: fade-in 200ms ease-out;
-}
-
-#episode-list-container,
-#quality-list-container {
-    width: 70%;
-    max-width: 100;
-    height: 70%;
-    max-height: 30;
-    margin: 4 8;
-    border: thick var(--accent-cyan);
-    background: var(--grad-panel);
+/* ─── Modals ─── */
+ModalScreen { background: rgba(9, 10, 15, 0.85); animation: fade-in 200ms ease-out; }
+#episode-list-container, #quality-list-container {
+    width: 70%; max-width: 100; height: 70%; max-height: 30;
+    margin: 4 8; border: thick $primary;
+    background: $panel;
     animation: slide-up 300ms ease-out;
-    box-shadow:
-        0 0 20 var(--accent-cyan) 40%,
-        0 4 32 rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 20 $primary 40%, 0 4 32 rgba(0,0,0,0.5);
 }
-
-#episode-title,
-#quality-title {
-    height: 1;
-    padding: 0 2;
-    background: var(--grad-primary);
-    color: var(--bg-deep);
-    text-style: bold;
-    border-bottom: thick var(--accent-cyan);
+#episode-title, #quality-title {
+    height: 1; padding: 0 2;
+    background: linear-gradient(135deg, $primary 0%, $secondary 100%);
+    color: $background; text-style: bold;
+    border-bottom: thick $primary;
 }
-
-#episode-list-container ListView,
-#quality-list-container ListView {
-    background: var(--bg-surface);
-    scrollbar-color: var(--accent-cyan);
-    scrollbar-background: transparent;
-    scrollbar-size: 1 1;
-    height: 1fr;
+#episode-list-container ListView, #quality-list-container ListView {
+    background: $surface; scrollbar-color: $primary;
+    scrollbar-background: transparent; scrollbar-size: 1 1; height: 1fr;
 }
-
-#episode-list-container ListItem,
-#quality-list-container ListItem {
-    height: auto;
-    min-height: 2;
-    padding: 0 2;
-    margin: 0 1;
-    border-left: thick transparent;
-    transition: background 150ms, border 150ms;
+#episode-list-container ListItem, #quality-list-container ListItem {
+    height: auto; min-height: 2; padding: 0 2; margin: 0 1;
+    border-left: thick transparent; transition: background 150ms, border 150ms;
 }
-
-#episode-list-container ListItem.--highlight,
-#quality-list-container ListItem.--highlight {
-    background: var(--bg-boost);
-    border-left: thick var(--accent-gold);
+#episode-list-container ListItem.--highlight, #quality-list-container ListItem.--highlight {
+    background: $panel; border-left: thick $warning;
 }
 
 /* Quality tags */
 .quality-tag {
-    background: var(--bg-panel);
-    color: var(--accent-green);
-    padding: 0 1;
-    margin-right: 1;
-    border: round var(--fg-dim);
-    text-style: bold;
+    background: $panel; color: $success; padding: 0 1; margin-right: 1;
+    border: round $foreground 20%; text-style: bold;
 }
+.quality-tag.direct { color: $primary; }
+.quality-tag.magnet { color: $warning; }
+.quality-tag.debrid { color: $warning; background: linear-gradient(90deg, $panel, $warning 20%); }
 
-.quality-tag.direct { color: var(--accent-cyan); }
-.quality-tag.magnet { color: var(--accent-orange); }
-.quality-tag.debrid { color: var(--accent-gold); background: linear-gradient(90deg, var(--bg-panel), var(--accent-gold) 20%); }
+/* ─── Scrollbars ─── */
+ScrollBar { background: $surface; }
+ScrollBar > Slider { background: $primary; border: round $primary; min-height: 20; }
+ScrollBar > Slider:hover { background: $secondary; border: round $secondary; }
+ScrollBar > Button { display: none; }
 
-/* ─── Scrollbars (global) ─── */
-ScrollBar {
-    background: var(--bg-surface);
-}
+/* ─── Toast ─── */
+Toast { background: $panel; border: round $primary; color: $foreground; padding: 1 2; box-shadow: 0 4 24 rgba(245, 197, 24, 0.3); }
 
-ScrollBar > Slider {
-    background: var(--accent-cyan);
-    border: round var(--accent-cyan);
-    min-height: 20;
-}
-
-ScrollBar > Slider:hover {
-    background: var(--accent-magenta);
-    border: round var(--accent-magenta);
-}
-
-ScrollBar > Button {
-    display: none;
-}
-
-/* ─── Toast / Notifications ─── */
-Toast {
-    background: var(--grad-panel);
-    border: round var(--accent-cyan);
-    color: var(--fg-primary);
-    padding: 1 2;
-    box-shadow: 0 4 24 rgba(0, 255, 255, 0.3);
-}
-
-/* ─── Input dialogs ─── */
-Input {
-    border: thick var(--bg-panel);
-    background: var(--bg-surface);
-    transition: border 150ms, box-shadow 150ms;
-}
-
-Input:focus {
-    border: thick var(--accent-cyan);
-    box-shadow: 0 0 4 var(--accent-cyan);
-}
+/* ─── Input ─── */
+Input { border: thick $panel; background: $surface; transition: border 150ms, box-shadow 150ms; }
+Input:focus { border: thick $primary; box-shadow: 0 0 4 $primary; }
 
 /* ─── Button ─── */
-Button {
-    background: var(--bg-panel);
-    color: var(--fg-primary);
-    border: round var(--fg-dim);
-    padding: 0 3;
-    margin: 0 1;
-    transition: all 150ms;
-}
-
-Button:hover {
-    background: var(--accent-cyan);
-    color: var(--bg-deep);
-    border: round var(--accent-cyan);
-    text-style: bold;
-}
-
-Button:focus {
-    border: thick var(--accent-gold);
-}
+Button { background: $panel; color: $foreground; border: round $foreground 20%; padding: 0 3; margin: 0 1; transition: all 150ms; }
+Button:hover { background: $primary; color: $background; border: round $primary; text-style: bold; }
+Button:focus { border: thick $warning; }
 
 /* ─── Progress bar ─── */
-ProgressBar {
-    background: var(--bg-surface);
-    border: round var(--fg-dim);
-}
+ProgressBar { background: $surface; border: round $foreground 20%; }
+ProgressBar > Bar { background: linear-gradient(135deg, $primary 0%, $secondary 100%); border: round $primary; }
 
-ProgressBar > Bar {
-    background: var(--grad-primary);
-    border: round var(--accent-cyan);
-}
+/* ─── DataTable ─── */
+DataTable { background: $surface; }
+DataTable > .datatable--header { background: $panel; color: $primary; text-style: bold; }
+DataTable > .datatable--cursor { background: $panel; }
 
-/* ─── DataTable (if used) ─── */
-DataTable {
-    background: var(--bg-surface);
-}
-
-DataTable > .datatable--header {
-    background: var(--bg-panel);
-    color: var(--accent-cyan);
-    text-style: bold;
-}
-
-DataTable > .datatable--cursor {
-    background: var(--bg-boost);
-}
-
-/* ─── Responsive adjustments ─── */
+/* ─── Responsive ─── */
 @media (max-width: 100) {
-    #search-body {
-        layout: vertical;
-    }
-
-    .results-panel {
-        width: 100%;
-        height: 1fr;
-    }
-
-    #detail-panel {
-        width: 100%;
-        min-width: 0;
-        height: 40%;
-        margin: 0 2 2 2;
-    }
+    #search-body { layout: vertical; }
+    .results-panel { width: 100%; height: 1fr; }
+    #detail-panel { width: 100%; min-width: 0; height: 40%; margin: 0 2 2 2; }
 }
 
 /* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
 """
 
@@ -603,7 +308,6 @@ DataTable > .datatable--cursor {
 class _EmptyCssPath(list):
     def __bool__(self) -> bool:
         return True  # Survives Textual's 'css_path or self.CSS_PATH' check
-
     def __iter__(self):
         return iter([])  # But yields no paths
 
@@ -615,7 +319,6 @@ class TorrentioTuiApp(App):
     SUB_TITLE = "search · stream · watch"
 
     def __init__(self, sources: list[Source], config: Config) -> None:
-        # Pass truthy-but-empty sentinel to bypass Textual's 'or' logic
         super().__init__(css_path=_EmptyCssPath())
         self.sources = sources
         self.config = config
