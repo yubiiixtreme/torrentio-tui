@@ -30,6 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Check that playback/download tools are installed and print the config path",
     )
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="With --doctor, skip the live Cinemeta/Torrentio reachability check",
+    )
     parser.add_argument("--version", action="store_true", help="Print the version and exit")
     return parser
 
@@ -42,7 +47,31 @@ def _check(label: str, ok: bool, hint: str = "") -> None:
     sys.stdout.write(line + "\n")
 
 
-def run_doctor(proxy_override: str | None = None) -> int:
+def _check_reachable(label: str, url: str, timeout: float, proxy_url: str | None) -> None:
+    import urllib.error
+
+    from torrentio_tui.proxy import ProxyError, open_url
+
+    try:
+        with open_url(url, timeout, proxy_url, {"Accept": "application/json"}):
+            pass
+        _check(label, True)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 403:
+            hint = (
+                "blocked (HTTP 403) even through your configured proxy — try a different one"
+                if proxy_url
+                else "blocked (HTTP 403) — Cloudflare is flagging this IP; set "
+                "network.proxy_url or --proxy"
+            )
+        else:
+            hint = f"HTTP {exc.code}"
+        _check(label, False, hint)
+    except (ProxyError, urllib.error.URLError, TimeoutError, OSError) as exc:
+        _check(label, False, str(exc))
+
+
+def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
     from torrentio_tui.proxy import pysocks_available
 
     ensure_dirs()
@@ -74,11 +103,17 @@ def run_doctor(proxy_override: str | None = None) -> int:
         if proxy_url.startswith("socks"):
             _check("pysocks (for socks5:// proxy)", pysocks_available(), "pip install pysocks")
     else:
-        sys.stdout.write(
-            "\nNo proxy configured. If Torrentio returns HTTP 403 for you, set "
-            "network.proxy_url in config.toml (or --proxy) — see "
-            "torrentio_tui/proxy.py.\n"
-        )
+        sys.stdout.write("\nNo proxy configured.\n")
+
+    if offline:
+        sys.stdout.write("\n(--offline: skipped the live reachability check)\n")
+        return 0
+
+    sys.stdout.write("\nChecking connectivity (use --offline to skip)...\n")
+    _check_reachable("Cinemeta", f"{config.stremio.cinemeta_url}/manifest.json", 8.0, proxy_url)
+    _check_reachable(
+        "Torrentio/stream addon", f"{config.stremio.stream_url}/manifest.json", 8.0, proxy_url
+    )
     return 0
 
 
@@ -98,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.doctor:
-        return run_doctor(args.proxy)
+        return run_doctor(args.proxy, args.offline)
 
     ensure_dirs()
     config = Config.load()

@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the official Stremio app on the same machine doesn't trigger it on.
   `--doctor` reports whether a proxy is configured and whether PySocks is
   installed.
+- **`--doctor` live reachability probe** — actually fetches Cinemeta's and
+  the configured stream addon's manifest (through the configured proxy, if
+  any) and reports success / HTTP 403 / network error, so a blocked IP
+  shows up before you try to search. `--offline` skips it.
 - **Termux (Android) support** — a `termux` player backend that hands the
   stream URL to Android via `termux-open` instead of trying to run mpv in
   the (headless) terminal; auto-selected as the default backend when

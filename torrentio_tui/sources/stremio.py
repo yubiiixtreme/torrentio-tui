@@ -53,10 +53,9 @@ import json
 import os
 import urllib.error
 import urllib.parse
-import urllib.request
 
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
-from torrentio_tui.proxy import ProxyError, build_opener, socks_proxy
+from torrentio_tui.proxy import ProxyError, open_url
 from torrentio_tui.sources.base import Source, SourceError
 
 DEFAULT_CINEMETA_URL = "https://v3-cinemeta.strem.io"
@@ -74,25 +73,10 @@ _USER_AGENT = "torrentio-tui/0.2 (+https://github.com/yubiiixtreme/torrentio-tui
 
 
 def _get_json(url: str, timeout: float, proxy_url: str | None = None) -> dict:
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
-    )
-    scheme = urllib.parse.urlsplit(proxy_url).scheme.lower() if proxy_url else ""
+    headers = {"User-Agent": _USER_AGENT, "Accept": "application/json"}
     try:
-        with socks_proxy(proxy_url):
-            # Only build a dedicated opener when an http(s) proxy is actually
-            # configured; otherwise use urlopen() directly (also what tests
-            # patch). A socks5:// proxy needs no opener — socks_proxy() above
-            # routes the plain urlopen() call through it at the socket level.
-            opener_open = build_opener(proxy_url).open if scheme in ("http", "https") else None
-            response_cm = (
-                opener_open(req, timeout=timeout)
-                if opener_open
-                else urllib.request.urlopen(req, timeout=timeout)
-            )
-            with response_cm as resp:
-                return json.loads(resp.read().decode("utf-8", errors="replace"))
+        with open_url(url, timeout, proxy_url, headers) as resp:
+            return json.loads(resp.read().decode("utf-8", errors="replace"))
     except ProxyError as exc:
         raise SourceError(str(exc)) from exc
     except urllib.error.HTTPError as exc:

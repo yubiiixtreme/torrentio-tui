@@ -103,3 +103,28 @@ def pysocks_available() -> bool:
     except ImportError:
         return False
     return True
+
+
+def open_url(
+    url: str,
+    timeout: float,
+    proxy_url: str | None = None,
+    headers: dict[str, str] | None = None,
+):
+    """GET `url`, honoring an optional proxy, and return the open response
+    (a context manager, as `urllib.request.urlopen()` returns). Lets
+    `urllib.error.HTTPError`/`URLError` propagate — callers translate those
+    into their own domain-specific errors.
+
+    Only builds a dedicated opener when an http(s) proxy is configured;
+    otherwise calls `urllib.request.urlopen()` directly, so callers that
+    need to unit-test this without a real proxy can still monkeypatch that
+    module-level function.
+    """
+    req = urllib.request.Request(url, headers=headers or {})
+    scheme = urllib.parse.urlsplit(proxy_url).scheme.lower() if proxy_url else ""
+    opener_open = build_opener(proxy_url).open if scheme in ("http", "https") else None
+    with socks_proxy(proxy_url):
+        if opener_open:
+            return opener_open(req, timeout=timeout)
+        return urllib.request.urlopen(req, timeout=timeout)

@@ -181,8 +181,10 @@ socks5://127.0.0.1:40000`. A plain HTTP/HTTPS proxy (`http://host:port`)
 works too and needs nothing extra installed; `socks5://` needs
 [PySocks](https://pypi.org/project/PySocks/) — install with
 `pip install pysocks` or `pip install "torrentio-tui[proxy]"`.
-`torrentio-tui --doctor` confirms whether a proxy is configured and
-whether PySocks is available.
+`torrentio-tui --doctor` confirms whether a proxy is configured, whether
+PySocks is available, and — unless run with `--offline` — actually probes
+Cinemeta and your configured stream addon so you can see whether *you're*
+currently blocked before you even try to search.
 
 ## Configuration
 
@@ -225,7 +227,8 @@ Useful commands:
 torrentio-tui --player vlc                        # one-off backend override
 torrentio-tui --proxy socks5://127.0.0.1:40000     # one-off proxy override
 torrentio-tui --list-sources    # show registered source ids
-torrentio-tui --doctor          # check mpv/vlc/yt-dlp/termux-open/proxy + config path
+torrentio-tui --doctor          # check tools + config, and probe whether Cinemeta/Torrentio are reachable
+torrentio-tui --doctor --offline  # same, without the live reachability probe
 torrentio-tui --version         # print the installed version
 ```
 
