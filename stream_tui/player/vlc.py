@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+import shutil
+import subprocess
+
+from stream_tui.models import StreamLink
+from stream_tui.player.base import Player
+from stream_tui.player.torrent import is_torrent_link, play_magnet
+
+
+class VlcPlayer(Player):
+    id = "vlc"
+
+    def is_available(self) -> bool:
+        return shutil.which("vlc") is not None
+
+    def play(self, stream: StreamLink, title: str, resume_seconds: float = 0.0) -> int:
+        if is_torrent_link(stream.url):
+            return play_magnet(stream.url, title, backend="vlc")
+
+        cmd = ["vlc", "--play-and-exit", f"--meta-title={title}"]
+
+        if resume_seconds > 0:
+            cmd.append(f"--start-time={resume_seconds}")
+
+        for key, value in stream.headers.items():
+            if key.lower() == "referer":
+                cmd.append(f"--http-referrer={value}")
+            elif key.lower() == "user-agent":
+                cmd.append(f"--http-user-agent={value}")
+
+        if stream.subtitle_url:
+            cmd.append(f"--sub-file={stream.subtitle_url}")
+
+        cmd.append(stream.url)
+
+        result = subprocess.run(cmd)
+        return result.returncode

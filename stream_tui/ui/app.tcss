@@ -1,0 +1,13 @@
+#episode-list-container, #quality-list-container {
+    width: 60%;
+    height: 60%;
+    margin: 4 8;
+    border: heavy $accent;
+    background: $surface;
+}
+
+#status-line {
+    height: 1;
+    color: $text-muted;
+    padding: 0 1;
+}
