@@ -196,3 +196,44 @@ def test_magnet_detection_and_missing_streamer(monkeypatch) -> None:
     with pytest.raises(torrent_mod.TorrentStreamError) as exc_info:
         torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T")
     assert "webtorrent" in str(exc_info.value).lower() or "debrid" in str(exc_info.value).lower()
+
+
+def test_play_magnet_surfaces_streamer_crash(monkeypatch) -> None:
+    """Regression: play_magnet() used to return whatever exit code the
+    streamer subprocess produced without checking it, so a crash (e.g.
+    webtorrent-cli's node-datachannel native module failing to load) was
+    silently treated as successful playback -- the TUI recorded it as
+    watched and never told the user anything went wrong.
+    """
+    monkeypatch.setattr(
+        torrent_mod.shutil, "which", lambda name: name if name == "webtorrent" else None
+    )
+
+    class FakeResult:
+        returncode = 1
+        stderr = (
+            "node:internal/modules/cjs/loader:1215\n"
+            "Error: Cannot find module '../../../build/Release/node_datachannel.node'\n"
+            "code: 'MODULE_NOT_FOUND'\n"
+        )
+
+    monkeypatch.setattr(torrent_mod.subprocess, "run", lambda *a, **k: FakeResult())
+
+    with pytest.raises(torrent_mod.TorrentStreamError) as exc_info:
+        torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T")
+    message = str(exc_info.value)
+    assert "node-datachannel" in message
+    assert "npm rebuild -g webtorrent" in message
+
+
+def test_play_magnet_returns_zero_on_success(monkeypatch) -> None:
+    monkeypatch.setattr(
+        torrent_mod.shutil, "which", lambda name: name if name == "webtorrent" else None
+    )
+
+    class FakeResult:
+        returncode = 0
+        stderr = ""
+
+    monkeypatch.setattr(torrent_mod.subprocess, "run", lambda *a, **k: FakeResult())
+    assert torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T") == 0

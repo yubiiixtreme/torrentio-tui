@@ -32,6 +32,23 @@ def find_streamer() -> str | None:
     return None
 
 
+def _diagnose_streamer_failure(streamer: str, returncode: int, stderr: str) -> str:
+    tail = "\n".join(stderr.strip().splitlines()[-8:]) if stderr.strip() else ""
+    if "node_datachannel" in stderr or "node-datachannel" in stderr:
+        return (
+            f"{streamer} crashed on startup — its WebRTC native module "
+            "(node-datachannel) failed to load, usually because its prebuilt "
+            "binary doesn't match your installed Node.js version. Try: "
+            f"`npm rebuild -g {streamer}`, a clean reinstall "
+            f"(`npm uninstall -g {streamer} && npm install -g {streamer}`), "
+            "switching to `peerflix` instead (`npm install -g peerflix` — no "
+            "native WebRTC dependency), or configuring a debrid key in your "
+            "stream addon so it returns direct http links and skips magnets "
+            f"entirely.\n\n{tail}"
+        )
+    return f"{streamer} exited with an error (code {returncode}).\n\n{tail}"
+
+
 def play_magnet(magnet: str, title: str, backend: str = "mpv") -> int:
     streamer = find_streamer()
     if streamer is None:
@@ -47,5 +64,14 @@ def play_magnet(magnet: str, title: str, backend: str = "mpv") -> int:
     else:  # peerflix
         player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
         cmd = ["peerflix", magnet, player_flag]
-    result = subprocess.run(cmd)
+
+    # Capture stderr only (stdout stays live so webtorrent/peerflix's own
+    # progress UI still shows) so a crash — like node-datachannel's native
+    # module failing to load — can be diagnosed and surfaced instead of
+    # silently returning a non-zero exit code that the caller never checked.
+    result = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        raise TorrentStreamError(
+            _diagnose_streamer_failure(streamer, result.returncode, result.stderr or "")
+        )
     return result.returncode
