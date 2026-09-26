@@ -1,13 +1,167 @@
-#episode-list-container, #quality-list-container {
-    width: 60%;
-    height: 60%;
-    margin: 4 8;
-    border: heavy $accent;
-    background: $surface;
+/* ---------- global ---------- */
+
+Screen {
+    background: $background;
 }
 
-#status-line {
-    height: 1;
+Header {
+    background: $panel;
+    color: $primary;
+    text-style: bold;
+}
+
+Footer {
+    background: $panel;
+}
+
+Footer > .footer-key-foreground {
+    color: $accent;
+    text-style: bold;
+}
+
+Tabs {
+    background: $panel;
+}
+
+Tab {
+    padding: 0 3;
     color: $text-muted;
+}
+
+Tab:hover {
+    color: $foreground;
+}
+
+Tab.-active {
+    color: $primary;
+    text-style: bold;
+}
+
+Underline {
+    color: $accent;
+}
+
+/* ---------- search ---------- */
+
+#search-input {
+    border: tall $panel;
+    background: $surface;
+    margin: 1 1 0 1;
+}
+
+#search-input:focus {
+    border: tall $accent;
+}
+
+#search-loading {
+    height: 3;
+    color: $accent;
+}
+
+#search-body {
+    height: 1fr;
+    margin: 1;
+}
+
+#search-results, #library-results, #continue-results {
+    width: 2fr;
+    background: $surface;
+    border: round $panel;
+    scrollbar-color: $accent;
+    scrollbar-background: $surface;
+    scrollbar-size: 1 1;
+}
+
+#search-results:focus, #library-results:focus, #continue-results:focus {
+    border: round $accent;
+}
+
+ListView > ResultItem, ListView > HistoryItem {
+    height: auto;
+    background: transparent;
+    border-left: thick transparent;
+}
+
+ResultItem.kind-movie { border-left: thick cyan; }
+ResultItem.kind-series { border-left: thick $success; }
+ResultItem.kind-anime { border-left: thick $secondary; }
+ResultItem.kind-live { border-left: thick $error; }
+
+ListView > ListItem.--highlight {
+    background: $panel;
+}
+
+ListView:focus > ListItem.--highlight {
+    background: $boost;
+    border-left: thick $accent;
+}
+
+ResultItem Static, HistoryItem Static {
+    height: auto;
     padding: 0 1;
+}
+
+/* ---------- detail panel ---------- */
+
+#detail-panel {
+    width: 1fr;
+    min-width: 30;
+    margin: 1 1 1 0;
+    padding: 1 2;
+    background: $panel;
+    border: round $panel;
+}
+
+#detail-poster {
+    height: 7;
+    content-align: center middle;
+    text-style: bold;
+    border: round $panel;
+    margin-bottom: 1;
+}
+
+#detail-title {
+    text-style: bold;
+    color: $primary;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#detail-meta {
+    color: $text-muted;
+    height: auto;
+    margin-bottom: 1;
+}
+
+#detail-overview {
+    height: 1fr;
+    color: $foreground;
+}
+
+/* ---------- modals (episode / quality pickers) ---------- */
+
+#episode-list-container, #quality-list-container {
+    width: 64%;
+    height: 64%;
+    margin: 4 8;
+    border: round $accent;
+    background: $panel;
+}
+
+#episode-title, #quality-title {
+    height: 1;
+    padding: 0 1;
+    background: $surface;
+    color: $primary;
+    text-style: bold;
+}
+
+#episode-list-container ListView, #quality-list-container ListView {
+    background: $surface;
+    scrollbar-color: $accent;
+    height: 1fr;
+}
+
+#episode-list-container ListItem.--highlight, #quality-list-container ListItem.--highlight {
+    background: $boost;
 }

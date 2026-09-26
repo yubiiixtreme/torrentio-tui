@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from textual import work
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, ListItem, ListView, Static, TabbedContent, TabPane
+from textual.widgets import Footer, Header, Input, ListItem, ListView, LoadingIndicator, Static, TabbedContent, TabPane
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
@@ -15,14 +15,31 @@ from torrentio_tui.sources.base import Source, SourceError
 from torrentio_tui.ui.screens.episodes import EpisodeScreen
 from torrentio_tui.ui.screens.quality import QualityScreen
 
+KIND_STYLE: dict[MediaKind, tuple[str, str, str]] = {
+    MediaKind.MOVIE: ("🎬", "cyan", "MOVIE"),
+    MediaKind.SERIES: ("📺", "green", "SERIES"),
+    MediaKind.ANIME: ("🎴", "magenta", "ANIME"),
+    MediaKind.LIVE: ("📡", "red", "LIVE"),
+}
+
+
+def _kind_style(kind: MediaKind) -> tuple[str, str, str]:
+    return KIND_STYLE.get(kind, ("🎞", "white", kind.value.upper()))
+
 
 class ResultItem(ListItem):
     def __init__(self, item: SearchResult) -> None:
-        label = item.title
-        if item.year:
-            label += f" ({item.year})"
-        label += f"  [{item.source_id}]"
-        super().__init__(Static(label))
+        icon, color, label = _kind_style(item.kind)
+        year = f" [dim]({item.year})[/dim]" if item.year else ""
+        line1 = f"{icon} [bold]{item.title}[/bold]{year}"
+
+        overview = (item.overview or "").strip()
+        snippet = f"{overview[:90]}…" if len(overview) > 90 else overview
+        line2 = f"   [{color}]{label}[/{color}] [dim]· {item.source_id}[/dim]"
+        if snippet:
+            line2 += f"  [dim]{snippet}[/dim]"
+
+        super().__init__(Static(f"{line1}\n{line2}", markup=True), classes=f"kind-{item.kind.value}")
         self.item = item
 
 
@@ -53,13 +70,29 @@ class MainScreen(Screen):
             with TabPane("Search", id="search"):
                 with Vertical():
                     yield Input(placeholder="Search titles...", id="search-input")
-                    yield ListView(id="search-results")
+                    yield LoadingIndicator(id="search-loading")
+                    with Horizontal(id="search-body"):
+                        yield ListView(id="search-results")
+                        yield self._build_detail_panel()
             with TabPane("Continue Watching", id="continue"):
                 yield ListView(id="continue-results")
             with TabPane("Library", id="library"):
                 yield ListView(id="library-results")
         yield Footer()
-        yield Static(id="status-line")
+
+    def _build_detail_panel(self) -> Vertical:
+        panel = Vertical(
+            Static(id="detail-poster"),
+            Static(id="detail-title"),
+            Static(id="detail-meta"),
+            Static(id="detail-overview"),
+            id="detail-panel",
+        )
+        return panel
+
+    def on_mount(self) -> None:
+        self._show_detail(None)
+        self.query_one("#search-loading", LoadingIndicator).display = False
 
     def on_screen_resume(self) -> None:
         self.refresh_continue_watching()
@@ -83,36 +116,76 @@ class MainScreen(Screen):
         for item in self.library.all():
             list_view.append(ResultItem(item))
 
+    def _show_detail(self, item: SearchResult | None) -> None:
+        poster = self.query_one("#detail-poster", Static)
+        title = self.query_one("#detail-title", Static)
+        meta = self.query_one("#detail-meta", Static)
+        overview = self.query_one("#detail-overview", Static)
+
+        if item is None:
+            poster.styles.border = ("round", "gray")
+            poster.update("🍿")
+            title.update("[dim]Select a title to preview[/dim]")
+            meta.update("")
+            overview.update("[dim]Use ↑/↓ to browse results.[/dim]")
+            return
+
+        icon, color, label = _kind_style(item.kind)
+        poster.styles.border = ("round", color)
+        poster.update(f"{icon}\n[b]{label}[/b]")
+        title.update(f"[bold]{item.title}[/bold]")
+        year = str(item.year) if item.year else "—"
+        meta.update(f"[{color}]{label}[/{color}]  ·  {year}  ·  [dim]{item.source_id}[/dim]")
+        overview.update(item.overview.strip() if item.overview else "[dim]No synopsis available.[/dim]")
+
+    def show_error_detail(self, message: str) -> None:
+        self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
+
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "search-input":
             self.run_search(event.value)
 
     @work(exclusive=True)
     async def run_search(self, query: str) -> None:
-        status = self.query_one("#status-line", Static)
-        status.update(f"Searching for '{query}'...")
+        loading = self.query_one("#search-loading", LoadingIndicator)
+        loading.display = True
+        try:
+            results: list[SearchResult] = []
+            errors: list[str] = []
+            for source in self.sources:
+                try:
+                    results.extend(source.search(query))
+                except SourceError as exc:
+                    errors.append(str(exc))
 
-        results: list[SearchResult] = []
-        errors: list[str] = []
-        for source in self.sources:
-            try:
-                results.extend(source.search(query))
-            except SourceError as exc:
-                errors.append(str(exc))
+            self._last_results = results
+            list_view = self.query_one("#search-results", ListView)
+            list_view.clear()
+            for item in results:
+                list_view.append(ResultItem(item))
 
-        self._last_results = results
-        list_view = self.query_one("#search-results", ListView)
-        list_view.clear()
-        for item in results:
-            list_view.append(ResultItem(item))
+            if results:
+                list_view.index = 0
+                list_view.focus()
+                self._show_detail(results[0])
+            else:
+                self._show_detail(None)
 
-        if errors:
-            status.update(" | ".join(errors))
-        else:
-            status.update(f"{len(results)} result(s)")
+            if errors:
+                self.app.notify(" | ".join(errors), severity="error", timeout=8)
+            elif not results:
+                self.app.notify("No results", severity="warning")
+        finally:
+            loading.display = False
 
     def _find_source(self, source_id: str) -> Source | None:
         return next((s for s in self.sources if s.id == source_id), None)
+
+    def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
+        if event.list_view.id != "search-results":
+            return
+        item = event.item
+        self._show_detail(item.item if isinstance(item, ResultItem) else None)
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         item = event.item
@@ -127,8 +200,10 @@ class MainScreen(Screen):
         if isinstance(highlighted, ResultItem):
             if self.library.contains(highlighted.item):
                 self.library.remove(highlighted.item)
+                self.app.notify(f"Removed from library: {highlighted.item.title}")
             else:
                 self.library.add(highlighted.item)
+                self.app.notify(f"Saved to library: {highlighted.item.title}")
             self.refresh_library()
 
     @work(exclusive=True)
@@ -150,11 +225,13 @@ class MainScreen(Screen):
         try:
             streams = source.get_streams(item, episode)
         except SourceError as exc:
-            self.query_one("#status-line", Static).update(str(exc))
+            self.app.notify(str(exc), severity="error", timeout=10)
+            self.show_error_detail(str(exc))
             return
 
         if not streams:
-            self.query_one("#status-line", Static).update("No playable streams found")
+            self.app.notify("No playable streams found", severity="warning")
+            self.show_error_detail("No playable streams found for this title/episode.")
             return
 
         stream = streams[0] if len(streams) == 1 else await self.app.push_screen_wait(QualityScreen(streams))
@@ -175,7 +252,7 @@ class MainScreen(Screen):
         try:
             streams = source.get_streams(result, episode)
         except SourceError as exc:
-            self.query_one("#status-line", Static).update(str(exc))
+            self.app.notify(str(exc), severity="error", timeout=10)
             return
         if streams:
             self.play_stream(result, episode, streams[0], resume_seconds=entry.position_seconds)
@@ -188,12 +265,13 @@ class MainScreen(Screen):
             with self.app.suspend():
                 player.play(stream, title=item.title, resume_seconds=resume_seconds)
         except TorrentStreamError as exc:
-            self.query_one("#status-line", Static).update(str(exc))
+            self.app.notify(str(exc), severity="error", timeout=10)
+            self.show_error_detail(str(exc))
             return
         except FileNotFoundError:
-            self.query_one("#status-line", Static).update(
-                f"Player '{self.config.player.backend}' not found — install mpv or vlc."
-            )
+            message = f"Player '{self.config.player.backend}' not found — install mpv or vlc."
+            self.app.notify(message, severity="error", timeout=10)
+            self.show_error_detail(message)
             return
 
         self.history.record(

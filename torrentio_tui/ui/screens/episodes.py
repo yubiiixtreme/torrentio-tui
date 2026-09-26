@@ -10,9 +10,10 @@ from torrentio_tui.models import Episode
 
 class EpisodePicked(ListItem):
     def __init__(self, episode: Episode) -> None:
-        label = episode.title
         if episode.season is not None and episode.number is not None:
-            label = f"S{episode.season:02d}E{episode.number:02d} - {episode.title}"
+            label = f"[bold cyan]S{episode.season:02d}E{episode.number:02d}[/bold cyan]  {episode.title}"
+        else:
+            label = episode.title
         super().__init__(Static(label))
         self.episode = episode
 
@@ -29,8 +30,15 @@ class EpisodeScreen(ModalScreen[Episode | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="episode-list-container"):
+            yield Static("Choose an episode", id="episode-title")
             yield ListView(*[EpisodePicked(ep) for ep in self.episodes])
         yield Footer()
+
+    def on_mount(self) -> None:
+        list_view = self.query_one(ListView)
+        if self.episodes:
+            list_view.index = 0
+        list_view.focus()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         item = event.item
