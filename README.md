@@ -37,9 +37,12 @@ and [ani-cli](https://github.com/pystardust/ani-cli) (search → pick → mpv).
 | What | Why | Install |
 |------|-----|---------|
 | Python 3.10+ | runs the app | `python3 --version` |
-| `mpv` **or** `vlc` | video playback | `sudo apt install mpv` / `sudo dnf install mpv` / `brew install mpv` |
+| `mpv` **or** `vlc` | video playback (desktop/Linux/macOS) | `sudo apt install mpv` / `sudo dnf install mpv` / `brew install mpv` |
 | `webtorrent-cli` *(optional)* | plays magnet links without a debrid key | `npm install -g webtorrent-cli` |
 | `yt-dlp` *(optional)* | downloads | `pip install yt-dlp` |
+
+Run `torrentio-tui --doctor` any time to check what's installed and where
+your config file lives.
 
 > **Debrid shortcut:** add a RealDebrid / AllDebrid / Premiumize key to your
 > Torrentio configure URL and you get direct http links — no torrent
@@ -76,6 +79,40 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev]"
 pip install torrentio-tui
 torrentio-tui
 ```
+
+### Termux (Android)
+
+Termux is headless (no video output of its own), so playback works
+differently there: instead of running mpv in the terminal, the app hands
+the stream URL to Android via `termux-open`, which opens it in whatever
+video app you have installed (VLC, MX Player, ...) — the same approach
+ani-cli uses on Android.
+
+```bash
+pkg update
+pkg install python termux-api
+pip install pipx
+pipx ensurepath && source ~/.bashrc     # or restart Termux
+pipx install git+https://github.com/yubiiixtreme/torrentio-tui.git
+```
+
+Also install the **Termux:API** companion app (from
+[F-Droid](https://f-droid.org/packages/com.termux.api/) or the Play Store —
+must match your Termux install source) so `termux-open` can hand links to
+other apps.
+
+```
+torrentio-tui --doctor    # confirms termux-open is wired up
+torrentio-tui
+```
+
+The player backend defaults to `termux` automatically when running inside
+Termux (detected via `$TERMUX_VERSION`) — no config needed. Downloads
+(`yt-dlp`, pure Python) and the `local`/`stremio` sources work the same as
+on desktop. Magnet-only streams (no debrid key configured) generally won't
+open this way — either configure a debrid key in your Torrentio addon URL
+(see [Torrentio setup](#torrentio-setup)) or install a torrent app that
+registers as a magnet handler.
 
 ## Quickstart
 
@@ -122,7 +159,7 @@ history/library at `~/.local/share/torrentio-tui/`. Env vars always win.
 
 ```toml
 [player]
-backend = "mpv"          # mpv | vlc
+backend = "mpv"          # mpv | vlc | termux
 default_quality = "1080p"
 
 [sources]
@@ -142,7 +179,7 @@ directory = "~/Videos/torrentio-tui"
 | `TORRENTIO_TUI_STREAM_URL` | custom stream addon URL |
 | `TORRENTIO_TUI_CINEMETA_URL` | custom Cinemeta base |
 | `TORRENTIO_TUI_TIMEOUT` | HTTP timeout (seconds) |
-| `TORRENTIO_TUI_PLAYER` / `--player` | `mpv` or `vlc` |
+| `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, or `termux` |
 | `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
 | `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
 
@@ -151,6 +188,8 @@ Useful commands:
 ```
 torrentio-tui --player vlc      # one-off backend override
 torrentio-tui --list-sources    # show registered source ids
+torrentio-tui --doctor          # check mpv/vlc/yt-dlp/termux-open + config path
+torrentio-tui --version         # print the installed version
 ```
 
 ## Keybindings
@@ -158,8 +197,12 @@ torrentio-tui --list-sources    # show registered source ids
 | Key | Action |
 |-----|--------|
 | `Enter` | search / open selected item |
+| `↑` / `↓` | move selection; `Tab` switches focus between panes |
 | `l` | save / unsave highlighted result to Library |
-| `Esc` | back out of episode / quality dialogs |
+| `d` | download the highlighted result (needs `yt-dlp`) |
+| `i` | quick info popup for the highlighted result |
+| `?` | show the in-app keybindings help |
+| `Esc` | back out of episode / quality / help dialogs |
 | `q` | quit |
 
 ## Project layout
@@ -168,10 +211,11 @@ torrentio-tui --list-sources    # show registered source ids
 torrentio_tui/
   models.py        # Source-agnostic data types: SearchResult, Episode, StreamLink, HistoryEntry
   config.py        # XDG config/data/cache paths, config.toml loading
+  termux.py        # Termux (Android) environment detection
   history.py       # "Continue watching" store (JSON)
   library.py       # Saved/favorites store (JSON)
   downloads.py     # Batch download via yt-dlp subprocess
-  cli.py           # Entry point (`torrentio-tui`), argument parsing
+  cli.py           # Entry point (`torrentio-tui`), argument parsing, --doctor
 
   sources/
     base.py        # Source ABC — the plugin contract (search / get_episodes / get_streams)
@@ -183,14 +227,16 @@ torrentio_tui/
   player/
     base.py        # Player ABC
     mpv.py, vlc.py # Subprocess backends (headers, subtitles, resume)
+    termux.py      # Hands the stream URL to Android via termux-open
     torrent.py     # magnet: → webtorrent/peerflix bridge for mpv/vlc
     registry.py    # Maps config backend id -> Player
 
   ui/
-    app.py                  # Textual App
+    app.py                  # Textual App + theme
     screens/main.py         # Search / Continue Watching / Library tabs
     screens/episodes.py     # Episode picker modal
     screens/quality.py      # Quality/stream picker modal
+    screens/help.py         # Keybindings help modal ('?')
 ```
 
 ## Adding another source
@@ -226,7 +272,7 @@ To cut a release:
 ```
 .venv/bin/python -m build
 .venv/bin/python -m twine upload dist/*
-git tag v0.2.0 && git push --tags
+git tag v0.3.0 && git push --tags
 ```
 
 ## Sources & legal note

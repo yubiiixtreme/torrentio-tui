@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from textual.app import App
 from textual.theme import Theme
 
@@ -22,25 +24,14 @@ TORRENTIO_THEME = Theme(
     dark=True,
 )
 
-# No custom CSS — use Textual defaults + theme colors (works on all versions)
-TORRENTIO_CSS = ""
-
-# Sentinel class: truthy for 'or' check, but iterates to empty list
-class _EmptyCssPath(list):
-    def __bool__(self) -> bool:
-        return True
-    def __iter__(self):
-        return iter([])
-
 
 class TorrentioTuiApp(App):
-    CSS_PATH = []
-    CSS = TORRENTIO_CSS
+    CSS_PATH = Path(__file__).parent / "app.tcss"
     TITLE = "🎬 Torrentio TUI"
     SUB_TITLE = "search · stream · watch"
 
     def __init__(self, sources: list[Source], config: Config) -> None:
-        super().__init__(css_path=_EmptyCssPath())
+        super().__init__()
         self.sources = sources
         self.config = config
 

@@ -11,14 +11,22 @@ from pathlib import Path
 
 import tomllib
 
+from torrentio_tui.termux import is_termux
+
 APP_NAME = "torrentio-tui"
 
-DEFAULT_CONFIG_TOML = """\
+
+def _default_player_backend() -> str:
+    return "termux" if is_termux() else "mpv"
+
+
+def _default_config_toml() -> str:
+    return f"""\
 # torrentio-tui config
 # Uncomment / edit as needed. Env vars (TORRENTIO_TUI_*) always win over this file.
 
 [player]
-backend = "mpv"          # mpv | vlc
+backend = "{_default_player_backend()}"          # mpv | vlc | termux
 default_quality = "1080p"
 
 [sources]
@@ -30,7 +38,7 @@ enabled = ["stremio", "local"]
 [sources.stremio]
 # Metadata catalogue (search + episodes). Default is the public Cinemeta.
 cinemeta_url = "https://v3-cinemeta.strem.io"
-# Stream addon speaking Stremio's /stream/{type}/{id}.json protocol.
+# Stream addon speaking Stremio's /stream/{{type}}/{{id}}.json protocol.
 # Paste your *configured* URL from https://torrentio.strem.fun/configure
 # (it embeds providers + optional RealDebrid/AllDebrid key for direct links),
 # or a compatible alternative (MediaFusion / Knightcrawler / self-hosted).
@@ -74,7 +82,7 @@ def library_file() -> Path:
 
 @dataclass(slots=True)
 class PlayerConfig:
-    backend: str = "mpv"
+    backend: str = field(default_factory=_default_player_backend)
     default_quality: str = "1080p"
 
 
@@ -144,4 +152,4 @@ def ensure_dirs() -> None:
 
     cfg_path = config_file()
     if not cfg_path.exists():
-        cfg_path.write_text(DEFAULT_CONFIG_TOML)
+        cfg_path.write_text(_default_config_toml())

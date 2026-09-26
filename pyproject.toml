@@ -1,6 +1,6 @@
 [project]
 name = "torrentio-tui"
-version = "0.2.0"
+version = "0.3.0"
 description = "Terminal UI for discovering and streaming movie/series/anime via Stremio (Cinemeta + Torrentio) into mpv/vlc"
 readme = "README.md"
 license = "MIT"
@@ -45,7 +45,7 @@ lint.ignore = ["TRY003"]
 lint.fixable = ["ALL"]
 lint.unfixable = []
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "torrentio_tui/sources/example.py" = ["ERA001", "FIX002"]
 
 [tool.ruff.lint.isort]

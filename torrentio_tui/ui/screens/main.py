@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import urllib.request
-from io import BytesIO
 from pathlib import Path
 
 from textual import work
@@ -20,23 +18,14 @@ from textual.widgets import (
     TabPane,
 )
 
-# textual.image was added in newer versions; fallback for older versions
-try:
-    from textual.image import Image
-except ImportError:
-    class Image:  # type: ignore
-        def __init__(self, data, format="auto"):
-            self.data = data
-        def __rich__(self):
-            return "[dim]🖼  Poster unavailable[/dim]"
-
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
 from torrentio_tui.library import LibraryStore
-from torrentio_tui.models import Episode, MediaKind, SearchResult
+from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.player.registry import get_player
 from torrentio_tui.sources.base import Source, SourceError
 from torrentio_tui.ui.screens.episodes import EpisodeScreen
+from torrentio_tui.ui.screens.help import HelpScreen
 from torrentio_tui.ui.screens.quality import QualityScreen
 
 KIND_STYLE: dict[MediaKind, tuple[str, str, str]] = {
@@ -81,6 +70,7 @@ class MainScreen(Screen):
         ("l", "toggle_library", "Save/unsave"),
         ("d", "download", "Download"),
         ("i", "info", "Info"),
+        ("question_mark", "help", "Help"),
         ("q", "app.quit", "Quit"),
     ]
 
@@ -91,7 +81,6 @@ class MainScreen(Screen):
         self.history = HistoryStore()
         self.library = LibraryStore()
         self._last_results: list[SearchResult] = []
-        self._poster_cache: dict[str, bytes] = {}
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -107,7 +96,6 @@ class MainScreen(Screen):
             with TabPane("❤️  Library", id="library"):
                 yield ListView(id="library-results", classes="results-panel")
         yield Footer()
-        yield Static(id="status-line")
 
     def _build_detail_panel(self) -> Vertical:
         return Vertical(
@@ -155,7 +143,7 @@ class MainScreen(Screen):
 
         if item is None:
             poster.styles.border = ("round", "gray")
-            poster.update("[dim]🎬  Torrentio TUI[/dim]\n[dim]Select a title to preview[/dim]")
+            poster.update("🍿")
             title.update("[dim]Select a title to preview[/dim]")
             meta.update("")
             genres.update("")
@@ -164,33 +152,15 @@ class MainScreen(Screen):
 
         icon, color, label = _kind_style(item.kind)
         poster.styles.border = ("round", color)
-
-        # Try to load poster image if available
-        if item.poster_url:
-            self._load_poster_async(item.poster_url, poster)
-        else:
-            poster.update(f"{icon}\n\n[b]{label}[/b]")
+        poster.update(f"{icon}\n[b]{label}[/b]")
 
         title.update(f"[bold]{item.title}[/bold]")
         year = str(item.year) if item.year else "—"
         meta.update(f"[{color}]{label}[/{color}]  ·  {year}  ·  [dim]{item.source_id}[/dim]")
-
-        # Genres placeholder - would need meta API call for real genres
-        genres.update("[dim]Genres: loading...[/dim]")
-
+        genres.update(f"[dim]{', '.join(item.genres)}[/dim]" if item.genres else "")
         overview.update(
             item.overview.strip() if item.overview else "[dim]No synopsis available.[/dim]"
         )
-
-    @work(exclusive=True, thread=True)
-    def _load_poster_async(self, url: str, poster_widget: Static) -> None:
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "torrentio-tui/0.2"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = resp.read()
-            self.call_from_thread(poster_widget.update, Image(data, format="auto"))
-        except Exception:
-            self.call_from_thread(poster_widget.update, "[dim]🖼  Poster unavailable[/dim]")
 
     def show_error_detail(self, message: str) -> None:
         self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
@@ -260,22 +230,90 @@ class MainScreen(Screen):
                 self.app.notify(f"Saved to library: {highlighted.item.title}")
             self.refresh_library()
 
-    def action_download(self) -> None:
-        results_list = self.query_one("#search-results", ListView)
-        highlighted = results_list.highlighted_child
-        if isinstance(highlighted, ResultItem):
-            self.app.notify("Download: select quality first (Enter on item)", severity="info")
-
     def action_info(self) -> None:
         results_list = self.query_one("#search-results", ListView)
         highlighted = results_list.highlighted_child
         if isinstance(highlighted, ResultItem):
             item = highlighted.item
+            genres = ", ".join(item.genres) if item.genres else "—"
             self.app.notify(
-                f"{item.title} ({item.year or '—'})\nKind: {item.kind.value}\nSource: {item.source_id}\nID: {item.id}",
+                f"{item.title} ({item.year or '—'})\n"
+                f"Kind: {item.kind.value}  ·  Genres: {genres}\n"
+                f"Source: {item.source_id}  ·  ID: {item.id}",
                 title="Info",
                 timeout=8,
             )
+
+    def action_help(self) -> None:
+        self.app.push_screen(HelpScreen())
+
+    def action_download(self) -> None:
+        results_list = self.query_one("#search-results", ListView)
+        highlighted = results_list.highlighted_child
+        if not isinstance(highlighted, ResultItem):
+            self.app.notify("Highlight a title first", severity="warning")
+            return
+        self._download_item(highlighted.item)
+
+    @work(exclusive=True)
+    async def _download_item(self, item: SearchResult) -> None:
+        source = self._find_source(item.source_id)
+        if source is None:
+            return
+
+        episode: Episode
+        if item.kind in (MediaKind.SERIES, MediaKind.ANIME):
+            episodes = source.get_episodes(item)
+            picked = await self.app.push_screen_wait(EpisodeScreen(episodes))
+            if picked is None:
+                return
+            episode = picked
+        else:
+            episode = Episode(id=item.id, title=item.title)
+
+        try:
+            streams = source.get_streams(item, episode)
+        except SourceError as exc:
+            self.app.notify(str(exc), severity="error", timeout=10)
+            return
+
+        if not streams:
+            self.app.notify("No downloadable streams found", severity="warning")
+            return
+
+        stream = (
+            streams[0]
+            if len(streams) == 1
+            else await self.app.push_screen_wait(QualityScreen(streams))
+        )
+        if stream is None:
+            return
+
+        self._run_download(item, episode, stream)
+
+    @work(exclusive=True, thread=True)
+    def _run_download(self, item: SearchResult, episode: Episode, stream: StreamLink) -> None:
+        from torrentio_tui.downloads import DownloadError, download, is_available
+
+        if not is_available():
+            self.app.call_from_thread(
+                self.app.notify,
+                "yt-dlp is not installed — install it to enable downloads.",
+                severity="error",
+                timeout=10,
+            )
+            return
+
+        title = f"{item.title} - {episode.title}" if episode.title != item.title else item.title
+        self.app.call_from_thread(self.app.notify, f"Downloading: {title}", severity="information")
+        try:
+            dest = download(stream, title, Path(self.config.downloads.directory))
+        except DownloadError as exc:
+            self.app.call_from_thread(self.app.notify, str(exc), severity="error", timeout=10)
+            return
+        self.app.call_from_thread(
+            self.app.notify, f"Saved to {dest}", severity="information", timeout=8
+        )
 
     @work(exclusive=True)
     async def open_item(self, item: SearchResult) -> None:

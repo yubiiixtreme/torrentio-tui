@@ -30,6 +30,7 @@ class SearchResult:
     year: int | None = None
     poster_url: str | None = None
     overview: str | None = None
+    genres: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

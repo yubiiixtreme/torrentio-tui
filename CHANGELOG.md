@@ -8,26 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-09-26
 
 ### Added
-- **Fancy TUI redesign** with modern Dracula-inspired theme
-- **Poster art support** — async loading of movie/series posters from Cinemeta
-- **Stream type badges** — DIRECT, DEBRID, MAGNET indicators in quality picker
-- **Rich detail panel** with kind badges, genres, and synopsis
-- **Comprehensive animations** — fade-in, slide-up, pulse glow, shimmer effects
-- **Responsive layout** — adapts to terminal width
-- **Reduced motion support** — respects `prefers-reduced-motion`
-- **GitHub Actions CI/CD** — tests, linting, build, and PyPI publish on tag
-- **CONTRIBUTING.md** — contribution guidelines
-- **CODE_OF_CONDUCT.md** — Contributor Covenant v2.1
-- **Ruff configuration** for linting and formatting
-
-### Changed
-- Complete CSS rewrite with CSS custom properties
-- Improved keyboard shortcuts (added `d` for download, `i` for info)
-- Better notifications with timeout and severity
-- Enhanced episode/quality picker modals with styling
-- Updated README with badges and screenshots section
+- **Termux (Android) support** — a `termux` player backend that hands the
+  stream URL to Android via `termux-open` instead of trying to run mpv in
+  the (headless) terminal; auto-selected as the default backend when
+  running inside Termux
+- **`--doctor`** — checks mpv/vlc/yt-dlp/webtorrent/termux-open and prints
+  the active config file path
+- **`--version`**
+- **In-app help (`?`)** — keybindings cheat sheet as a modal
+- **Real `d` (download)** — downloads the highlighted result via `yt-dlp`,
+  with quality picker and progress notifications (was previously a stub)
+- **Genres** in the detail panel and `i` info popup, sourced from Cinemeta
+- **Stream type badges** — DIRECT, DEBRID, MAGNET indicators in the quality
+  picker
+- Ruff linting + formatting config, CONTRIBUTING.md, CODE_OF_CONDUCT.md
 
 ### Fixed
+- Restyled search results/detail panel with a valid Textual theme and
+  stylesheet. (Between 0.2.0 and this release the CSS briefly grew
+  web-only properties Textual doesn't support — gradients, animations,
+  box-shadow, `:root` custom properties — which failed to parse and were
+  worked around by disabling all custom styling. Rewritten from scratch
+  using only Textual's actual CSS subset.)
+- Removed a poster-art loading path that always silently failed
+  (`textual.image` isn't part of the installed Textual version) and just
+  added latency; replaced with the icon-based poster card that actually
+  renders
 - Config download directory now properly loaded from config.toml
 - License format in pyproject.toml
 

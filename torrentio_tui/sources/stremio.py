@@ -247,7 +247,8 @@ class StremioSource(Source):
                 tt = meta.get("id") or meta.get("imdb_id")
                 if not tt:
                     continue
-                kind = _classify_kind(stremio_type, meta.get("genres") or meta.get("genre"))
+                raw_genres = meta.get("genres") or meta.get("genre") or []
+                kind = _classify_kind(stremio_type, raw_genres)
                 results.append(
                     SearchResult(
                         id=_encode_id(stremio_type, tt),
@@ -257,6 +258,7 @@ class StremioSource(Source):
                         year=_parse_year(meta.get("releaseInfo") or meta.get("year")),
                         poster_url=meta.get("poster"),
                         overview=meta.get("description"),
+                        genres=tuple(str(g) for g in raw_genres),
                     )
                 )
                 if len(results) >= self.max_results:
