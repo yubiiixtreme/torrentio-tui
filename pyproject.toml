@@ -12,7 +12,7 @@ classifiers = [
     "Topic :: Multimedia :: Video",
 ]
 dependencies = [
-    "textual>=0.58",
+    "textual>=0.80.0",
 ]
 
 [project.optional-dependencies]
