@@ -17,6 +17,14 @@ Footer {
     background: $panel;
 }
 
+.download-status {
+    height: 1;
+    padding: 0 1;
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+}
+
 Footer > .footer-key-foreground {
     color: $accent;
     text-style: bold;

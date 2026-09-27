@@ -58,6 +58,11 @@ default_quality = "1080p"
 # where unsupported. Set to "" to disable, or "auto" for a more aggressive
 # (occasionally unstable) mode. Most impactful on Android/Termux.
 hwdec = "{_default_hwdec()}"
+# Live in-app HUD (buffer health, cache speed) instead of handing mpv the
+# whole terminal. mpv still needs its own GUI window (X11/Wayland/macOS/
+# Windows) for video output -- leave this off on a terminal-only/headless
+# setup. Ignored by backends other than mpv, and by magnet/torrent streams.
+hud = false
 
 [ui]
 # One of: {", ".join(THEMES)}
@@ -184,6 +189,7 @@ class PlayerConfig:
     backend: str = field(default_factory=_default_player_backend)
     default_quality: str = "1080p"
     hwdec: str = field(default_factory=_default_hwdec)
+    hud: bool = False
 
 
 @dataclass(slots=True)
@@ -244,6 +250,7 @@ class Config:
             )
             cfg.player.default_quality = player.get("default_quality", cfg.player.default_quality)
             cfg.player.hwdec = player.get("hwdec", cfg.player.hwdec)
+            cfg.player.hud = bool(player.get("hud", cfg.player.hud))
 
             cfg.enabled_sources = data.get("sources", {}).get("enabled", cfg.enabled_sources)
 
@@ -301,6 +308,8 @@ class Config:
             cfg.network.proxy_url = env_proxy
         if (env_hwdec := os.environ.get("TORRENTIO_TUI_HWDEC")) is not None:
             cfg.player.hwdec = env_hwdec
+        if env_hud := os.environ.get("TORRENTIO_TUI_HUD"):
+            cfg.player.hud = env_hud.lower() in ("1", "true", "yes", "on")
         if env_dir := os.environ.get("TORRENTIO_TUI_DOWNLOAD_DIR"):
             cfg.downloads.directory = Path(env_dir).expanduser()
         if env_adult := os.environ.get("TORRENTIO_TUI_ADULT"):

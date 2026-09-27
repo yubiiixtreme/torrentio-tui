@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 
 from torrentio_tui.models import StreamLink
 from torrentio_tui.player.base import Player
+from torrentio_tui.player.process import run_supervised
 from torrentio_tui.player.torrent import is_torrent_link, play_magnet
 
 
@@ -34,5 +34,5 @@ class VlcPlayer(Player):
 
         cmd.append(stream.url)
 
-        result = subprocess.run(cmd)
+        result = run_supervised(cmd)
         return result.returncode

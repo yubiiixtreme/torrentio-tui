@@ -26,15 +26,11 @@ def test_get_player_threads_hwdec_only_to_mpv():
 def test_mpv_adds_hwdec_flag(monkeypatch):
     captured = {}
 
-    def fake_run(cmd):
+    def fake_run(cmd, **_kwargs):
         captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0)
 
-        class Result:
-            returncode = 0
-
-        return Result()
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("torrentio_tui.player.mpv.run_supervised", fake_run)
     player = MpvPlayer(hwdec="auto-safe")
     player.play(StreamLink(url="https://example.com/a.mp4", quality="1080p"), "Title")
     assert "--hwdec=auto-safe" in captured["cmd"]
@@ -43,15 +39,11 @@ def test_mpv_adds_hwdec_flag(monkeypatch):
 def test_mpv_omits_hwdec_flag_when_empty(monkeypatch):
     captured = {}
 
-    def fake_run(cmd):
+    def fake_run(cmd, **_kwargs):
         captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0)
 
-        class Result:
-            returncode = 0
-
-        return Result()
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("torrentio_tui.player.mpv.run_supervised", fake_run)
     player = MpvPlayer(hwdec="")
     player.play(StreamLink(url="https://example.com/a.mp4", quality="1080p"), "Title")
     assert not any(c.startswith("--hwdec") for c in captured["cmd"])

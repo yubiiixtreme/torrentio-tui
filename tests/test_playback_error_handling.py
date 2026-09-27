@@ -73,7 +73,7 @@ async def test_play_stream_resumes_terminal_even_when_player_raises(monkeypatch,
         stream = StreamLink(url="magnet:?xt=urn:btih:abc123", quality="magnet")
 
         # Must not raise — and must not leave suspend()'s block via exception.
-        screen.play_stream(item, episode, stream)
+        await screen.play_stream(item, episode, stream)
 
         assert record["resumed"] is True, (
             "player.play()'s exception escaped the suspend() block instead of "
@@ -106,7 +106,7 @@ async def test_play_stream_handles_suspend_not_supported(tmp_path):
             pass
 
         # Must not raise, and must leave a visible error behind.
-        screen.play_stream(item, episode, stream)
+        await screen.play_stream(item, episode, stream)
 
         overview = screen.query_one("#detail-overview")
         assert "doesn't support suspending" in str(overview.content)

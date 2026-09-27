@@ -6,6 +6,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, ListItem, ListView, Static
 
 from torrentio_tui.models import Episode
+from torrentio_tui.ui.widgets import VimListView
 
 
 class EpisodePicked(ListItem):
@@ -31,7 +32,7 @@ class EpisodeScreen(ModalScreen[Episode | None]):
         yield Header()
         with Container(id="episode-list-container"):
             yield Static("📺  Choose Episode", id="episode-title")
-            yield ListView(*[EpisodePicked(ep) for ep in self.episodes])
+            yield VimListView(*[EpisodePicked(ep) for ep in self.episodes])
         yield Footer()
 
     def on_mount(self) -> None:

@@ -15,6 +15,8 @@ from __future__ import annotations
 import shutil
 import subprocess
 
+from torrentio_tui.player.process import run_supervised
+
 
 class TorrentStreamError(Exception):
     pass
@@ -72,7 +74,7 @@ def play_magnet(magnet: str, title: str, backend: str = "mpv") -> int:
     # progress UI still shows) so a crash — like node-datachannel's native
     # module failing to load — can be diagnosed and surfaced instead of
     # silently returning a non-zero exit code that the caller never checked.
-    result = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
+    result = run_supervised(cmd, stderr=subprocess.PIPE, text=True)
     if result.returncode != 0:
         raise TorrentStreamError(
             _diagnose_streamer_failure(streamer, result.returncode, result.stderr or "")

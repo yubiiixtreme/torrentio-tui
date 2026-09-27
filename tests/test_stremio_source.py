@@ -217,7 +217,7 @@ def test_play_magnet_surfaces_streamer_crash(monkeypatch) -> None:
             "code: 'MODULE_NOT_FOUND'\n"
         )
 
-    monkeypatch.setattr(torrent_mod.subprocess, "run", lambda *a, **k: FakeResult())
+    monkeypatch.setattr(torrent_mod, "run_supervised", lambda *a, **k: FakeResult())
 
     with pytest.raises(torrent_mod.TorrentStreamError) as exc_info:
         torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T")
@@ -235,7 +235,7 @@ def test_play_magnet_returns_zero_on_success(monkeypatch) -> None:
         returncode = 0
         stderr = ""
 
-    monkeypatch.setattr(torrent_mod.subprocess, "run", lambda *a, **k: FakeResult())
+    monkeypatch.setattr(torrent_mod, "run_supervised", lambda *a, **k: FakeResult())
     assert torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "T") == 0
 
 
@@ -257,7 +257,7 @@ def test_play_magnet_never_passes_broken_title_flag(monkeypatch) -> None:
         captured["cmd"] = cmd
         return FakeResult()
 
-    monkeypatch.setattr(torrent_mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(torrent_mod, "run_supervised", fake_run)
     torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "Some Title", backend="mpv")
 
     assert not any("title" in arg.lower() for arg in captured["cmd"])

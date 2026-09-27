@@ -11,6 +11,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from torrentio_tui.models import StreamLink
+from torrentio_tui.player.process import supervised_popen
 from torrentio_tui.player.torrent import is_torrent_link
 
 
@@ -48,13 +49,15 @@ def download(
 
     cmd.append(stream.url)
 
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    assert process.stdout is not None
-    for line in process.stdout:
-        if on_output:
-            on_output(line.rstrip())
+    with supervised_popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    ) as process:
+        assert process.stdout is not None
+        for line in process.stdout:
+            if on_output:
+                on_output(line.rstrip())
+        returncode = process.wait()
 
-    returncode = process.wait()
     if returncode != 0:
         raise DownloadError(f"yt-dlp exited with code {returncode}")
 

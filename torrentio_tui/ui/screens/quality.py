@@ -7,6 +7,7 @@ from textual.widgets import Footer, Header, ListItem, ListView, Static
 
 from torrentio_tui.models import StreamLink
 from torrentio_tui.player.torrent import is_torrent_link
+from torrentio_tui.ui.widgets import VimListView
 
 _QUALITY_COLOR = (
     ("2160", "gold"),
@@ -80,7 +81,7 @@ class QualityScreen(ModalScreen[StreamLink | None]):
         yield Header()
         with Container(id="quality-list-container"):
             yield Static("⚡  Choose Stream Quality", id="quality-title")
-            yield ListView(*[StreamPicked(s) for s in self.streams])
+            yield VimListView(*[StreamPicked(s) for s in self.streams])
         yield Footer()
 
     def on_mount(self) -> None:

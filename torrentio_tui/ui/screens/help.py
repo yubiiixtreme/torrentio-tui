@@ -8,10 +8,11 @@ from textual.widgets import Footer, Header, Static
 from torrentio_tui.config import THEMES
 
 KEYBINDINGS = (
-    ("↑ / ↓", "Move selection in lists"),
+    ("↑ / ↓ or k / j", "Move selection in lists"),
     ("← / →", "Switch tabs (Search / Continue / Library)"),
     ("Enter", "Play selected title / episode / stream"),
     ("Tab", "Switch focus between search box, results, detail panel"),
+    ("/", "Jump to search box and select its contents"),
     ("l", "Save/unsave highlighted title in your Library (❤️)"),
     ("d", "Download highlighted title (requires yt-dlp)"),
     ("i", "Show detailed info for highlighted title"),
@@ -43,6 +44,8 @@ TIPS = (
     "Configure IPTV: add m3u_url or m3u_path under [sources.iptv].",
     "Adult content (stremio-adult, hanime) requires [adult] enabled = true in config.",
     "Use --doctor to check connectivity and installed tools.",
+    "Set [player] hud = true for a live buffer/speed HUD instead of a full-"
+    "screen mpv (needs mpv's own GUI window -- not for headless/SSH setups).",
 )
 
 

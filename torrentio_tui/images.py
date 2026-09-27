@@ -23,6 +23,7 @@ from textual.containers import Container
 from textual.widgets import Static
 
 from torrentio_tui.config import cache_dir
+from torrentio_tui.retry import call_with_backoff
 
 try:
     from textual_image.widget import Image as _ImageWidget
@@ -47,20 +48,39 @@ def _cached_path(url: str) -> Path:
     return IMAGE_CACHE_DIR / _cache_key(url)
 
 
+class _RetryableFetchError(Exception):
+    pass
+
+
+def _fetch(url: str, timeout: float) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "image/*"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read()
+    except urllib.error.HTTPError as exc:
+        # Timeouts/drops and 5xx/429 are worth retrying; any other 4xx means
+        # the poster genuinely isn't there, so let it propagate immediately.
+        if exc.code == 429 or exc.code >= 500:
+            raise _RetryableFetchError(str(exc)) from exc
+        raise
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise _RetryableFetchError(str(exc)) from exc
+
+
 def download_image(url: str, timeout: float = 10.0) -> Path | None:
     """Download (or reuse a cached copy of) an image. Returns the local
     path, or None if the download failed or wasn't actually an image.
-    Blocking — call this from a thread worker, not the UI thread.
+    Retries transient failures (timeouts, dropped connections, 5xx/429)
+    with exponential backoff; a genuine 4xx is not retried. Blocking —
+    call this from a thread worker, not the UI thread.
     """
     cached = _cached_path(url)
     if cached.exists():
         return cached
 
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "image/*"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = resp.read()
-    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        data = call_with_backoff(lambda: _fetch(url, timeout), retryable=_RetryableFetchError)
+    except (urllib.error.HTTPError, _RetryableFetchError):
         return None
 
     # Cheap sniff; not exhaustive, just enough to reject HTML error pages.

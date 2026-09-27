@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from textual import work
@@ -28,6 +29,7 @@ from torrentio_tui.sources.base import Source, SourceError
 from torrentio_tui.ui.screens.episodes import EpisodeScreen
 from torrentio_tui.ui.screens.help import HelpScreen
 from torrentio_tui.ui.screens.quality import QualityScreen
+from torrentio_tui.ui.widgets import VimListView
 
 KIND_STYLE: dict[MediaKind, tuple[str, str, str]] = {
     MediaKind.MOVIE: ("🎬", "cyan", "MOVIE"),
@@ -39,6 +41,45 @@ KIND_STYLE: dict[MediaKind, tuple[str, str, str]] = {
 
 def _kind_style(kind: MediaKind) -> tuple[str, str, str]:
     return KIND_STYLE.get(kind, ("🎞", "white", kind.value.upper()))
+
+
+#: yt-dlp's own progress line, e.g. "[download]  42.3% of  700.00MiB at
+#: 5.00MiB/s ETA 00:30" -- speed/ETA are absent on the final 100% line.
+_DOWNLOAD_PROGRESS_RE = re.compile(
+    r"\[download\]\s+(?P<pct>\d{1,3}(?:\.\d)?)%"
+    r"(?:.*?at\s+(?P<speed>[\d.]+\S*iB/s))?"
+    r"(?:.*?ETA\s+(?P<eta>[\d:]+))?"
+)
+
+
+def _format_download_progress(title: str, line: str) -> str | None:
+    match = _DOWNLOAD_PROGRESS_RE.search(line)
+    if match is None:
+        return None
+    parts = [f"⏳ {title} — {match['pct']}%"]
+    if match["speed"]:
+        parts.append(match["speed"])
+    if match["eta"]:
+        parts.append(f"ETA {match['eta']}")
+    return "  ".join(parts)
+
+
+def _format_playback_error(error: Exception, backend: str) -> str:
+    from textual.app import SuspendNotSupported
+
+    from torrentio_tui.player.torrent import TorrentStreamError
+
+    if isinstance(error, TorrentStreamError):
+        return str(error)
+    if isinstance(error, SuspendNotSupported):
+        return (
+            "This terminal doesn't support suspending the app for playback "
+            "(needed to hand the terminal to mpv/vlc) — try a different "
+            "terminal emulator."
+        )
+    if isinstance(error, OSError):
+        return f"Player '{backend}' not found — install mpv or vlc."
+    return f"Playback failed ({type(error).__name__}): {error}"
 
 
 class ResultItem(ListItem):
@@ -90,6 +131,7 @@ class MainScreen(Screen):
         ("d", "download", "Download"),
         ("i", "info", "Info"),
         ("t", "cycle_theme", "Theme"),
+        ("slash", "focus_search", "Search"),
         ("question_mark", "help", "Help"),
         ("q", "app.quit", "Quit"),
     ]
@@ -105,17 +147,18 @@ class MainScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Header()
+        yield Static(id="download-status", classes="download-status")
         with TabbedContent(initial="search"):
             with TabPane("🔍  Search", id="search"), Vertical():
                 yield Input(placeholder="Search movies, series, anime...", id="search-input")
                 yield LoadingIndicator(id="search-loading")
                 with Horizontal(id="search-body"):
-                    yield ListView(id="search-results", classes="results-panel")
+                    yield VimListView(id="search-results", classes="results-panel")
                     yield self._build_detail_panel()
             with TabPane("⏯  Continue Watching", id="continue"):
-                yield ListView(id="continue-results", classes="results-panel")
+                yield VimListView(id="continue-results", classes="results-panel")
             with TabPane("❤️  Library", id="library"):
-                yield ListView(id="library-results", classes="results-panel")
+                yield VimListView(id="library-results", classes="results-panel")
         yield Footer()
 
     def _build_detail_panel(self) -> Vertical:
@@ -131,6 +174,7 @@ class MainScreen(Screen):
     def on_mount(self) -> None:
         self._show_detail(None)
         self.query_one("#search-loading", LoadingIndicator).display = False
+        self.query_one("#download-status", Static).display = False
         self.query_one("#search-input", Input).focus()
 
     def on_screen_resume(self) -> None:
@@ -283,6 +327,12 @@ class MainScreen(Screen):
                 timeout=8,
             )
 
+    def action_focus_search(self) -> None:
+        self.query_one(TabbedContent).active = "search"
+        search_input = self.query_one("#search-input", Input)
+        search_input.focus()
+        search_input.select_all()
+
     def action_help(self) -> None:
         self.app.push_screen(HelpScreen())
 
@@ -355,6 +405,12 @@ class MainScreen(Screen):
 
         self._run_download(item, episode, stream)
 
+    def _set_download_status(self, text: str | None) -> None:
+        status = self.query_one("#download-status", Static)
+        status.display = text is not None
+        if text is not None:
+            status.update(text)
+
     @work(exclusive=True, thread=True)
     def _run_download(self, item: SearchResult, episode: Episode, stream: StreamLink) -> None:
         from torrentio_tui.downloads import DownloadError, download, is_available
@@ -369,12 +425,22 @@ class MainScreen(Screen):
             return
 
         title = f"{item.title} - {episode.title}" if episode.title != item.title else item.title
-        self.app.call_from_thread(self.app.notify, f"Downloading: {title}", severity="information")
+        self.app.call_from_thread(self._set_download_status, f"⏳ Starting: {title}")
+
+        def on_output(line: str) -> None:
+            status_text = _format_download_progress(title, line)
+            if status_text:
+                self.app.call_from_thread(self._set_download_status, status_text)
+
         try:
-            dest = download(stream, title, Path(self.config.downloads.directory))
+            dest = download(
+                stream, title, Path(self.config.downloads.directory), on_output=on_output
+            )
         except DownloadError as exc:
+            self.app.call_from_thread(self._set_download_status, None)
             self.app.call_from_thread(self.app.notify, str(exc), severity="error", timeout=10)
             return
+        self.app.call_from_thread(self._set_download_status, None)
         self.app.call_from_thread(
             self.app.notify, f"Saved to {dest}", severity="information", timeout=8
         )
@@ -426,9 +492,10 @@ class MainScreen(Screen):
         if stream is None:
             return
 
-        self.play_stream(item, episode, stream)
+        await self.play_stream(item, episode, stream)
 
-    def resume_history_item(self, hist_item: HistoryItem) -> None:
+    @work(exclusive=True)
+    async def resume_history_item(self, hist_item: HistoryItem) -> None:
         source = self._find_source(hist_item.source_id)
         if source is None:
             return
@@ -448,14 +515,44 @@ class MainScreen(Screen):
             self.app.notify(str(exc), severity="error", timeout=10)
             return
         if streams:
-            self.play_stream(result, episode, streams[0], resume_seconds=entry.position_seconds)
+            await self.play_stream(
+                result, episode, streams[0], resume_seconds=entry.position_seconds
+            )
 
-    def play_stream(
+    async def play_stream(
         self, item: SearchResult, episode: Episode, stream, resume_seconds: float = 0.0
     ) -> None:
-        from textual.app import SuspendNotSupported
+        from torrentio_tui.player.torrent import is_torrent_link
 
-        from torrentio_tui.player.torrent import TorrentStreamError
+        use_hud = (
+            self.config.player.backend == "mpv"
+            and self.config.player.hud
+            and not is_torrent_link(stream.url)
+        )
+        error = (
+            await self._play_with_hud(stream, item.title, resume_seconds)
+            if use_hud
+            else self._play_blocking(stream, item, resume_seconds)
+        )
+
+        if error is not None:
+            message = _format_playback_error(error, self.config.player.backend)
+            self.app.notify(message, severity="error", timeout=10)
+            self.show_error_detail(message)
+            return
+
+        self.history.record(
+            item_id=item.id,
+            source_id=item.source_id,
+            title=item.title,
+            episode_label=episode.title if episode.title != item.title else None,
+            position_seconds=0.0,
+            duration_seconds=None,
+        )
+        self.refresh_continue_watching()
+
+    def _play_blocking(self, stream, item: SearchResult, resume_seconds: float) -> Exception | None:
+        from textual.app import SuspendNotSupported
 
         player = get_player(self.config.player.backend, hwdec=self.config.player.hwdec)
 
@@ -484,30 +581,11 @@ class MainScreen(Screen):
                     error = exc
         except SuspendNotSupported as exc:
             error = exc
+        return error
 
-        if error is not None:
-            if isinstance(error, TorrentStreamError):
-                message = str(error)
-            elif isinstance(error, SuspendNotSupported):
-                message = (
-                    "This terminal doesn't support suspending the app for playback "
-                    "(needed to hand the terminal to mpv/vlc) — try a different "
-                    "terminal emulator."
-                )
-            elif isinstance(error, OSError):
-                message = f"Player '{self.config.player.backend}' not found — install mpv or vlc."
-            else:
-                message = f"Playback failed ({type(error).__name__}): {error}"
-            self.app.notify(message, severity="error", timeout=10)
-            self.show_error_detail(message)
-            return
+    async def _play_with_hud(self, stream, title: str, resume_seconds: float) -> Exception | None:
+        from torrentio_tui.ui.screens.playback_hud import PlaybackHudScreen
 
-        self.history.record(
-            item_id=item.id,
-            source_id=item.source_id,
-            title=item.title,
-            episode_label=episode.title if episode.title != item.title else None,
-            position_seconds=0.0,
-            duration_seconds=None,
-        )
-        self.refresh_continue_watching()
+        screen = PlaybackHudScreen(stream, title, self.config.player.hwdec, resume_seconds)
+        await self.app.push_screen_wait(screen)
+        return screen.spawn_error
