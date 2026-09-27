@@ -1,72 +1,97 @@
-/* Torrentio TUI theme. Colors come from the registered "torrentio" Theme
-   (app.py) via $primary/$accent/$secondary/... tokens; this file only
-   handles layout + the few literal accent colors used for MOVIE/SERIES/
-   ANIME/LIVE badges, which are independent of the color theme. */
+/* Torrentio TUI - Cyberpunk/Sci-Fi Theme
+   Using only Textual-supported CSS properties */
 
 Screen {
-    background: $background;
+    background: #020617;
+    color: #e0ffff;
+}
+
+Layer {
+    background: transparent;
 }
 
 Header {
-    background: $panel;
-    color: $primary;
+    background: #111e3a;
+    color: #00ffff;
     text-style: bold;
+    height: 3;
+    border-bottom: solid #00ffff;
+}
+
+Header .header-title {
+    color: #00ffff;
+    text-style: bold;
+}
+
+Header .header-subtitle {
+    color: #8bffff;
 }
 
 Footer {
-    background: $panel;
-}
-
-.download-status {
-    height: 1;
-    padding: 0 1;
-    background: $panel;
-    color: $accent;
-    text-style: bold;
+    background: #111e3a;
+    color: #8bffff;
+    height: 2;
+    border-top: solid #ff00ff;
 }
 
 Footer > .footer-key-foreground {
-    color: $accent;
+    color: #ffbf00;
     text-style: bold;
+}
+
+Footer > .footer-key-background {
+    color: #4dffff44;
 }
 
 Tabs {
-    background: $panel;
+    background: #1a2d50;
+    border-bottom: solid #00ffff;
+    padding: 0 1;
 }
 
 Tab {
-    padding: 0 3;
-    color: $text-muted;
+    padding: 0 2;
+    margin: 0 1;
+    color: #8bffff;
+    text-style: bold;
+    background: transparent;
+    border-bottom: solid transparent;
 }
 
 Tab:hover {
-    color: $foreground;
+    color: #00ffff;
+    background: rgba(17, 30, 58, 0.7);
 }
 
 Tab.-active {
-    color: $primary;
-    text-style: bold;
+    color: #00ffff;
+    border-bottom: solid #00ffff;
+    background: rgba(17, 30, 58, 0.7);
 }
 
 Underline {
-    color: $accent;
+    color: #00ffff;
+    opacity: 1;
 }
 
-/* ---------- search ---------- */
-
 #search-input {
-    border: tall $panel;
-    background: $surface;
+    border: tall #1a2d50;
+    background: #1a2d50;
+    color: #e0ffff;
     margin: 1 1 0 1;
+    padding: 0 2;
+    height: 3;
 }
 
 #search-input:focus {
-    border: tall $accent;
+    border: tall #00ffff;
+    background: #233d66;
 }
 
 #search-loading {
-    height: 3;
-    color: $accent;
+    height: 2;
+    color: #00ffff;
+    content-align: center middle;
 }
 
 #search-body {
@@ -76,145 +101,350 @@ Underline {
 
 .results-panel {
     width: 2fr;
-    background: $surface;
-    border: round $panel;
-    scrollbar-color: $accent;
-    scrollbar-background: $surface;
+    background: #1a2d50;
+    border: round #00ffff;
+    scrollbar-color: #00ffff;
+    scrollbar-background: #1a2d50;
     scrollbar-size: 1 1;
 }
 
 .results-panel:focus {
-    border: round $accent;
+    border: round #00ffff;
+}
+
+.results-panel > .results-panel--list {
+    background: transparent;
 }
 
 ListView > ResultItem, ListView > HistoryItem {
-    height: auto;
+    height: 20;
     background: transparent;
-    border-left: thick $panel;
+    margin: 0;
+    padding: 1 1;
+    border-left: thick transparent;
 }
 
-ResultItem.kind-movie { border-left: thick cyan; }
-ResultItem.kind-series { border-left: thick $success; }
-ResultItem.kind-anime { border-left: thick $secondary; }
-ResultItem.kind-live { border-left: thick $error; }
-HistoryItem { border-left: thick $primary; }
+ResultItem.kind-movie {
+    border-left: thick #ff073a;
+}
+ResultItem.kind-series {
+    border-left: thick #00ff41;
+}
+ResultItem.kind-anime {
+    border-left: thick #9d00ff;
+}
+ResultItem.kind-live {
+    border-left: thick #ffbf00;
+}
+HistoryItem {
+    border-left: thick #00ffff;
+}
 
 ListView > ListItem.--highlight {
-    background: $panel;
+    background: rgba(17, 30, 58, 0.7);
+    border-left: thick #00ffff;
 }
 
 ListView:focus > ListItem.--highlight {
-    background: $boost;
-    border-left: thick $accent;
+    background: rgba(0, 255, 255, 0.1);
+    border-left: thick #ffbf00;
 }
 
-ResultItem Static, HistoryItem Static {
-    height: auto;
+.result-container {
+    height: 100%;
+    width: 100%;
     padding: 0 1;
+    layout: horizontal;
 }
 
-/* ---------- detail panel ---------- */
+.result-poster {
+    width: 14;
+    height: 18;
+    margin-right: 1;
+    background: #111e3a;
+    border: round #00ffff;
+    content-align: center middle;
+    color: #4dffff44;
+}
+
+.result-text {
+    width: 1fr;
+    height: 100%;
+    padding: 1 0;
+    layout: vertical;
+}
 
 #detail-panel {
     width: 1fr;
-    min-width: 32;
+    min-width: 35;
     margin: 1 1 1 0;
     padding: 1 2;
-    background: $panel;
-    border: round $panel;
+    background: #111e3a;
+    border: round #00ffff;
 }
 
 #detail-poster {
-    height: 18;
+    height: 22;
     content-align: center middle;
     text-style: bold;
-    border: round $panel;
+    border: round #00ffff;
     margin-bottom: 1;
+    background: #0c1426;
+    color: #4dffff44;
 }
 
 #detail-title {
     text-style: bold;
-    color: $primary;
+    color: #00ffff;
     height: auto;
     margin-bottom: 1;
 }
 
 #detail-meta {
-    color: $text-muted;
+    color: #8bffff;
     height: auto;
     margin-bottom: 1;
 }
 
 #detail-genres {
-    color: $secondary;
+    color: #9d00ff;
     height: auto;
     margin-bottom: 1;
 }
 
 #detail-overview {
     height: 1fr;
-    color: $foreground;
+    color: #e0ffff;
 }
 
-/* ---------- modals (episode / quality / help) ---------- */
-
 #episode-list-container, #quality-list-container, #help-container {
-    width: 70%;
-    height: 70%;
-    margin: 4 8;
-    border: round $accent;
-    background: $panel;
+    width: 75%;
+    height: 75%;
+    margin: 3 6;
+    border: thick #00ffff;
+    background: #111e3a;
 }
 
 #episode-title, #quality-title, .help-title {
     height: 1;
-    padding: 0 1;
-    background: $surface;
-    color: $primary;
+    padding: 0 2;
+    background: #1a2d50;
+    color: #00ffff;
     text-style: bold;
+    border-bottom: solid #00ffff;
 }
 
 #episode-list-container ListView, #quality-list-container ListView {
-    background: $surface;
-    scrollbar-color: $accent;
+    background: #1a2d50;
+    scrollbar-color: #00ffff;
     height: 1fr;
 }
 
+#episode-list-container ListItem, #quality-list-container ListItem {
+    padding: 1 2;
+    border-bottom: solid #1a2d50;
+}
+
 #episode-list-container ListItem.--highlight, #quality-list-container ListItem.--highlight {
-    background: $boost;
+    background: rgba(17, 30, 58, 0.7);
+    border-left: thick #00ffff;
 }
 
 .help-body {
-    padding: 0 2;
+    padding: 1 2;
     height: auto;
+    color: #8bffff;
 }
 
-#help-container VerticalScroll {
-    padding: 1 0;
+.help-body .heading {
+    color: #00ffff;
+    margin: 1 0;
 }
 
-/* ---------- notifications ---------- */
+.help-body .strong {
+    color: #ffbf00;
+}
+
+.help-body .source-entry {
+    margin: 0 0 1 0;
+    padding: 0 0 0 2;
+    border-left: thick #9d00ff;
+}
+
+.help-body .source-id {
+    color: #00ffff;
+    text-style: bold;
+}
+
+.help-body .source-desc {
+    color: #8bffff;
+}
+
+.help-body .category-header {
+    color: #00ff41;
+    text-style: bold;
+    margin: 1 0 0 0;
+}
 
 .toast {
-    background: $panel;
-    border: round $accent;
+    background: #111e3a;
+    border: thick #00ffff;
     padding: 1 2;
+    color: #e0ffff;
 }
 
-/* ---------- scrollbar ---------- */
+.toast.--error {
+    border: round #ff073a;
+}
+
+.toast.--warning {
+    border: round #ffbf00;
+}
+
+.toast.--success {
+    border: round #00ff41;
+}
+
+.toast.--information {
+    border: round #007bff;
+}
 
 Scrollbar {
-    background: $surface;
-    color: $accent;
+    background: #1a2d50;
+    color: #00ffff;
 }
 
-/* ---------- input ---------- */
+Scrollbar:hover {
+    background: #233d66;
+}
 
 Input {
-    background: $surface;
-    border: tall $panel;
+    background: #1a2d50;
+    border: tall #1a2d50;
+    color: #e0ffff;
+    height: 3;
+    padding: 0 2;
 }
 
 Input:focus {
-    border: tall $accent;
+    border: tall #00ffff;
+    background: #233d66;
+}
+
+Button {
+    background: #1a2d50;
+    color: #e0ffff;
+    border: solid #00ffff;
+    padding: 0 2;
+    margin: 0 1;
+    text-style: bold;
+}
+
+Button:hover {
+    background: #00ffff;
+    color: #020617;
+    border: solid #00ffff;
+}
+
+Button:focus {
+    border: thick #ffbf00;
+}
+
+Button.--primary {
+    background: #00ffff;
+    color: #020617;
+    border: solid #00ffff;
+}
+
+Button.--primary:hover {
+    background: #ffbf00;
+    border: solid #ffbf00;
+}
+
+LoadingIndicator {
+    color: #00ffff;
+}
+
+Static {
+    color: #e0ffff;
+}
+
+*:focus {
+    outline: none;
+    border: tall #ffbf00;
+}
+
+Selection {
+    background: #00ffff;
+    color: #020617;
+}
+
+ProgressBar {
+    background: #1a2d50;
+    color: #00ffff;
+    border: solid #00ffff;
+}
+
+ProgressBar > .progress-bar--bar {
+    background: #00ffff;
+}
+
+DataTable {
+    background: #1a2d50;
+    border: round #00ffff;
+}
+
+DataTable > .datatable--header {
+    background: #111e3a;
+    color: #00ffff;
+    text-style: bold;
+}
+
+DataTable > .datatable--row {
+    background: transparent;
+    border-bottom: solid #1a2d50;
+}
+
+DataTable > .datatable--row:hover {
+    background: rgba(17, 30, 58, 0.7);
+}
+
+DataTable > .datatable--row.--highlight {
+    background: rgba(0, 255, 255, 0.1);
+    border-left: thick #00ffff;
+}
+
+Tree {
+    background: #1a2d50;
+}
+
+Tree > .tree--node {
+    color: #8bffff;
+}
+
+Tree > .tree--node.--highlight {
+    color: #00ffff;
+    background: rgba(17, 30, 58, 0.7);
+}
+
+Tree > .tree--node.--expanded .tree--node__expander {
+    color: #00ffff;
+    text-style: bold;
+}
+
+Collapsible {
+    background: #1a2d50;
+    border: round #00ffff;
+}
+
+Collapsible > .collapsible--title {
+    background: #111e3a;
+    color: #00ffff;
+    text-style: bold;
+    padding: 0 2;
+}
+
+Collapsible > .collapsible--content {
+    padding: 1 2;
+    color: #8bffff;
 }

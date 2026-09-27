@@ -25,6 +25,7 @@ async def test_help_screen_opens_without_crashing(tmp_path: Path) -> None:
     app = TorrentioTuiApp([LocalSource(root=tmp_path)], Config())
     async with app.run_test() as pilot:
         await pilot.pause()
+        # Use the action name directly since key bindings might not work in test env
         app.screen.action_help()
         await pilot.pause()
         assert isinstance(app.screen, HelpScreen)

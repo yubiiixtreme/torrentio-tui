@@ -316,3 +316,165 @@ class HanimeSource(AdultSourceBase):
                 )
             )
         return links
+
+
+class NHentaiSource(AdultSourceBase):
+    """NHentai - hentai manga/doujinshi."""
+
+    id = "nhentai"
+    name = "NHentai"
+
+    NHENTAI_API = "https://nhentai.net/api"
+
+    def search(self, query: str) -> list[SearchResult]:
+        self._check_enabled()
+        query = query.strip()
+        if not query:
+            return []
+
+        url = f"{self.NHENTAI_API}/gallery/search?q={urllib.parse.quote(query)}&page=1"
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            raise SourceError(f"NHentai search failed: {exc}") from exc
+
+        results = []
+        for item in data.get("result", []):
+            title = item.get("title", {}).get("english") or item.get("title", {}).get("japanese") or item.get("title", {}).get("pretty", "")
+            cover = item.get("cover_image", "")
+            tags = [t.get("name", "") for t in item.get("tags", [])]
+            year = item.get("upload_date", "")[:4] if item.get("upload_date") else None
+            
+            results.append(
+                SearchResult(
+                    id=f"nhentai:{item.get('id', '')}",
+                    title=title,
+                    kind=MediaKind.ANIME,
+                    source_id=self.id,
+                    year=int(year) if year and year.isdigit() else None,
+                    poster_url=cover,
+                    overview="",
+                    genres=tuple(tags),
+                )
+            )
+        return results
+
+    def get_episodes(self, item: SearchResult) -> list[Episode]:
+        return [Episode(id=item.id, title=item.title)]
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        self._check_enabled()
+        gallery_id = item.id.split(":")[-1] if ":" in item.id else item.id
+        
+        try:
+            url = f"{self.NHENTAI_API}/gallery/{gallery_id}"
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            return []
+
+        gallery = data.get("gallery", {})
+        images = gallery.get("images", {})
+        pages = images.get("pages", [])
+        
+        links = []
+        for i, page in enumerate(pages):
+            t = page.get("t", "j")
+            ext = "jpg" if t == "j" else "png" if t == "p" else "webp"
+            url = f"https://i.nhentai.net/galleries/{gallery.get('media_id', '')}/{i+1}.{ext}"
+            links.append(
+                StreamLink(
+                    url=url,
+                    quality=f"Page {i+1}",
+                    headers={"Referer": "https://nhentai.net/"},
+                )
+            )
+        return links
+
+
+class Rule34Source(AdultSourceBase):
+    """Rule34.xxx - adult artwork."""
+
+    id = "rule34"
+    name = "Rule34.xxx"
+
+    RULE34_API = "https://api.rule34.xxx/index.php"
+
+    def search(self, query: str) -> list[SearchResult]:
+        self._check_enabled()
+        query = query.strip()
+        if not query:
+            return []
+
+        url = f"{self.RULE34_API}?page=dapi&s=post&q=index&tags={urllib.parse.quote(query)}&json=1&limit=30"
+
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            raise SourceError(f"Rule34 search failed: {exc}") from exc
+
+        results = []
+        for item in data:
+            tags = item.get("tags", "").split(" ")
+            preview = item.get("preview_url", "")
+            file_url = item.get("file_url", "")
+            
+            results.append(
+                SearchResult(
+                    id=f"rule34:{item.get('id', '')}",
+                    title=item.get("tags", "Untitled")[:100],
+                    kind=MediaKind.ANIME,
+                    source_id=self.id,
+                    year=None,
+                    poster_url=preview,
+                    overview="",
+                    genres=tuple(tags[:10]),
+                )
+            )
+        return results
+
+    def get_episodes(self, item: SearchResult) -> list[Episode]:
+        return [Episode(id=item.id, title=item.title)]
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        self._check_enabled()
+        gallery_id = item.id.split(":")[-1] if ":" in item.id else item.id
+        
+        try:
+            url = f"{self.RULE34_API}?page=dapi&s=post&q=index&id={gallery_id}&json=1"
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            return []
+
+        links = []
+        for item in data:
+            file_url = item.get("file_url", "")
+            if file_url:
+                links.append(
+                    StreamLink(
+                        url=file_url,
+                        quality="Original",
+                        headers={"Referer": "https://rule34.xxx/"},
+                    )
+                )
+        return links

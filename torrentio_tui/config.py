@@ -15,6 +15,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib  # stdlib tomllib only exists from 3.11 onward
 
+from torrentio_tui.languages import LanguageConfig, DEFAULT_LANGUAGE_CONFIG
 from torrentio_tui.termux import is_termux
 
 APP_NAME = "torrentio-tui"
@@ -32,6 +33,11 @@ def _default_player_backend() -> str:
 #: command palette (Ctrl+P -> "theme"), curated list or not.
 THEMES: tuple[str, ...] = (
     "torrentio",
+    "oled-black",
+    "matrix",
+    "void",
+    "synthwave",
+    "amber",
     "dracula",
     "nord",
     "gruvbox",
@@ -39,7 +45,6 @@ THEMES: tuple[str, ...] = (
     "catppuccin-latte",
     "tokyo-night",
     "monokai",
-    "oled-black",
 )
 
 
@@ -73,7 +78,7 @@ hud = false
 [ui]
 # One of: {", ".join(THEMES)}
 # Press "t" in-app to cycle through them (saved back here automatically),
-# or Ctrl+P → "theme" for the full Textual theme list.
+# or Ctrl+P -> "theme" for the full Textual theme list.
 theme = "torrentio"
 
 [sources]
@@ -90,7 +95,16 @@ theme = "torrentio"
 # "subsplease" = Latest anime from SubsPlease
 # "stremio-adult" = Adult content via Stremio (requires [adult] enabled)
 # "hanime" = Hentai anime from Hanime.tv (requires [adult] enabled)
-enabled = ["stremio", "mediafusion", "local"]
+# "debridmediamanager" = Debrid Media Manager (https://debridmediamanager.com)
+# "comet" = Comet addon (https://comet.strem.io)
+# "yts" = YTS movies (https://yts.mx)
+# "eztv" = EZTV shows (https://eztv.re)
+# "rarbg" = RARBG torrents (https://rarbg.to)
+# "1337x" = 1337x torrents (https://1337x.to)
+# "horriblesubs" = HorribleSubs legacy (backup)
+# "subscene" = Subscene subtitles
+# "opensubtitles" = OpenSubtitles.org subtitles
+enabled = ["stremio", "mediafusion", "comet", "debridmediamanager", "local"]
 
 [sources.stremio]
 # Metadata catalogue (search + episodes). Default is the public Cinemeta.
@@ -105,11 +119,21 @@ stream_url = "https://torrentio.strem.fun"
 timeout_seconds = 15.0
 
 # --- Alternative stream addons (enabled by default alongside Torrentio, so
-#     one being blocked/down doesn't leave you with zero results — remove
+#     one being blocked/down doesn't leave you with zero results -- remove
 #     from [sources].enabled above to turn any of these off) ---
 [sources.mediafusion]
 cinemeta_url = "https://v3-cinemeta.strem.io"
 stream_url = "https://mediafusion.elfhosted.com"
+timeout_seconds = 15.0
+
+[sources.comet]
+cinemeta_url = "https://v3-cinemeta.strem.io"
+stream_url = "https://comet.strem.io"
+timeout_seconds = 15.0
+
+[sources.debridmediamanager]
+cinemeta_url = "https://v3-cinemeta.strem.io"
+stream_url = "https://debridmediamanager.com"
 timeout_seconds = 15.0
 
 # [sources.knightcrawler]
@@ -120,6 +144,46 @@ timeout_seconds = 15.0
 # [sources.torrentio-selfhost]
 # cinemeta_url = "https://v3-cinemeta.strem.io"
 # stream_url = "http://localhost:7000"
+# timeout_seconds = 15.0
+#
+# [sources.debridmediamanager]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://debridmediamanager.com"
+# timeout_seconds = 15.0
+#
+# [sources.yts]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://yts.mx"
+# timeout_seconds = 15.0
+#
+# [sources.eztv]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://eztv.re"
+# timeout_seconds = 15.0
+#
+# [sources.rarbg]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://rarbg.to"
+# timeout_seconds = 15.0
+#
+# [sources.1337x]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://1337x.to"
+# timeout_seconds = 15.0
+#
+# [sources.horriblesubs]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://horriblesubs.info"
+# timeout_seconds = 15.0
+#
+# [sources.subscene]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://subscene.com"
+# timeout_seconds = 15.0
+#
+# [sources.opensubtitles]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://opensubtitles.org"
 # timeout_seconds = 15.0
 
 # --- IPTV / Live TV ---
@@ -159,6 +223,18 @@ directory = "~/Videos/torrentio-tui"
 # Enable adult content sources (stremio-adult, hanime)
 # ONLY enable if you are of legal age in your jurisdiction!
 enabled = false
+
+[language]
+# UI language (ISO 639-1 code): en, es, fr, de, it, pt, ru, zh, ja, ko, etc.
+ui_language = "en"
+# Preferred subtitle languages (in order of preference, ISO 639-2/T codes)
+subtitle_languages = ["eng", "spa", "fre"]
+# Preferred audio languages (in order of preference)
+audio_languages = ["eng", "jpn", "kor"]
+# Auto-translate subtitles if preferred language not available
+auto_translate = true
+# Prefer original audio with subtitles
+prefer_original_audio = true
 """
 
 
@@ -242,6 +318,7 @@ class Config:
     network: NetworkConfig = field(default_factory=NetworkConfig)
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
     ui: UIConfig = field(default_factory=UIConfig)
+    language: LanguageConfig = field(default_factory=lambda: DEFAULT_LANGUAGE_CONFIG)
     sources_config: dict[str, dict] = field(default_factory=dict)
 
     @classmethod
@@ -302,6 +379,19 @@ class Config:
             if "theme" in ui_cfg:
                 cfg.ui.theme = str(ui_cfg["theme"])
 
+            # Parse language config
+            lang_cfg = data.get("language", {})
+            if "ui_language" in lang_cfg:
+                cfg.language.ui_language = str(lang_cfg["ui_language"])
+            if "subtitle_languages" in lang_cfg:
+                cfg.language.subtitle_languages = list(lang_cfg["subtitle_languages"])
+            if "audio_languages" in lang_cfg:
+                cfg.language.audio_languages = list(lang_cfg["audio_languages"])
+            if "auto_translate" in lang_cfg:
+                cfg.language.auto_translate = bool(lang_cfg["auto_translate"])
+            if "prefer_original_audio" in lang_cfg:
+                cfg.language.prefer_original_audio = bool(lang_cfg["prefer_original_audio"])
+
         # Env vars always win (also honoured inside StremioSource itself).
         if env_cinemeta := os.environ.get("TORRENTIO_TUI_CINEMETA_URL"):
             cfg.stremio.cinemeta_url = env_cinemeta
@@ -322,8 +412,15 @@ class Config:
             cfg.adult.enabled = env_adult.lower() in ("1", "true", "yes", "on")
         if env_theme := os.environ.get("TORRENTIO_TUI_THEME"):
             cfg.ui.theme = env_theme
+        if env_lang := os.environ.get("TORRENTIO_TUI_LANG"):
+            cfg.language.ui_language = env_lang
 
         return cfg
+
+
+def get_language_config() -> LanguageConfig:
+    """Get the language configuration from the loaded config or defaults."""
+    return Config.load().language
 
 
 def save_theme(theme: str) -> None:

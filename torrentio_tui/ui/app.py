@@ -10,40 +10,120 @@ from torrentio_tui.sources.base import Source
 from torrentio_tui.themes import load_custom_themes
 from torrentio_tui.ui.screens.main import MainScreen
 
+# ============================================================================
+# CYBERPUNK / SCI-FI THEMES
+# ============================================================================
+
 TORRENTIO_THEME = Theme(
     name="torrentio",
-    primary="#F5C518",  # Warm gold/yellow
-    secondary="#A855F7",  # Purple
-    accent="#E11D48",  # Rose red
-    warning="#F5C518",
-    error="#EF4444",
-    success="#22C55E",  # Emerald green
-    foreground="#F4F4F5",  # Zinc-100
-    background="#0F172A",  # Slate-950
-    surface="#1E293B",  # Slate-800
-    panel="#1E293B",  # Slate-800
-    boost="#334155",  # Slate-700
+    # Cyberpunk palette
+    primary="#00ffff",       # Neon cyan
+    secondary="#ff00ff",     # Neon magenta
+    accent="#ffbf00",        # Neon amber
+    warning="#ffbf00",       # Amber
+    error="#ff073a",         # Neon red
+    success="#00ff41",       # Matrix green
+    foreground="#e0ffff",    # Bright cyan
+    background="#020617",    # Void 950
+    surface="#0c1426",       # Void 900
+    panel="#111e3a",         # Void 800
+    boost="#1a2d50",         # Void 700
     dark=True,
 )
 
 OLED_BLACK_THEME = Theme(
     name="oled-black",
-    primary="#FFFFFF",
-    secondary="#00FFAA",
-    accent="#00E5FF",
-    warning="#FFD500",
-    error="#FF3B30",
-    success="#00E676",
-    foreground="#FFFFFF",
-    background="#000000",  # true black -- no backlight bleed on OLED panels
+    primary="#00ffff",
+    secondary="#ff00ff",
+    accent="#ffbf00",
+    warning="#ffbf00",
+    error="#ff073a",
+    success="#00ff41",
+    foreground="#e0ffff",
+    background="#000000",    # True black
     surface="#050505",
-    panel="#0A0A0A",
-    boost="#1A1A1A",
+    panel="#0a0a0a",
+    boost="#1a1a1a",
     dark=True,
 )
 
-#: Built-in themes registered up front, before any user-supplied ones.
-_BUILTIN_THEMES = (TORRENTIO_THEME, OLED_BLACK_THEME)
+# Matrix theme
+MATRIX_THEME = Theme(
+    name="matrix",
+    primary="#00ff41",       # Matrix green
+    secondary="#00cc33",     # Dim green
+    accent="#ffff00",        # Yellow
+    warning="#ffff00",
+    error="#ff073a",
+    success="#00ff41",
+    foreground="#00ff41",
+    background="#000000",
+    surface="#001a00",
+    panel="#001100",
+    boost="#002200",
+    dark=True,
+)
+
+# Void theme
+VOID_THEME = Theme(
+    name="void",
+    primary="#00ffff",
+    secondary="#ff00ff",
+    accent="#ffbf00",
+    warning="#ffbf00",
+    error="#ff073a",
+    success="#00ff41",
+    foreground="#e0ffff",
+    background="#000000",
+    surface="#000000",
+    panel="#000000",
+    boost="#050505",
+    dark=True,
+)
+
+# Synthwave theme
+SYNTHWAVE_THEME = Theme(
+    name="synthwave",
+    primary="#ff00ff",
+    secondary="#00ffff",
+    accent="#ffbf00",
+    warning="#ffbf00",
+    error="#ff073a",
+    success="#00ff41",
+    foreground="#ffe0ff",
+    background="#1a0033",
+    surface="#2d004d",
+    panel="#3d0066",
+    boost="#4d0080",
+    dark=True,
+)
+
+# Amber/Monochrome theme
+AMBER_THEME = Theme(
+    name="amber",
+    primary="#ffbf00",
+    secondary="#cc9900",
+    accent="#ff8c00",
+    warning="#ffbf00",
+    error="#ff3300",
+    success="#00cc33",
+    foreground="#ffcc00",
+    background="#000000",
+    surface="#1a1100",
+    panel="#261a00",
+    boost="#332200",
+    dark=True,
+)
+
+# Built-in themes registered up front
+_BUILTIN_THEMES = (
+    TORRENTIO_THEME,
+    OLED_BLACK_THEME,
+    MATRIX_THEME,
+    VOID_THEME,
+    SYNTHWAVE_THEME,
+    AMBER_THEME,
+)
 
 
 class TorrentioTuiApp(App):

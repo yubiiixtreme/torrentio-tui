@@ -12,6 +12,17 @@ from torrentio_tui.config import Config
 from torrentio_tui.sources.adult import HanimeSource, StremioAdultSource
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.base import Source
+from torrentio_tui.sources.free import (
+    CometSource,
+    DebridMediaManagerSource,
+    EZTVSource,
+    HorribleSubsSource,
+    One337xSource,
+    OpenSubtitlesSource,
+    RARBGSource,
+    SubsceneSource,
+    YTSSource,
+)
 from torrentio_tui.sources.iptv import IPTVSource
 from torrentio_tui.sources.local import LocalSource
 from torrentio_tui.sources.stremio import StremioSource
@@ -22,6 +33,15 @@ _AVAILABLE: dict[str, type[Source]] = {
     "mediafusion": StremioSource,
     "knightcrawler": StremioSource,
     "torrentio-selfhost": StremioSource,
+    "comet": CometSource,
+    "debridmediamanager": DebridMediaManagerSource,
+    "yts": YTSSource,
+    "eztv": EZTVSource,
+    "rarbg": RARBGSource,
+    "1337x": One337xSource,
+    "horriblesubs": HorribleSubsSource,
+    "subscene": SubsceneSource,
+    "opensubtitles": OpenSubtitlesSource,
     "iptv": IPTVSource,
     "anilist": AnilistSource,
     "nyaa": NyaaSource,
@@ -55,6 +75,24 @@ def load_sources(config: Config) -> list[Source]:
                     stream_url = "https://knightcrawler.ml"
                 elif source_id == "torrentio-selfhost":
                     stream_url = "http://localhost:7000"
+                elif source_id == "comet":
+                    stream_url = "https://comet.strem.io"
+                elif source_id == "debridmediamanager":
+                    stream_url = "https://debridmediamanager.com"
+                elif source_id == "yts":
+                    stream_url = "https://yts.mx"
+                elif source_id == "eztv":
+                    stream_url = "https://eztv.re"
+                elif source_id == "rarbg":
+                    stream_url = "https://rarbg.to"
+                elif source_id == "1337x":
+                    stream_url = "https://1337x.to"
+                elif source_id == "horriblesubs":
+                    stream_url = "https://horriblesubs.info"
+                elif source_id == "subscene":
+                    stream_url = "https://subscene.com"
+                elif source_id == "opensubtitles":
+                    stream_url = "https://opensubtitles.org"
                 else:
                     stream_url = config.stremio.stream_url
 
