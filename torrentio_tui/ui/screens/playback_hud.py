@@ -26,9 +26,10 @@ from textual.widgets import Footer
 from torrentio_tui.models import StreamLink
 from torrentio_tui.player.mpv_ipc import MpvIPC, MpvIPCError
 from torrentio_tui.player.process import (
-    install_signal_forwarding,
-    restore_signal_handlers,
+    ensure_signal_handlers_installed,
+    register_process,
     terminate_group,
+    unregister_process,
 )
 from torrentio_tui.ui.widgets.hud import StreamHud
 
@@ -66,7 +67,6 @@ class PlaybackHudScreen(ModalScreen[None]):
         self._socket_path = Path(self._tmpdir) / "mpv.sock"
         self._process: subprocess.Popen | None = None
         self._ipc: MpvIPC | None = None
-        self._previous_handlers: dict = {}
         self._stopped = False
         #: Set if mpv couldn't even be spawned (missing binary, etc.) --
         #: read back by the caller after this screen is dismissed.
@@ -79,6 +79,7 @@ class PlaybackHudScreen(ModalScreen[None]):
 
     def on_mount(self) -> None:
         cmd = self._build_command()
+        ensure_signal_handlers_installed()  # Screen lifecycle runs on the main thread; safe here.
         try:
             self._process = subprocess.Popen(cmd, start_new_session=True)
         except OSError as exc:
@@ -86,7 +87,7 @@ class PlaybackHudScreen(ModalScreen[None]):
             self.dismiss()
             return
 
-        self._previous_handlers = install_signal_forwarding(self._process)
+        register_process(self._process)
         self._ipc = MpvIPC(self._socket_path, is_alive=self._process_alive)
         try:
             self._ipc.connect(timeout=5.0)
@@ -173,7 +174,7 @@ class PlaybackHudScreen(ModalScreen[None]):
     def on_unmount(self) -> None:
         if self._process is not None:
             terminate_group(self._process)
-        restore_signal_handlers(self._previous_handlers)
+            unregister_process(self._process)
         if self._ipc is not None:
             self._ipc.close()
         shutil.rmtree(self._tmpdir, ignore_errors=True)

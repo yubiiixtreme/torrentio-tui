@@ -182,7 +182,15 @@ def main(argv: list[str] | None = None) -> int:
         sys.stderr.write("No sources enabled. Edit sources.enabled in your config file.\n")
         return 1
 
+    from torrentio_tui.player.process import ensure_signal_handlers_installed
     from torrentio_tui.ui.app import TorrentioTuiApp
+
+    # Installed here, on the main thread, before anything runs -- guarantees
+    # it's in place by the time any supervised subprocess registers itself,
+    # including ones spawned from a worker thread (downloads), which can't
+    # install it themselves (Python only allows signal.signal() on the main
+    # thread).
+    ensure_signal_handlers_installed()
 
     app = TorrentioTuiApp(sources, config)
     app.run()
