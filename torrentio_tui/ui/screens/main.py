@@ -338,12 +338,19 @@ class MainScreen(Screen):
 
     def action_cycle_theme(self) -> None:
         from torrentio_tui.config import THEMES, save_theme
+        from torrentio_tui.themes import load_custom_themes
+
+        # Re-scan the themes directory so a file added/edited since the app
+        # started shows up in the cycle without needing a restart.
+        self.app.sync_custom_themes()
+        custom_names = sorted(t.name for t in load_custom_themes() if t.name not in THEMES)
+        cycle = (*THEMES, *custom_names)
 
         current = self.app.theme
         try:
-            next_theme = THEMES[(THEMES.index(current) + 1) % len(THEMES)]
+            next_theme = cycle[(cycle.index(current) + 1) % len(cycle)]
         except ValueError:
-            next_theme = THEMES[0]
+            next_theme = cycle[0]
         self.app.theme = next_theme
         self.config.ui.theme = next_theme
         save_theme(next_theme)

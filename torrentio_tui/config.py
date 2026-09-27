@@ -24,16 +24,22 @@ def _default_player_backend() -> str:
     return "termux" if is_termux() else "mpv"
 
 
-#: Curated theme list, cycled with the "t" key. "torrentio" is our own;
-#: the rest ship built into Textual — no extra registration needed.
+#: Curated theme list, cycled with the "t" key. "torrentio" and
+#: "oled-black" are ours (registered in ui/app.py); the rest ship built
+#: into Textual — no extra registration needed. Any theme file dropped
+#: into ~/.config/torrentio-tui/themes/ (see torrentio_tui/themes.py) is
+#: appended to the cycle automatically and is always reachable via the
+#: command palette (Ctrl+P -> "theme"), curated list or not.
 THEMES: tuple[str, ...] = (
     "torrentio",
     "dracula",
     "nord",
     "gruvbox",
     "catppuccin-mocha",
+    "catppuccin-latte",
     "tokyo-night",
     "monokai",
+    "oled-black",
 )
 
 

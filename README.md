@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/yubiiixtreme/torrentio-tui/workflows/CI/badge.svg)](https://github.com/yubiiixtreme/torrentio-tui/actions)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![GitHub stars](https://img.shields.io/github/stars/yubiiixtreme/torrentio-tui?style=flat&color=gold)](https://github.com/yubiiixtreme/torrentio-tui/stargazers)
 
 **Netflix, but it's your terminal.** Search movies, series and anime
 across multiple sources at once, pick a quality, and it's playing in
@@ -41,23 +42,37 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
   leaves you with zero results
 - 🖼️ **Real poster art**, rendered inline in your terminal (Kitty/iTerm2/
   Sixel graphics where supported, a Unicode-block approximation
-  everywhere else) — not ASCII placeholders, actual cached images
+  everywhere else) — not ASCII placeholders, actual cached images, with
+  ghost-image cleanup on the Kitty Graphics Protocol so switching results
+  never leaves a stale poster behind
 - 🎨 **Pick your theme** — press `t` to cycle a curated set (a built-in
-  cinematic gold/red theme plus Dracula, Nord, Gruvbox, Catppuccin,
-  Tokyo Night, Monokai), remembered across restarts
+  cinematic gold/red theme and a true-black OLED theme, plus Dracula,
+  Nord, Gruvbox, Catppuccin Mocha/Latte, Tokyo Night, Monokai), or drop
+  your own JSON theme file in `~/.config/torrentio-tui/themes/` — no
+  restart needed, it's picked up the next time you cycle
+- 📊 **Live playback HUD** *(opt-in, `[player] hud = true`)* — buffer
+  health and cache-speed sparkline in-app instead of a full-screen mpv,
+  with pause/seek/stop keys (needs mpv's own GUI window; see
+  [Configuration](#configuration))
+- ⌨️ **Vim-friendly navigation** — `j`/`k` alongside the arrow keys in
+  every list, `/` jumps straight to the search box
 - 🎬 **One-key playback** — streams resolve via
   [Torrentio](https://torrentio.strem.fun/configure) (or any compatible
   Stremio addon) and play in mpv/vlc
 - 📺 **Episode & quality picker** — full season/episode lists, qualities
   ranked with seeders and size
 - 📚 **Continue watching + library** — history and favorites stored locally
-- ⬇️ **Downloads** via `yt-dlp` for direct http streams
+- ⬇️ **Downloads** via `yt-dlp` for direct http streams, with a live
+  percent/speed/ETA status line instead of just a start/end notification
 - 📱 **Works on Android via Termux** — auto-detected, hands playback off
   to VLC/your video app since Termux has no display of its own
 - 🩺 **Self-diagnosing** — `--doctor` checks every tool it depends on and
   live-probes whether your sources are actually reachable
 - 🔌 **Plugin sources** — new sources drop in without touching UI/player code
 - 💾 **Local files source** — index and play your own `~/Videos` folder
+- 🛑 **Clean process lifecycle** — mpv/vlc/webtorrent/peerflix/yt-dlp are
+  spawned in their own process group and reaped on Ctrl-C or app exit;
+  network calls (poster fetches) retry transient failures with backoff
 
 ## Requirements
 
@@ -234,9 +249,10 @@ history/library at `~/.local/share/torrentio-tui/`. Env vars always win.
 backend = "mpv"          # mpv | vlc | termux | vlc-android
 default_quality = "1080p"
 hwdec = "auto-safe"       # mpv hardware decoding; "" to disable, "auto" for more aggressive
+hud = false               # live buffer/speed HUD instead of full-screen mpv -- see "Live HUD mode" below
 
 [ui]
-theme = "torrentio"       # torrentio | dracula | nord | gruvbox | catppuccin-mocha | tokyo-night | monokai
+theme = "torrentio"       # torrentio | dracula | nord | gruvbox | catppuccin-mocha | catppuccin-latte | tokyo-night | monokai | oled-black | <your custom theme's name>
 
 [sources]
 # Searched in parallel and merged — having more than one enabled means a
@@ -274,7 +290,8 @@ opt-in) is documented with examples in the generated config file itself
 | `TORRENTIO_TUI_PROXY` / `--proxy` | proxy URL for Cinemeta/Torrentio requests |
 | `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, `termux`, or `vlc-android` |
 | `TORRENTIO_TUI_HWDEC` / `--hwdec` | mpv `--hwdec` mode (`auto-safe`, `auto`, `""` to disable) |
-| `TORRENTIO_TUI_THEME` | color theme name (see `[ui]` above) |
+| `TORRENTIO_TUI_THEME` | color theme name (see `[ui]` above, or a custom theme's name) |
+| `TORRENTIO_TUI_HUD` | `1`/`true` to enable the live HUD (see below); same as `[player] hud` |
 | `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
 | `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
 
@@ -289,12 +306,58 @@ torrentio-tui --doctor --offline  # same, without the live reachability probe
 torrentio-tui --version         # print the installed version
 ```
 
+### Themes
+
+Cycle the curated list with `t`, or `Ctrl+P` → `theme` for the full
+picker (every registered theme, curated or not). The curated cycle is
+`torrentio`, `dracula`, `nord`, `gruvbox`, `catppuccin-mocha`,
+`catppuccin-latte`, `tokyo-night`, `monokai`, `oled-black`, plus any
+custom theme you've added.
+
+To add your own, drop a JSON file in `~/.config/torrentio-tui/themes/`:
+
+```json
+{
+  "name": "sunset",
+  "dark": true,
+  "primary": "#FF8800",
+  "accent": "#E11D48",
+  "background": "#1A0F0A"
+}
+```
+
+Every field but `name` is optional — anything you leave out falls back
+to Textual's own theme defaults. No restart needed: the themes directory
+is re-scanned each time you press `t` or open the theme picker, so
+editing the file and cycling again picks up the change immediately.
+
+### Live HUD mode
+
+By default, playback hands mpv/vlc the whole terminal (`App.suspend()`)
+— the classic "screen goes dark until the player quits" behavior. Set
+`[player] hud = true` (mpv only) to instead run mpv backgrounded behind
+its own GUI window, driven over its JSON IPC socket, while the app stays
+up and shows a live buffer-health bar and cache-speed sparkline:
+
+```toml
+[player]
+backend = "mpv"
+hud = true
+```
+
+**Needs mpv's own window** (X11/Wayland/macOS/Windows) — leave it off on
+a headless/SSH-only box, or for magnet/torrent streams (webtorrent/
+peerflix don't expose an equivalent IPC, so those always use the
+classic full-screen path regardless of this setting). While the HUD is
+up: `Space` pause/resume, `←`/`→` seek ±10s, `q`/`Esc` stop.
+
 ## Keybindings
 
 | Key | Action |
 |-----|--------|
 | `Enter` | search / open selected item |
-| `↑` / `↓` | move selection; `Tab` switches focus between panes |
+| `↑` / `↓` or `k` / `j` | move selection; `Tab` switches focus between panes |
+| `/` | jump to the search box and select its contents |
 | `l` | save / unsave highlighted result to Library |
 | `d` | download the highlighted result (needs `yt-dlp`) |
 | `i` | quick info popup for the highlighted result |
@@ -303,15 +366,20 @@ torrentio-tui --version         # print the installed version
 | `Esc` | back out of episode / quality / help dialogs |
 | `q` | quit |
 
+In [Live HUD mode](#live-hud-mode): `Space` pause/resume, `←`/`→` seek
+±10s, `q`/`Esc` stop.
+
 ## Project layout
 
 ```
 torrentio_tui/
   models.py        # Source-agnostic data types: SearchResult, Episode, StreamLink, HistoryEntry
   config.py        # XDG config/data/cache paths, config.toml loading
+  themes.py         # Custom theme loading (~/.config/torrentio-tui/themes/*.json)
   termux.py        # Termux (Android) environment detection
   proxy.py         # Optional outbound proxy (http/https/socks5) for Cinemeta/Torrentio
   images.py        # Poster download/cache + rendering (textual-image, optional)
+  retry.py          # Exponential backoff helper for flaky network I/O
   history.py       # "Continue watching" store (JSON)
   library.py       # Saved/favorites store (JSON)
   downloads.py     # Batch download via yt-dlp subprocess
@@ -329,7 +397,9 @@ torrentio_tui/
 
   player/
     base.py        # Player ABC
+    process.py      # Signal-safe process group spawn/terminate (used by every backend below)
     mpv.py, vlc.py # Subprocess backends (headers, subtitles, resume, mpv hwdec)
+    mpv_ipc.py       # mpv JSON-IPC client (backs the live HUD)
     termux.py      # Hands the stream URL to Android via termux-open (any registered app)
     vlc_android.py # Launches VLC for Android directly via an `am start` intent
     torrent.py     # magnet: → webtorrent/peerflix bridge for mpv/vlc
@@ -341,6 +411,8 @@ torrentio_tui/
     screens/episodes.py     # Episode picker modal
     screens/quality.py      # Quality/stream picker modal
     screens/help.py         # Keybindings help modal ('?')
+    screens/playback_hud.py  # Live HUD playback screen (opt-in, mpv only)
+    widgets/                 # VimListView (j/k nav), StreamHud (buffer/speed HUD)
 ```
 
 ## Adding another source
@@ -389,6 +461,48 @@ of automated/programmatic access, etc). Torrentio-style addons scrape
 third-party torrents — fetching infringing copies through them may violate
 copyright law. That decision, and any debrid keys / self-hosting, is left
 entirely to you.
+
+## Uninstall & cleanup
+
+torrentio-tui is a plain pip package — removing it is two steps:
+uninstall the package, then (optionally) delete what it wrote to disk.
+Config/data/cache paths are computed the same way on every OS (XDG-style,
+via `~/.config` / `~/.local/share` / `~/.cache` — see `config.py`), so
+the commands below are identical on Linux, macOS, *and* Windows once
+you're in PowerShell; `~` expands to your home directory (`%USERPROFILE%`
+on Windows) either way. If you set `XDG_CONFIG_HOME`/`XDG_DATA_HOME`/
+`XDG_CACHE_HOME`, use those paths instead.
+
+**1. Remove the package:**
+
+```bash
+pip uninstall torrentio-tui
+# or, if you installed with pipx:
+pipx uninstall torrentio-tui
+```
+
+**2. Remove its config, history/library, and cached poster images:**
+
+Linux / macOS:
+
+```bash
+rm -rf ~/.config/torrentio-tui   # config.toml, custom themes/
+rm -rf ~/.local/share/torrentio-tui   # history.json, library.json
+rm -rf ~/.cache/torrentio-tui   # cached poster images
+```
+
+Windows (PowerShell):
+
+```powershell
+Remove-Item -Recurse -Force "$HOME\.config\torrentio-tui"
+Remove-Item -Recurse -Force "$HOME\.local\share\torrentio-tui"
+Remove-Item -Recurse -Force "$HOME\.cache\torrentio-tui"
+```
+
+If you also set a custom `[downloads] directory` and downloaded files
+there, that folder (default `~/Videos/torrentio-tui`) isn't touched by
+any of the above — remove it yourself if you want the downloaded media
+gone too.
 
 ## License
 

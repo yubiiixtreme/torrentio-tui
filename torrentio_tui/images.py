@@ -117,13 +117,25 @@ class PosterWidget(Container):
     def compose(self):
         yield self._fallback
 
+    def _remove(self, child) -> None:
+        # On the Kitty Graphics Protocol (kitty, WezTerm, Ghostty, ...), a
+        # placed image is only deleted from the terminal by textual-image's
+        # own `.image = None` setter -- a plain widget `.remove()` skips
+        # that and leaves the old poster's pixels ghosted on screen behind
+        # whatever gets drawn next. Clearing `.image` first (a no-op for
+        # Sixel/Unicode, which have nothing terminal-side to release) is
+        # what actually frees it before the widget itself is removed.
+        if _ImageWidget is not None and isinstance(child, _ImageWidget):
+            child.image = None
+        child.remove()
+
     def show_fallback(self, icon: str, color: str = "gray") -> None:
         """Show the icon-card fallback (no poster URL, download failed, or
         textual-image isn't installed)."""
         self.styles.border = ("round", color)
         for child in list(self.children):
             if child is not self._fallback:
-                child.remove()
+                self._remove(child)
         if not self._fallback.is_mounted:
             self.mount(self._fallback)
         self._fallback.update(icon)
@@ -135,7 +147,7 @@ class PosterWidget(Container):
         if _ImageWidget is None:
             return
         for child in list(self.children):
-            child.remove()
+            self._remove(child)
         self._fallback.display = False
         self.mount(_ImageWidget(str(path)))
 
