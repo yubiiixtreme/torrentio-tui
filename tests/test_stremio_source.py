@@ -261,4 +261,5 @@ def test_play_magnet_never_passes_broken_title_flag(monkeypatch) -> None:
     torrent_mod.play_magnet("magnet:?xt=urn:btih:abc", "Some Title", backend="mpv")
 
     assert not any("title" in arg.lower() for arg in captured["cmd"])
-    assert captured["cmd"] == ["webtorrent", "magnet:?xt=urn:btih:abc", "--mpv"]
+    assert captured["cmd"][:3] == ["webtorrent", "magnet:?xt=urn:btih:abc", "--mpv"]
+    assert captured["cmd"][3] == "--out"

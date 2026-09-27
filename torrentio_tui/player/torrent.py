@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
 
 from torrentio_tui.player.process import run_supervised
 
@@ -68,13 +69,29 @@ def play_magnet(magnet: str, title: str, backend: str = "mpv") -> int:
     # the risk for a cosmetic window title; mpv/vlc just show their own
     # default title from the stream instead.
     player_flag = {"mpv": "--mpv", "vlc": "--vlc"}.get(backend, "--mpv")
-    cmd = [streamer, magnet, player_flag]
 
-    # Capture stderr only (stdout stays live so webtorrent/peerflix's own
-    # progress UI still shows) so a crash — like node-datachannel's native
-    # module failing to load — can be diagnosed and surfaced instead of
-    # silently returning a non-zero exit code that the caller never checked.
-    result = run_supervised(cmd, stderr=subprocess.PIPE, text=True)
+    # Both streamers buffer downloaded torrent pieces to disk somewhere --
+    # by default a shared OS temp folder that outlives the process. Pointing
+    # them at a directory we own lets us guarantee it's gone once playback
+    # ends, instead of trusting each tool's own (best-effort, and only
+    # signal-triggered) cleanup. `run_supervised` sending SIGTERM before
+    # escalating to SIGKILL is what lets peerflix's own `--remove` handler
+    # (registered on SIGTERM) run at all; webtorrent-cli has no such flag,
+    # so its directory is removed here explicitly either way.
+    with tempfile.TemporaryDirectory(
+        prefix="torrentio-tui-torrent-", ignore_cleanup_errors=True
+    ) as buffer_dir:
+        if streamer == "peerflix":
+            cmd = [streamer, magnet, player_flag, "--path", buffer_dir, "--remove"]
+        else:
+            cmd = [streamer, magnet, player_flag, "--out", buffer_dir]
+
+        # Capture stderr only (stdout stays live so webtorrent/peerflix's own
+        # progress UI still shows) so a crash — like node-datachannel's native
+        # module failing to load — can be diagnosed and surfaced instead of
+        # silently returning a non-zero exit code that the caller never checked.
+        result = run_supervised(cmd, stderr=subprocess.PIPE, text=True)
+
     if result.returncode != 0:
         raise TorrentStreamError(
             _diagnose_streamer_failure(streamer, result.returncode, result.stderr or "")
