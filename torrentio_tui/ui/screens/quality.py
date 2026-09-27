@@ -66,18 +66,18 @@ class StreamPicked(ListItem):
     def __init__(self, stream: StreamLink, lang_config=None) -> None:
         qcolor = _quality_color(stream.quality)
         sicon, stype, scolor = _stream_type(stream)
-        
+
         # Subtitle indicator
         sub_indicator = ""
         if stream.subtitle_url:
             sub_indicator = "  💬"
-        
+
         # Language indicator
         lang_indicator = ""
         if stream.subtitle_url and lang_config:
             # Try to detect subtitle language
             lang_indicator = ""
-        
+
         label = (
             f"{sicon}  [{scolor}]{stype}[/{scolor}]  "
             f"[bold {qcolor}]{stream.quality}[/bold {qcolor}]"
@@ -116,7 +116,9 @@ class QualityScreen(ModalScreen[StreamLink | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="quality-list-container"):
-            yield Static("⚡  Choose Stream Quality  [dim](s=subtitles l=language)[/dim]", id="quality-title")
+            yield Static(
+                "⚡  Choose Stream Quality  [dim](s=subtitles l=language)[/dim]", id="quality-title"
+            )
             yield VimListView(*[StreamPicked(s, self.lang_config) for s in self.streams])
         yield Footer()
 
@@ -157,11 +159,16 @@ class SubtitleScreen(ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="quality-list-container"):
-            yield Static("💬  Subtitle Languages  [dim](Enter to select, Esc to cancel)[/dim]", id="quality-title")
+            yield Static(
+                "💬  Subtitle Languages  [dim](Enter to select, Esc to cancel)[/dim]",
+                id="quality-title",
+            )
             items = []
             for code in self.lang_config.subtitle_languages:
                 lang_name = self._get_lang_name(code)
-                items.append(SubtitlePicked(code, lang_name, code in self.lang_config.subtitle_languages))
+                items.append(
+                    SubtitlePicked(code, lang_name, code in self.lang_config.subtitle_languages)
+                )
             yield VimListView(*items)
         yield Footer()
 
@@ -196,7 +203,9 @@ class LanguageScreen(ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="quality-list-container"):
-            yield Static("🌐  UI Language  [dim](Enter to select, Esc to cancel)[/dim]", id="quality-title")
+            yield Static(
+                "🌐  UI Language  [dim](Enter to select, Esc to cancel)[/dim]", id="quality-title"
+            )
             items = []
             for lang in [
                 ("en", "English"),

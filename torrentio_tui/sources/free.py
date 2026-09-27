@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 class CometSource(StremioSource):
     """Comet addon - free, open source Stremio addon."""
+
     id = "comet"
     name = "Comet (Free Addon)"
 
@@ -33,6 +34,7 @@ class CometSource(StremioSource):
 
 class DebridMediaManagerSource(StremioSource):
     """Debrid Media Manager - free addon for debrid users."""
+
     id = "debridmediamanager"
     name = "Debrid Media Manager"
 
@@ -45,6 +47,7 @@ class DebridMediaManagerSource(StremioSource):
 
 class YTSSource(StremioSource):
     """YTS/YIFY movies - high quality movie torrents."""
+
     id = "yts"
     name = "YTS / YIFY Movies"
 
@@ -57,6 +60,7 @@ class YTSSource(StremioSource):
 
 class EZTVSource(StremioSource):
     """EZTV - TV show torrents."""
+
     id = "eztv"
     name = "EZTV Shows"
 
@@ -69,6 +73,7 @@ class EZTVSource(StremioSource):
 
 class RARBGSource(StremioSource):
     """RARBG - general torrent index."""
+
     id = "rarbg"
     name = "RARBG"
 
@@ -81,6 +86,7 @@ class RARBGSource(StremioSource):
 
 class One337xSource(StremioSource):
     """1337x - general torrent index."""
+
     id = "1337x"
     name = "1337x"
 
@@ -93,6 +99,7 @@ class One337xSource(StremioSource):
 
 class HorribleSubsSource(StremioSource):
     """HorribleSubs - anime subtitles (legacy, backup)."""
+
     id = "horriblesubs"
     name = "HorribleSubs (Legacy)"
 
@@ -105,6 +112,7 @@ class HorribleSubsSource(StremioSource):
 
 class SubsceneSource(StremioSource):
     """Subscene - subtitles."""
+
     id = "subscene"
     name = "Subscene"
 
@@ -117,6 +125,7 @@ class SubsceneSource(StremioSource):
 
 class OpenSubtitlesSource(StremioSource):
     """OpenSubtitles.org - subtitles."""
+
     id = "opensubtitles"
     name = "OpenSubtitles"
 

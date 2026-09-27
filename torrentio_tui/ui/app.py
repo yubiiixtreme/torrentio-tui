@@ -17,17 +17,17 @@ from torrentio_tui.ui.screens.main import MainScreen
 TORRENTIO_THEME = Theme(
     name="torrentio",
     # Cyberpunk palette
-    primary="#00ffff",       # Neon cyan
-    secondary="#ff00ff",     # Neon magenta
-    accent="#ffbf00",        # Neon amber
-    warning="#ffbf00",       # Amber
-    error="#ff073a",         # Neon red
-    success="#00ff41",       # Matrix green
-    foreground="#e0ffff",    # Bright cyan
-    background="#020617",    # Void 950
-    surface="#0c1426",       # Void 900
-    panel="#111e3a",         # Void 800
-    boost="#1a2d50",         # Void 700
+    primary="#00ffff",  # Neon cyan
+    secondary="#ff00ff",  # Neon magenta
+    accent="#ffbf00",  # Neon amber
+    warning="#ffbf00",  # Amber
+    error="#ff073a",  # Neon red
+    success="#00ff41",  # Matrix green
+    foreground="#e0ffff",  # Bright cyan
+    background="#020617",  # Void 950
+    surface="#0c1426",  # Void 900
+    panel="#111e3a",  # Void 800
+    boost="#1a2d50",  # Void 700
     dark=True,
 )
 
@@ -40,7 +40,7 @@ OLED_BLACK_THEME = Theme(
     error="#ff073a",
     success="#00ff41",
     foreground="#e0ffff",
-    background="#000000",    # True black
+    background="#000000",  # True black
     surface="#050505",
     panel="#0a0a0a",
     boost="#1a1a1a",
@@ -50,9 +50,9 @@ OLED_BLACK_THEME = Theme(
 # Matrix theme
 MATRIX_THEME = Theme(
     name="matrix",
-    primary="#00ff41",       # Matrix green
-    secondary="#00cc33",     # Dim green
-    accent="#ffff00",        # Yellow
+    primary="#00ff41",  # Matrix green
+    secondary="#00cc33",  # Dim green
+    accent="#ffff00",  # Yellow
     warning="#ffff00",
     error="#ff073a",
     success="#00ff41",

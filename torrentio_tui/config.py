@@ -15,7 +15,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib  # stdlib tomllib only exists from 3.11 onward
 
-from torrentio_tui.languages import LanguageConfig, DEFAULT_LANGUAGE_CONFIG
+from torrentio_tui.languages import DEFAULT_LANGUAGE_CONFIG, LanguageConfig
 from torrentio_tui.termux import is_termux
 
 APP_NAME = "torrentio-tui"

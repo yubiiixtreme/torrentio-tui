@@ -346,11 +346,15 @@ class NHentaiSource(AdultSourceBase):
 
         results = []
         for item in data.get("result", []):
-            title = item.get("title", {}).get("english") or item.get("title", {}).get("japanese") or item.get("title", {}).get("pretty", "")
+            title = (
+                item.get("title", {}).get("english")
+                or item.get("title", {}).get("japanese")
+                or item.get("title", {}).get("pretty", "")
+            )
             cover = item.get("cover_image", "")
             tags = [t.get("name", "") for t in item.get("tags", [])]
             year = item.get("upload_date", "")[:4] if item.get("upload_date") else None
-            
+
             results.append(
                 SearchResult(
                     id=f"nhentai:{item.get('id', '')}",
@@ -371,7 +375,7 @@ class NHentaiSource(AdultSourceBase):
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         self._check_enabled()
         gallery_id = item.id.split(":")[-1] if ":" in item.id else item.id
-        
+
         try:
             url = f"{self.NHENTAI_API}/gallery/{gallery_id}"
             req = urllib.request.Request(
@@ -386,16 +390,16 @@ class NHentaiSource(AdultSourceBase):
         gallery = data.get("gallery", {})
         images = gallery.get("images", {})
         pages = images.get("pages", [])
-        
+
         links = []
         for i, page in enumerate(pages):
             t = page.get("t", "j")
             ext = "jpg" if t == "j" else "png" if t == "p" else "webp"
-            url = f"https://i.nhentai.net/galleries/{gallery.get('media_id', '')}/{i+1}.{ext}"
+            url = f"https://i.nhentai.net/galleries/{gallery.get('media_id', '')}/{i + 1}.{ext}"
             links.append(
                 StreamLink(
                     url=url,
-                    quality=f"Page {i+1}",
+                    quality=f"Page {i + 1}",
                     headers={"Referer": "https://nhentai.net/"},
                 )
             )
@@ -433,7 +437,7 @@ class Rule34Source(AdultSourceBase):
             tags = item.get("tags", "").split(" ")
             preview = item.get("preview_url", "")
             file_url = item.get("file_url", "")
-            
+
             results.append(
                 SearchResult(
                     id=f"rule34:{item.get('id', '')}",
@@ -454,7 +458,7 @@ class Rule34Source(AdultSourceBase):
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         self._check_enabled()
         gallery_id = item.id.split(":")[-1] if ":" in item.id else item.id
-        
+
         try:
             url = f"{self.RULE34_API}?page=dapi&s=post&q=index&id={gallery_id}&json=1"
             req = urllib.request.Request(

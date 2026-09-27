@@ -12,7 +12,7 @@ from enum import Enum
 
 class Language(Enum):
     """Supported languages with ISO 639-1 codes."""
-    
+
     # Major languages
     ENGLISH = "en"
     SPANISH = "es"
@@ -53,7 +53,7 @@ class Language(Enum):
     MALAY = "ms"
     TAGALOG = "tl"
     UKRAINIAN = "uk"
-    
+
     # Regional variants
     ENGLISH_US = "en-US"
     ENGLISH_GB = "en-GB"
@@ -167,22 +167,22 @@ SUBTITLE_LANGUAGE_CODES = {
 @dataclass(slots=True)
 class LanguageConfig:
     """Language configuration for the app."""
-    
+
     # Primary UI language (ISO 639-1 code)
     ui_language: str = "en"
-    
+
     # Preferred subtitle languages (in order of preference)
     subtitle_languages: list[str] = field(default_factory=lambda: ["eng", "spa", "fre"])
-    
+
     # Preferred audio languages (in order of preference)
     audio_languages: list[str] = field(default_factory=lambda: ["eng", "jpn", "kor"])
-    
+
     # Auto-translate subtitles if preferred language not available
     auto_translate: bool = True
-    
+
     # Show content in original language with subtitles
     prefer_original_audio: bool = True
-    
+
     def get_ui_language_name(self) -> str:
         """Get human-readable name for the UI language."""
         try:
@@ -190,7 +190,7 @@ class LanguageConfig:
             return LANGUAGE_NAMES.get(lang, self.ui_language)
         except ValueError:
             return self.ui_language
-    
+
     def get_subtitle_language_names(self) -> list[str]:
         """Get human-readable names for subtitle languages."""
         names = []
