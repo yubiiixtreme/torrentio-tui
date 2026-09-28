@@ -5,6 +5,7 @@ reimplementing an HTTP downloader.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -39,13 +40,17 @@ def download(
         raise DownloadError("yt-dlp is not installed or not on PATH")
 
     dest_dir.mkdir(parents=True, exist_ok=True)
-    safe_title = "".join(c for c in title if c.isalnum() or c in " ._-").strip() or "video"
+    # Keep unicode letters (CJK/anime titles) — the old
+    # `c.isalnum()`-with-ASCII-assumption stripped them entirely, so
+    # distinct titles collapsed to "video.%(ext)s" and overwrote each
+    # other. Only strip what filesystems actually dislike.
+    safe_title = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", title).strip().rstrip(".") or "video"
     output_template = str(dest_dir / f"{safe_title}.%(ext)s")
 
     cmd = ["yt-dlp", "--continue", "--no-part", "-o", output_template]
 
     for key, value in stream.headers.items():
-        cmd += ["--add-header", f"{key}:{value}"]
+        cmd += ["--add-header", f"{key}: {value}"]
 
     cmd.append(stream.url)
 

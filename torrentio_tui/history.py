@@ -7,6 +7,7 @@ reference projects.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from dataclasses import asdict
@@ -27,15 +28,39 @@ class HistoryStore:
     def _load(self) -> None:
         if not self.path.exists():
             return
-        raw = json.loads(self.path.read_text() or "[]")
+        try:
+            raw = json.loads(self.path.read_text() or "[]")
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+            # A corrupt/interrupted write must never kill startup — back it
+            # up and start empty so the user can inspect/recover it.
+            with contextlib.suppress(OSError):
+                backup = self.path.with_suffix(".json.corrupt")
+                backup.write_bytes(self.path.read_bytes())
+            return
+        if not isinstance(raw, list):
+            return
         for row in raw:
-            entry = HistoryEntry(**row)
+            if not isinstance(row, dict):
+                continue
+            try:
+                entry = HistoryEntry(**row)
+            except TypeError:
+                continue
             self._entries[self._key(entry.source_id, entry.item_id)] = entry
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = [asdict(e) for e in self._entries.values()]
-        self.path.write_text(json.dumps(payload, indent=2))
+        # Atomic write: a crash mid-write must not leave a half-written
+        # JSON file that then fails to parse on next startup.
+        tmp_path = self.path.with_name(self.path.name + ".tmp")
+        try:
+            tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            tmp_path.replace(self.path)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                tmp_path.unlink()
+            raise
 
     def record(
         self,

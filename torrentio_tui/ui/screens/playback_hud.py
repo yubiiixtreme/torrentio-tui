@@ -68,6 +68,14 @@ class PlaybackHudScreen(ModalScreen[None]):
         self._process: subprocess.Popen | None = None
         self._ipc: MpvIPC | None = None
         self._stopped = False
+        #: True when the user stopped playback from our HUD (q/Esc) — a
+        #: SIGTERM'd mpv then exits non-zero, which must NOT count as a
+        #: playback failure.
+        self.user_stopped = False
+        #: mpv's exit code once _watch_process reaps it (None while running).
+        #: Read back by the caller after this screen is dismissed so an
+        #: instant mpv failure isn't recorded as "watched".
+        self.exit_code: int | None = None
         #: Set if mpv couldn't even be spawned (missing binary, etc.) --
         #: read back by the caller after this screen is dismissed.
         self.spawn_error: Exception | None = None
@@ -124,7 +132,7 @@ class PlaybackHudScreen(ModalScreen[None]):
     @work(thread=True)
     def _watch_process(self) -> None:
         assert self._process is not None
-        self._process.wait()
+        self.exit_code = self._process.wait()
         self.app.call_from_thread(self._finish)
 
     def _finish(self) -> None:
@@ -141,7 +149,10 @@ class PlaybackHudScreen(ModalScreen[None]):
             duration = self._ipc.get_property("duration")
             buffered = self._ipc.get_property("demuxer-cache-duration") or 0.0
             speed = self._ipc.get_property("cache-speed") or 0.0
-        except MpvIPCError:
+        except (MpvIPCError, OSError, ValueError):
+            # Any IPC hiccup (mpv restarting, malformed reply, socket
+            # stall) just skips this tick — never crash the interval
+            # callback and freeze the HUD.
             return
         self.query_one(StreamHud).update_stats(
             paused=paused,
@@ -167,6 +178,7 @@ class PlaybackHudScreen(ModalScreen[None]):
 
     def action_stop(self) -> None:
         self._stopped = True
+        self.user_stopped = True
         if self._process is not None:
             terminate_group(self._process)
         self.dismiss()

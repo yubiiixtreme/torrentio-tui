@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Startup no longer dies on corrupt state** — a half-written
+  `history.json`/`library.json` (crash mid-save) or malformed
+  `config.toml` now backs up/falls back to defaults instead of raising
+  an uncaught `JSONDecodeError`/`TOMLDecodeError`; saves are atomic
+  (write-temp-then-rename) so the corrupt state can't recur.
+- **Subtitle picker (`s`) no longer crashes** — `_get_lang_name`
+  iterated dict keys and read `.value` off a `str`
+  (`AttributeError` on open); now looks up `SUBTITLE_LANGUAGE_CODES`
+  directly. The ✓ marker also no longer appears on every row, and
+  subtitle/UI-language picks actually apply (top preference / session
+  language) instead of being silently dropped.
+- **Failed playback is no longer recorded as "watched"** — the blocking
+  player path ignored the exit code and the HUD path only surfaced
+  spawn errors; non-zero exits now surface as errors (user-initiated
+  HUD stops still count as watched).
+- **`nhentai`/`rule34` sources are now registered and usable** (they
+  were implemented but missing from the registry), with payload guards:
+  int-timestamp `upload_date`, real `images.thumbnail`/`media_id`
+  covers, dict-shaped Rule34 error payloads, and empty Hanime URLs
+  skipped.
+- **`comet`/`debridmediamanager` (and all `StremioSource` subclasses)
+  now honour per-source config + proxy** — the registry matched only
+  exact `StremioSource`, so these silently fell back to hardcoded
+  defaults; dead unreachable branches removed.
+- **`--doctor` probes every enabled Stremio-protocol addon** via the
+  registry (was a hardcoded 4-id subset missing the default-enabled
+  addons), and a gated adult source is a one-line diagnostic instead
+  of a traceback — same for app startup.
+- **UI freezes fixed** — blocking source I/O now runs via
+  `asyncio.to_thread` instead of on the Textual event loop; HUD poll
+  and mpv IPC tolerate malformed replies/socket hiccups per-tick
+  instead of crashing the interval callback.
+- **`terminate_group` no longer raises on a reaped child** (used to
+  escape `os.getpgid` outside the `suppress`, fatal inside a signal
+  handler).
+- **Downloads**: `yt-dlp --add-header` now uses the `Key: value` format,
+  and non-ASCII (CJK/anime) titles are preserved instead of collapsing
+  to `video.%(ext)s`.
+- **VLC forwards auth headers** (`Authorization`, `Cookie`, ...) via
+  `--http-header` instead of silently dropping everything but
+  referrer/user-agent.
+- **Config hardening**: `enabled_sources` accepts a bare string,
+  non-dict tables are ignored, `save_theme` handles single quotes and
+  a missing `[ui]` section (scoped to that section), and `Config`
+  instances no longer share one mutable `LanguageConfig`.
+- Repo-wide `ruff format` applied, so CI's format gate passes again.
+
 ## [0.4.0] - 2026-09-26
 
 ### Added

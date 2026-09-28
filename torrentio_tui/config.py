@@ -15,7 +15,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib  # stdlib tomllib only exists from 3.11 onward
 
-from torrentio_tui.languages import DEFAULT_LANGUAGE_CONFIG, LanguageConfig
+from torrentio_tui.languages import LanguageConfig
 from torrentio_tui.termux import is_termux
 
 APP_NAME = "torrentio-tui"
@@ -95,6 +95,8 @@ theme = "torrentio"
 # "subsplease" = Latest anime from SubsPlease
 # "stremio-adult" = Adult content via Stremio (requires [adult] enabled)
 # "hanime" = Hentai anime from Hanime.tv (requires [adult] enabled)
+# "nhentai" = Hentai manga/doujinshi galleries (requires [adult] enabled)
+# "rule34" = Rule34.xxx artwork (requires [adult] enabled)
 # "debridmediamanager" = Debrid Media Manager (https://debridmediamanager.com)
 # "comet" = Comet addon (https://comet.strem.io)
 # "yts" = YTS movies (https://yts.mx)
@@ -207,6 +209,10 @@ timeout_seconds = 15.0
 # timeout_seconds = 15.0
 #
 # [sources.hanime]
+#
+# [sources.nhentai]
+#
+# [sources.rule34]
 
 [network]
 # Route requests through a proxy — useful if Torrentio Cloudflare-blocks
@@ -220,7 +226,7 @@ timeout_seconds = 15.0
 directory = "~/Videos/torrentio-tui"
 
 [adult]
-# Enable adult content sources (stremio-adult, hanime)
+# Enable adult content sources (stremio-adult, hanime, nhentai, rule34)
 # ONLY enable if you are of legal age in your jurisdiction!
 enabled = false
 
@@ -318,7 +324,10 @@ class Config:
     network: NetworkConfig = field(default_factory=NetworkConfig)
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
     ui: UIConfig = field(default_factory=UIConfig)
-    language: LanguageConfig = field(default_factory=lambda: DEFAULT_LANGUAGE_CONFIG)
+    # NB: default_factory=LanguageConfig (not a shared DEFAULT instance) —
+    # each Config gets its own copy so in-memory tweaks (e.g. the subtitle
+    # picker reordering preferences) never leak across Config instances.
+    language: LanguageConfig = field(default_factory=LanguageConfig)
     sources_config: dict[str, dict] = field(default_factory=dict)
 
     @classmethod
@@ -326,8 +335,17 @@ class Config:
         cfg = cls()
         path = config_file()
         if path.exists():
-            data = tomllib.loads(path.read_text())
+            try:
+                data = tomllib.loads(path.read_text())
+            except (OSError, UnicodeDecodeError, ValueError):
+                # Malformed config must never kill startup — fall back to
+                # defaults (env vars below still apply).
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
             player = data.get("player", {})
+            if not isinstance(player, dict):
+                player = {}
             cfg.player.backend = os.environ.get(
                 "TORRENTIO_TUI_PLAYER", player.get("backend", cfg.player.backend)
             )
@@ -335,15 +353,25 @@ class Config:
             cfg.player.hwdec = player.get("hwdec", cfg.player.hwdec)
             cfg.player.hud = bool(player.get("hud", cfg.player.hud))
 
-            cfg.enabled_sources = data.get("sources", {}).get("enabled", cfg.enabled_sources)
+            enabled = data.get("sources", {}).get("enabled", cfg.enabled_sources)
+            # A bare string ("stremio") would otherwise iterate char by
+            # char downstream — accept it as a single source, drop garbage.
+            if isinstance(enabled, str):
+                enabled = [enabled]
+            if isinstance(enabled, list):
+                cfg.enabled_sources = [str(s) for s in enabled if isinstance(s, str)]
 
             # Parse all source configs under [sources.*]
             sources_data = data.get("sources", {})
+            if not isinstance(sources_data, dict):
+                sources_data = {}
             for key, value in sources_data.items():
                 if key != "enabled" and isinstance(value, dict):
                     cfg.sources_config[key] = value
 
             stremio_cfg = sources_data.get("stremio", {})
+            if not isinstance(stremio_cfg, dict):
+                stremio_cfg = {}
             if "cinemeta_url" in stremio_cfg:
                 cfg.stremio.cinemeta_url = str(stremio_cfg["cinemeta_url"])
             if "stream_url" in stremio_cfg:
@@ -354,6 +382,8 @@ class Config:
 
             # Parse IPTV config
             iptv_cfg = sources_data.get("iptv", {})
+            if not isinstance(iptv_cfg, dict):
+                iptv_cfg = {}
             if "m3u_url" in iptv_cfg:
                 cfg.iptv.m3u_url = str(iptv_cfg["m3u_url"])
             if "m3u_path" in iptv_cfg:
@@ -364,23 +394,33 @@ class Config:
 
             # Parse adult config
             adult_cfg = data.get("adult", {})
+            if not isinstance(adult_cfg, dict):
+                adult_cfg = {}
             if "enabled" in adult_cfg:
                 cfg.adult.enabled = bool(adult_cfg["enabled"])
 
             network_cfg = data.get("network", {})
+            if not isinstance(network_cfg, dict):
+                network_cfg = {}
             if network_cfg.get("proxy_url"):
                 cfg.network.proxy_url = str(network_cfg["proxy_url"])
 
             downloads = data.get("downloads", {})
+            if not isinstance(downloads, dict):
+                downloads = {}
             if "directory" in downloads:
                 cfg.downloads.directory = Path(downloads["directory"]).expanduser()
 
             ui_cfg = data.get("ui", {})
+            if not isinstance(ui_cfg, dict):
+                ui_cfg = {}
             if "theme" in ui_cfg:
                 cfg.ui.theme = str(ui_cfg["theme"])
 
             # Parse language config
             lang_cfg = data.get("language", {})
+            if not isinstance(lang_cfg, dict):
+                lang_cfg = {}
             if "ui_language" in lang_cfg:
                 cfg.language.ui_language = str(lang_cfg["ui_language"])
             if "subtitle_languages" in lang_cfg:
@@ -425,11 +465,12 @@ def get_language_config() -> LanguageConfig:
 
 def save_theme(theme: str) -> None:
     """Best-effort persistence for the "t" theme-cycle keybinding: patches
-    just the `theme = "..."` line under `[ui]` in the existing config.toml,
+    just the `theme = ...` line under `[ui]` in the existing config.toml,
     leaving everything else (including the user's own comments) untouched.
-    Silently does nothing if the file or that line isn't there — cycling
-    still works for the rest of the session either way, it just won't be
-    remembered next launch.
+    Handles double- and single-quoted values, and appends a `[ui]` section
+    if the file has none. Silently does nothing if the file isn't there —
+    cycling still works for the rest of the session either way, it just
+    won't be remembered next launch.
     """
     import re
 
@@ -437,11 +478,30 @@ def save_theme(theme: str) -> None:
     if not path.exists():
         return
     text = path.read_text()
-    new_text, count = re.subn(
-        r'^theme = ".*"$', f'theme = "{theme}"', text, count=1, flags=re.MULTILINE
+    # Only patch a theme line that lives under the [ui] section (not e.g.
+    # a similarly-named key under some other table).
+    ui_match = re.search(r"^\[ui\][ \t]*$", text, flags=re.MULTILINE)
+    if ui_match is None:
+        text = text.rstrip("\n") + '\n\n[ui]\ntheme = "torrentio"\n'
+        ui_match = re.search(r"^\[ui\][ \t]*$", text, flags=re.MULTILINE)
+        assert ui_match is not None
+    section_start = ui_match.end()
+    next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
+    section_end = section_start + next_section.start() if next_section else len(text)
+    section = text[section_start:section_end]
+    new_section, count = re.subn(
+        r"""^theme\s*=\s*["'].*["']\s*$""",
+        f'theme = "{theme}"',
+        section,
+        count=1,
+        flags=re.MULTILINE,
     )
     if count:
-        path.write_text(new_text)
+        path.write_text(text[:section_start] + new_section + text[section_end:])
+    else:
+        path.write_text(
+            text[:section_end].rstrip("\n") + f'\ntheme = "{theme}"\n' + text[section_end:]
+        )
 
 
 def ensure_dirs() -> None:

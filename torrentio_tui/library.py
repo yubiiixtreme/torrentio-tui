@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import asdict
 
@@ -21,11 +22,24 @@ class LibraryStore:
     def _load(self) -> None:
         if not self.path.exists():
             return
-        raw = json.loads(self.path.read_text() or "[]")
+        try:
+            raw = json.loads(self.path.read_text() or "[]")
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+            with contextlib.suppress(OSError):
+                backup = self.path.with_suffix(".json.corrupt")
+                backup.write_bytes(self.path.read_bytes())
+            return
+        if not isinstance(raw, list):
+            return
         for row in raw:
+            if not isinstance(row, dict):
+                continue
             row = dict(row)
-            row["kind"] = MediaKind(row["kind"])
-            item = SearchResult(**row)
+            try:
+                row["kind"] = MediaKind(row["kind"])
+                item = SearchResult(**row)
+            except (KeyError, TypeError, ValueError):
+                continue
             self._items[self._key(item)] = item
 
     def _save(self) -> None:
@@ -35,7 +49,14 @@ class LibraryStore:
             row = asdict(item)
             row["kind"] = item.kind.value
             payload.append(row)
-        self.path.write_text(json.dumps(payload, indent=2))
+        tmp_path = self.path.with_name(self.path.name + ".tmp")
+        try:
+            tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+            tmp_path.replace(self.path)
+        except BaseException:
+            with contextlib.suppress(OSError):
+                tmp_path.unlink()
+            raise
 
     def add(self, item: SearchResult) -> None:
         self._items[self._key(item)] = item

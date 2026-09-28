@@ -24,10 +24,16 @@ class VlcPlayer(Player):
             cmd.append(f"--start-time={resume_seconds}")
 
         for key, value in stream.headers.items():
-            if key.lower() == "referer":
+            lowered = key.lower()
+            if lowered == "referer":
                 cmd.append(f"--http-referrer={value}")
-            elif key.lower() == "user-agent":
+            elif lowered == "user-agent":
                 cmd.append(f"--http-user-agent={value}")
+            else:
+                # vlc has no per-header flags beyond referrer/user-agent;
+                # --http-header forwards the rest (e.g. Authorization,
+                # Cookie) instead of silently dropping them.
+                cmd.append(f"--http-header={key}: {value}")
 
         if stream.subtitle_url:
             cmd.append(f"--sub-file={stream.subtitle_url}")

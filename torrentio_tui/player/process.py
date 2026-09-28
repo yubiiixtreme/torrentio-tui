@@ -132,11 +132,17 @@ def terminate_group(process: subprocess.Popen) -> None:
     once, or after the process has already exited on its own."""
     if process.poll() is not None:
         return
-    pgid = os.getpgid(process.pid)
-    with contextlib.suppress(ProcessLookupError):
+    try:
+        pgid = os.getpgid(process.pid)
+    except (ProcessLookupError, OSError):
+        # Child already reaped/exited between poll() and getpgid() — in
+        # particular this runs inside a signal handler, where raising
+        # would be fatal. Nothing left to terminate.
+        return
+    with contextlib.suppress(ProcessLookupError, OSError):
         os.killpg(pgid, signal.SIGTERM)
     try:
         process.wait(timeout=TERMINATE_GRACE_SECONDS)
     except subprocess.TimeoutExpired:
-        with contextlib.suppress(ProcessLookupError):
+        with contextlib.suppress(ProcessLookupError, OSError):
             os.killpg(pgid, signal.SIGKILL)

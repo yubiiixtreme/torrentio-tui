@@ -6,7 +6,9 @@ import sys
 
 from torrentio_tui.config import Config, config_file, ensure_dirs
 from torrentio_tui.player.registry import available_player_ids
+from torrentio_tui.sources.base import SourceError
 from torrentio_tui.sources.registry import available_source_ids, load_sources
+from torrentio_tui.sources.stremio import StremioSource
 from torrentio_tui.termux import is_termux
 
 
@@ -127,26 +129,23 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
     sys.stdout.write("\nChecking connectivity (use --offline to skip)...\n")
     # Check Cinemeta once
     _check_reachable("Cinemeta", f"{config.stremio.cinemeta_url}/manifest.json", 8.0, proxy_url)
-    # Check each enabled Stremio-like source's stream addon
+    # Check each enabled Stremio-protocol source's stream addon, resolved
+    # through the registry so per-source [sources.<id>] overrides (and the
+    # default-enabled comet/debridmediamanager addons) are probed too —
+    # not just the hardcoded ids this used to list.
+    try:
+        stremio_sources = [s for s in load_sources(config) if isinstance(s, StremioSource)]
+    except SourceError as exc:
+        sys.stdout.write(f"\n  ✗ Source setup: {exc}\n")
+        return 0
     seen_stream_urls = set()
-    for source_id in config.enabled_sources:
-        if source_id in ("stremio", "mediafusion", "knightcrawler", "torrentio-selfhost"):
-            source_cfg = config.sources_config.get(source_id, {})
-            stream_url = source_cfg.get("stream_url")
-            if not stream_url:
-                if source_id == "mediafusion":
-                    stream_url = "https://mediafusion.elfhosted.com"
-                elif source_id == "knightcrawler":
-                    stream_url = "https://knightcrawler.ml"
-                elif source_id == "torrentio-selfhost":
-                    stream_url = "http://localhost:7000"
-                else:
-                    stream_url = config.stremio.stream_url
-            if stream_url not in seen_stream_urls:
-                seen_stream_urls.add(stream_url)
-                _check_reachable(
-                    f"Stream addon ({source_id})", f"{stream_url}/manifest.json", 8.0, proxy_url
-                )
+    for source in stremio_sources:
+        stream_url = source.stream_url
+        if stream_url not in seen_stream_urls:
+            seen_stream_urls.add(stream_url)
+            _check_reachable(
+                f"Stream addon ({source.id})", f"{stream_url}/manifest.json", 8.0, proxy_url
+            )
     return 0
 
 
@@ -177,7 +176,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.proxy:
         config.network.proxy_url = args.proxy
 
-    sources = load_sources(config)
+    try:
+        sources = load_sources(config)
+    except SourceError as exc:
+        # A config error (e.g. an adult source enabled without
+        # [adult] enabled = true) should be a one-line message, not a
+        # traceback.
+        sys.stderr.write(f"Error loading sources: {exc}\n")
+        return 1
     if not sources:
         sys.stderr.write("No sources enabled. Edit sources.enabled in your config file.\n")
         return 1

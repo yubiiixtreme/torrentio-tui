@@ -305,17 +305,48 @@ class HanimeSource(AdultSourceBase):
 
         links = []
         for src in data.get("sources", []):
+            stream_url = src.get("src", "")
+            if not stream_url:
+                continue
             quality = src.get("height", "auto")
             if quality != "auto":
                 quality = f"{quality}p"
             links.append(
                 StreamLink(
-                    url=src.get("src", ""),
+                    url=stream_url,
                     quality=quality,
                     headers={"Referer": "https://hanime.tv/"},
                 )
             )
         return links
+
+
+def _nhentai_year(upload_date: object) -> int | None:
+    """The NHentai API returns `upload_date` as a unix timestamp (int),
+    not a date string — handle both shapes."""
+    if isinstance(upload_date, (int, float)):
+        try:
+            import datetime
+
+            return datetime.datetime.fromtimestamp(upload_date, tz=datetime.timezone.utc).year
+        except (OverflowError, OSError, ValueError):
+            return None
+    if isinstance(upload_date, str) and len(upload_date) >= 4 and upload_date[:4].isdigit():
+        return int(upload_date[:4])
+    return None
+
+
+def _nhentai_cover(item: dict) -> str:
+    """Build a thumbnail URL from the real API fields (`images.thumbnail`
+    + `media_id`); the API has no `cover_image` field."""
+    images = item.get("images", {})
+    thumb = images.get("thumbnail", {}) if isinstance(images, dict) else {}
+    t = thumb.get("t", "j") if isinstance(thumb, dict) else "j"
+    ext = {"j": "jpg", "p": "png", "w": "webp"}.get(t, "jpg")
+    media_id = item.get("media_id", "")
+    if not media_id:
+        return ""
+    return f"https://t.nhentai.net/galleries/{media_id}/thumb.{ext}"
 
 
 class NHentaiSource(AdultSourceBase):
@@ -346,14 +377,19 @@ class NHentaiSource(AdultSourceBase):
 
         results = []
         for item in data.get("result", []):
+            if not isinstance(item, dict):
+                continue
+            title_dict = item.get("title", {})
+            if not isinstance(title_dict, dict):
+                title_dict = {}
             title = (
-                item.get("title", {}).get("english")
-                or item.get("title", {}).get("japanese")
-                or item.get("title", {}).get("pretty", "")
+                title_dict.get("english")
+                or title_dict.get("japanese")
+                or title_dict.get("pretty", "")
             )
-            cover = item.get("cover_image", "")
-            tags = [t.get("name", "") for t in item.get("tags", [])]
-            year = item.get("upload_date", "")[:4] if item.get("upload_date") else None
+            cover = _nhentai_cover(item)
+            tags = [t.get("name", "") for t in item.get("tags", []) if isinstance(t, dict)]
+            year = _nhentai_year(item.get("upload_date"))
 
             results.append(
                 SearchResult(
@@ -361,7 +397,7 @@ class NHentaiSource(AdultSourceBase):
                     title=title,
                     kind=MediaKind.ANIME,
                     source_id=self.id,
-                    year=int(year) if year and year.isdigit() else None,
+                    year=year,
                     poster_url=cover,
                     overview="",
                     genres=tuple(tags),
@@ -432,8 +468,16 @@ class Rule34Source(AdultSourceBase):
         except Exception as exc:
             raise SourceError(f"Rule34 search failed: {exc}") from exc
 
+        if isinstance(data, dict):
+            # Error payloads come back as a dict, not a list.
+            raise SourceError(f"Rule34 error: {data.get('error', data)}")
+        if not isinstance(data, list):
+            raise SourceError(f"Rule34 unexpected response: {type(data).__name__}")
+
         results = []
         for item in data:
+            if not isinstance(item, dict):
+                continue
             tags = item.get("tags", "").split(" ")
             preview = item.get("preview_url", "")
             file_url = item.get("file_url", "")
@@ -470,8 +514,12 @@ class Rule34Source(AdultSourceBase):
         except Exception:
             return []
 
+        if not isinstance(data, list):
+            return []
         links = []
         for item in data:
+            if not isinstance(item, dict):
+                continue
             file_url = item.get("file_url", "")
             if file_url:
                 links.append(

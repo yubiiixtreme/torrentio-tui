@@ -90,7 +90,12 @@ class MpvIPC:
     def _await_reply(self, request_id: int) -> dict:
         while True:
             line = self._read_line()
-            reply = json.loads(line)
+            try:
+                reply = json.loads(line)
+            except (ValueError, UnicodeDecodeError) as exc:
+                raise MpvIPCError(f"malformed mpv IPC reply: {exc}") from exc
+            if not isinstance(reply, dict):
+                raise MpvIPCError(f"malformed mpv IPC reply: {reply!r}")
             if reply.get("request_id") != request_id:
                 continue  # an unrelated event notification -- keep reading
             if reply.get("error") != "success":

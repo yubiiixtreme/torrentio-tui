@@ -195,10 +195,13 @@ class LanguageConfig:
         """Get human-readable names for subtitle languages."""
         names = []
         for code in self.subtitle_languages:
-            try:
-                lang = Language(code)
+            # subtitle_languages holds ISO-639-2/T codes ("eng"), which
+            # don't exist on the ISO-639-1 Language enum — look them up
+            # via SUBTITLE_LANGUAGE_CODES instead.
+            lang = SUBTITLE_LANGUAGE_CODES.get(code)
+            if lang is not None:
                 names.append(LANGUAGE_NAMES.get(lang, code))
-            except ValueError:
+            else:
                 names.append(code)
         return names
 

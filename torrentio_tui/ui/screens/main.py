@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 
@@ -261,7 +262,9 @@ class MainScreen(Screen):
             errors: list[str] = []
             for source in self.sources:
                 try:
-                    results.extend(source.search(query))
+                    # Blocking urllib I/O must not run on the event loop —
+                    # one slow addon would freeze the whole TUI.
+                    results.extend(await asyncio.to_thread(source.search, query))
                 except SourceError as exc:
                     errors.append(str(exc))
 
@@ -384,7 +387,7 @@ class MainScreen(Screen):
 
         episode: Episode
         if item.kind in (MediaKind.SERIES, MediaKind.ANIME):
-            episodes = source.get_episodes(item)
+            episodes = await asyncio.to_thread(source.get_episodes, item)
             picked = await self.app.push_screen_wait(EpisodeScreen(episodes))
             if picked is None:
                 return
@@ -393,7 +396,7 @@ class MainScreen(Screen):
             episode = Episode(id=item.id, title=item.title)
 
         try:
-            streams = source.get_streams(item, episode)
+            streams = await asyncio.to_thread(source.get_streams, item, episode)
         except SourceError as exc:
             self.app.notify(str(exc), severity="error", timeout=10)
             return
@@ -471,7 +474,7 @@ class MainScreen(Screen):
 
         episode: Episode
         if item.kind in (MediaKind.SERIES, MediaKind.ANIME):
-            episodes = source.get_episodes(item)
+            episodes = await asyncio.to_thread(source.get_episodes, item)
             picked = await self.app.push_screen_wait(EpisodeScreen(episodes))
             if picked is None:
                 return
@@ -480,7 +483,7 @@ class MainScreen(Screen):
             episode = Episode(id=item.id, title=item.title)
 
         try:
-            streams = source.get_streams(item, episode)
+            streams = await asyncio.to_thread(source.get_streams, item, episode)
         except SourceError as exc:
             self.app.notify(str(exc), severity="error", timeout=10)
             self.show_error_detail(str(exc))
@@ -517,7 +520,7 @@ class MainScreen(Screen):
         )
         episode = Episode(id=hist_item.item_id, title=entry.title)
         try:
-            streams = source.get_streams(result, episode)
+            streams = await asyncio.to_thread(source.get_streams, result, episode)
         except SourceError as exc:
             self.app.notify(str(exc), severity="error", timeout=10)
             return
@@ -561,9 +564,9 @@ class MainScreen(Screen):
     def _play_blocking(self, stream, item: SearchResult, resume_seconds: float) -> Exception | None:
         from textual.app import SuspendNotSupported
 
-        player = get_player(self.config.player.backend, hwdec=self.config.player.hwdec)
-
-        # Textual's App.suspend() only resumes/refreshes the terminal driver
+        player = get_player(
+            self.config.player.backend, hwdec=self.config.player.hwdec
+        )  # Textual's App.suspend() only resumes/refreshes the terminal driver
         # if the code inside the `with` block returns *normally* — it has no
         # try/finally around its internal yield. Any exception raised by
         # player.play() (TorrentStreamError, a missing player binary, or
@@ -583,9 +586,18 @@ class MainScreen(Screen):
         try:
             with self.app.suspend():
                 try:
-                    player.play(stream, title=item.title, resume_seconds=resume_seconds)
+                    returncode = player.play(
+                        stream, title=item.title, resume_seconds=resume_seconds
+                    )
                 except Exception as exc:  # noqa: BLE001 -- must never escape suspend()
                     error = exc
+                else:
+                    if returncode != 0:
+                        # A crashed streamer / player exit must surface as
+                        # an error, not get recorded as "watched".
+                        error = RuntimeError(
+                            f"Player '{self.config.player.backend}' exited with code {returncode}"
+                        )
         except SuspendNotSupported as exc:
             error = exc
         return error
@@ -595,4 +607,8 @@ class MainScreen(Screen):
 
         screen = PlaybackHudScreen(stream, title, self.config.player.hwdec, resume_seconds)
         await self.app.push_screen_wait(screen)
-        return screen.spawn_error
+        if screen.spawn_error is not None:
+            return screen.spawn_error
+        if not screen.user_stopped and screen.exit_code not in (None, 0):
+            return RuntimeError(f"mpv exited with code {screen.exit_code}")
+        return None

@@ -134,14 +134,26 @@ class QualityScreen(ModalScreen[StreamLink | None]):
             self.dismiss(item.stream)
 
     def action_subtitles(self) -> None:
-        """Toggle subtitle selection panel."""
-        self.show_subtitles = not self.show_subtitles
-        if self.show_subtitles:
-            self.app.push_screen(SubtitleScreen(self.lang_config))
+        """Subtitle preference picker — the choice is moved to the top of
+        the preferred-languages list for this session."""
+        self.app.push_screen(SubtitleScreen(self.lang_config), callback=self._on_subtitle_picked)
+
+    def _on_subtitle_picked(self, code: str | None) -> None:
+        if not code:
+            return
+        prefs = [c for c in self.lang_config.subtitle_languages if c != code]
+        self.lang_config.subtitle_languages = [code, *prefs]
+        self.app.notify(f"Preferred subtitles: {code}", timeout=3)
 
     def action_language(self) -> None:
-        """Open language selection."""
-        self.app.push_screen(LanguageScreen(self.lang_config))
+        """UI language picker — applies to this session."""
+        self.app.push_screen(LanguageScreen(self.lang_config), callback=self._on_language_picked)
+
+    def _on_language_picked(self, code: str | None) -> None:
+        if not code:
+            return
+        self.lang_config.ui_language = code
+        self.app.notify(f"UI language: {code}", timeout=3)
 
     def action_cancel(self) -> None:
         self.dismiss(None)
@@ -164,18 +176,20 @@ class SubtitleScreen(ModalScreen[str | None]):
                 id="quality-title",
             )
             items = []
-            for code in self.lang_config.subtitle_languages:
+            for index, code in enumerate(self.lang_config.subtitle_languages):
                 lang_name = self._get_lang_name(code)
-                items.append(
-                    SubtitlePicked(code, lang_name, code in self.lang_config.subtitle_languages)
-                )
+                # Only the top preference gets the default check — the old
+                # code compared each code against the very list it was
+                # iterating, so *every* row showed ✓.
+                items.append(SubtitlePicked(code, lang_name, is_selected=index == 0))
             yield VimListView(*items)
         yield Footer()
 
     def _get_lang_name(self, code: str) -> str:
-        for lang in SUBTITLE_LANGUAGE_CODES:
-            if lang.value == code:
-                return lang.name.replace("_", " ").title()
+        # SUBTITLE_LANGUAGE_CODES maps ISO-639-2/T code -> Language enum.
+        lang = SUBTITLE_LANGUAGE_CODES.get(code)
+        if lang is not None:
+            return lang.name.replace("_", " ").title()
         return code.upper()
 
     def on_mount(self) -> None:

@@ -9,7 +9,12 @@ Add your own source here once it's implemented:
 from __future__ import annotations
 
 from torrentio_tui.config import Config
-from torrentio_tui.sources.adult import HanimeSource, StremioAdultSource
+from torrentio_tui.sources.adult import (
+    HanimeSource,
+    NHentaiSource,
+    Rule34Source,
+    StremioAdultSource,
+)
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.base import Source
 from torrentio_tui.sources.free import (
@@ -48,6 +53,8 @@ _AVAILABLE: dict[str, type[Source]] = {
     "subsplease": SubsPleaseSource,
     "stremio-adult": StremioAdultSource,
     "hanime": HanimeSource,
+    "nhentai": NHentaiSource,
+    "rule34": Rule34Source,
 }
 
 
@@ -57,8 +64,12 @@ def load_sources(config: Config) -> list[Source]:
         cls = _AVAILABLE.get(source_id)
         if cls is None:
             continue
-        if cls is StremioSource:
-            # Get source-specific config
+        if issubclass(cls, StremioSource):
+            # Every Stremio-protocol addon (stremio, mediafusion,
+            # knightcrawler, torrentio-selfhost, comet, debridmediamanager,
+            # ...) shares this branch so per-source [sources.<id>] config
+            # and the global proxy are honoured instead of silently
+            # falling back to hardcoded defaults.
             source_cfg = config.sources_config.get(source_id, {})
             cinemeta_url = source_cfg.get("cinemeta_url")
             stream_url = source_cfg.get("stream_url")
@@ -79,20 +90,6 @@ def load_sources(config: Config) -> list[Source]:
                     stream_url = "https://comet.strem.io"
                 elif source_id == "debridmediamanager":
                     stream_url = "https://debridmediamanager.com"
-                elif source_id == "yts":
-                    stream_url = "https://yts.mx"
-                elif source_id == "eztv":
-                    stream_url = "https://eztv.re"
-                elif source_id == "rarbg":
-                    stream_url = "https://rarbg.to"
-                elif source_id == "1337x":
-                    stream_url = "https://1337x.to"
-                elif source_id == "horriblesubs":
-                    stream_url = "https://horriblesubs.info"
-                elif source_id == "subscene":
-                    stream_url = "https://subscene.com"
-                elif source_id == "opensubtitles":
-                    stream_url = "https://opensubtitles.org"
                 else:
                     stream_url = config.stremio.stream_url
 
@@ -116,7 +113,7 @@ def load_sources(config: Config) -> list[Source]:
             anilist_cfg = config.sources_config.get("anilist", {})
             include_adult = anilist_cfg.get("include_adult", False)
             sources.append(cls(include_adult=include_adult))
-        elif cls in (StremioAdultSource, HanimeSource):
+        elif cls in (StremioAdultSource, HanimeSource, NHentaiSource, Rule34Source):
             # Adult sources need the full config for age gating
             sources.append(cls(config=config))
         else:
