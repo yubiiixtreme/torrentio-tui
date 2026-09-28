@@ -91,11 +91,9 @@ theme = "torrentio"
 #   zero results. "aiostreams" = super-addon merging 80+ community
 #   addons (paste your configured URL). "stremthru" = your debrid-store
 #   catalog (needs store token in the configured URL). "jackettio" =
-#   Jackett trackers via debrid. "nuviostreams" = direct HTTP streams,
-#   no debrid needed. "deflix"/"stremify"/"torrentio-selfhost" =
+#   Jackett trackers via debrid. "deflix"/"stremify"/"torrentio-selfhost" =
 #   self-hosted addons (run locally, point stream_url at them).
 #   "yts" = YTS/YIFY movie torrents (official API, magnets).
-#   "rarbg" = RARBG index via torrentapi.org (magnets).
 #   "knightcrawler" = deprecated (project ceased 2024, public instance
 #   retired) — kept for old configs, not recommended.
 # [catalogue]  metadata companions (free, keyless). "tvmaze" = series
@@ -133,7 +131,7 @@ timeout_seconds = 15.0
 
 [sources.comet]
 cinemeta_url = "https://v3-cinemeta.strem.io"
-stream_url = "https://comet.strem.io"
+stream_url = "https://comet.elfhosted.com"
 timeout_seconds = 15.0
 
 # --- More stream addons (opt-in: add the id to [sources].enabled) ---
@@ -152,11 +150,6 @@ timeout_seconds = 15.0
 # [sources.jackettio]
 # cinemeta_url = "https://v3-cinemeta.strem.io"
 # stream_url = "https://jackettio.elfhosted.com"
-# timeout_seconds = 15.0
-#
-# [sources.nuviostreams]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://nuviostreams.hayd.uk"
 # timeout_seconds = 15.0
 #
 # [sources.deflix]
@@ -185,11 +178,7 @@ timeout_seconds = 15.0
 #
 # --- Torrent-index sources (real APIs, magnets play via the torrent bridge) ---
 # [sources.yts]
-# api_url = "https://yts.mx/api/v2"
-# timeout_seconds = 15.0
-#
-# [sources.rarbg]
-# api_url = "https://torrentapi.org/pubapi_v2.php"
+# api_url = "https://movies-api.accel.li/api/v2"
 # timeout_seconds = 15.0
 #
 # --- Catalogue companions (free, keyless; playback bridges through your

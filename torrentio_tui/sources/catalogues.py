@@ -36,23 +36,34 @@ def _clean_html(text: str | None, limit: int = 300) -> str:
     return plain[:limit] if len(plain) > limit else plain
 
 
-def _get_json(url: str, timeout: float, proxy_url: str | None):
-    headers = {"User-Agent": _USER_AGENT, "Accept": "application/json"}
-    try:
-        import json
+def _get_json(
+    url: str,
+    timeout: float,
+    proxy_url: str | None,
+    accept: str = "application/json",
+):
+    headers = {"User-Agent": _USER_AGENT, "Accept": accept}
+    last_exc: Exception | None = None
+    for attempt in range(2):  # one retry on transient 5xx
+        try:
+            import json
 
-        with open_url(url, timeout, proxy_url, headers) as resp:
-            return json.loads(resp.read().decode("utf-8", errors="replace"))
-    except ProxyError as exc:
-        raise SourceError(str(exc)) from exc
-    except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise SourceError(f"Request failed (HTTP {exc.code}): {url}") from exc
-    except urllib.error.URLError as exc:
-        raise SourceError(f"Network error for {url}: {exc.reason}") from exc
-    except (ValueError, TimeoutError) as exc:
-        raise SourceError(f"Bad response from {url}: {exc}") from exc
+            with open_url(url, timeout, proxy_url, headers) as resp:
+                return json.loads(resp.read().decode("utf-8", errors="replace"))
+        except ProxyError as exc:
+            raise SourceError(str(exc)) from exc
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            if exc.code not in (500, 502, 503, 504) or attempt == 1:
+                raise SourceError(f"Request failed (HTTP {exc.code}): {url}") from exc
+            last_exc = exc
+            time.sleep(1.0)
+        except urllib.error.URLError as exc:
+            raise SourceError(f"Network error for {url}: {exc.reason}") from exc
+        except (ValueError, TimeoutError) as exc:
+            raise SourceError(f"Bad response from {url}: {exc}") from exc
+    raise SourceError(f"Request failed after retry: {url}") from last_exc
 
 
 def _parse_year(text: str | int | None) -> int | None:
@@ -70,6 +81,8 @@ class BridgedCatalogueSource(Source):
 
     category = "catalogue"
     supports_live = False
+    #: Overridden by APIs that require a vendor content type (Kitsu/JSON:API).
+    api_accept = "application/json"
 
     def __init__(
         self,
@@ -180,7 +193,12 @@ class TVMazeSource(BridgedCatalogueSource):
 
     def _show(self, show_id: int) -> dict:
         if show_id not in self._shows:
-            data = _get_json(f"{self.api_url}/shows/{show_id}", self.timeout, self.proxy_url)
+            data = _get_json(
+                f"{self.api_url}/shows/{show_id}/episodes",
+                self.timeout,
+                self.proxy_url,
+                self.api_accept,
+            )
             if not isinstance(data, dict):
                 raise SourceError(f"TVMaze has no show {show_id}")
             self._shows[show_id] = data
@@ -216,6 +234,7 @@ class TVMazeSource(BridgedCatalogueSource):
             f"{self.api_url}/search/shows?q={urllib.parse.quote(query)}",
             self.timeout,
             self.proxy_url,
+            self.api_accept,
         )
         if not isinstance(data, list):
             return []
@@ -304,7 +323,7 @@ class JikanSource(BridgedCatalogueSource):
 
     def _api(self, path: str) -> dict | list | None:
         self._throttle()
-        return _get_json(f"{self.api_url}{path}", self.timeout, self.proxy_url)
+        return _get_json(f"{self.api_url}{path}", self.timeout, self.proxy_url, self.api_accept)
 
     @staticmethod
     def _to_result(anime: dict, source_id: str) -> SearchResult | None:
@@ -394,6 +413,8 @@ class KitsuSource(BridgedCatalogueSource):
     id = "kitsu"
     name = "Kitsu (Anime Catalogue)"
 
+    api_accept = "application/vnd.api+json"
+
     API = "https://kitsu.io/api/edge"
 
     def __init__(self, api_url: str | None = None, **kwargs) -> None:
@@ -436,6 +457,7 @@ class KitsuSource(BridgedCatalogueSource):
             f"{self.api_url}/anime?filter[text]={urllib.parse.quote(query)}&page[limit]=10",
             self.timeout,
             self.proxy_url,
+            self.api_accept,
         )
         if not isinstance(data, dict):
             return []
@@ -461,6 +483,7 @@ class KitsuSource(BridgedCatalogueSource):
                 f"?page[limit]=20&page[offset]={offset}&sort=number",
                 self.timeout,
                 self.proxy_url,
+                self.api_accept,
             )
             rows = data.get("data") if isinstance(data, dict) else None
             if not rows:

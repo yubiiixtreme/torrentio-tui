@@ -297,44 +297,44 @@ def test_yts_search_and_magnet_streams(monkeypatch):
     assert "120" in link.quality
 
 
-# -- RARBG --------------------------------------------------------------------
+def test_yts_uses_current_api_base():
+    from torrentio_tui.sources.torrentapi import YTSSource
+
+    # yts.mx is dead; the API itself announced the move to accel.li.
+    assert YTSSource.API == "https://movies-api.accel.li/api/v2"
 
 
-def _rarbg_router(url: str):
-    if "get_token" in url:
-        return {"token": "tok123"}
-    return {
-        "torrent_results": [
-            {
-                "title": "Dune.2021.1080p.BluRay",
-                "category": "Movies/X264/1080",
-                "download": "magnet:?xt=urn:btih:DEADBEEF",
-                "seeders": 42,
-                "size": "8.1 GB",
-            }
-        ]
-    }
+def test_kitsu_sends_json_api_accept_header(monkeypatch):
+    from torrentio_tui.sources.catalogues import _get_json
+
+    captured: dict = {}
+
+    class _Resp:
+        def read(self):
+            return b"{}"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def _opener(request, timeout=None):
+        captured["accept"] = request.get_header("Accept")
+        return _Resp()
+
+    monkeypatch.setattr(urllib.request, "urlopen", _opener)
+    _get_json("https://kitsu.io/api/edge/x", 5.0, None, "application/vnd.api+json")
+    assert captured["accept"] == "application/vnd.api+json"
 
 
-def test_rarbg_search_episodes_streams(monkeypatch):
-    import time
+def test_comet_default_url_resolves():
+    from torrentio_tui.sources.free import CometSource
 
-    from torrentio_tui.sources.torrentapi import RARBGSource
+    assert CometSource().stream_url == "https://comet.elfhosted.com"
 
-    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen(_rarbg_router))
-    source = RARBGSource()
-    source._last_call_at = time.monotonic()  # skip the 2s throttle in tests
-    (result,) = source.search("dune")
-    assert result.kind == MediaKind.MOVIE
-    assert result.year == 2021
 
-    source._last_call_at = 0.0
-    (episode,) = source.get_episodes(result)
-    assert episode.id == "magnet:?xt=urn:btih:DEADBEEF"
-
-    (link,) = source.get_streams(result, episode)
-    assert link.url.startswith("magnet:")
-    assert "1080p" in link.quality
+# -- RARBG removed: torrentapi.org is dead (HTTP 400 on token) ----------
 
 
 # -- subtitle providers -------------------------------------------------------
@@ -473,11 +473,9 @@ def test_new_sources_registered_and_dead_ones_gone():
         "aiostreams",
         "stremthru",
         "jackettio",
-        "nuviostreams",
         "deflix",
         "stremify",
         "yts",
-        "rarbg",
         "tvmaze",
         "jikan",
         "kitsu",
@@ -490,6 +488,8 @@ def test_new_sources_registered_and_dead_ones_gone():
         "horriblesubs",
         "subscene",
         "opensubtitles",
+        "rarbg",  # torrentapi.org dead (HTTP 400 on token)
+        "nuviostreams",  # public instance broken (SPA at /manifest.json)
     ):
         assert removed not in ids
 
@@ -506,9 +506,9 @@ def test_every_source_has_a_known_category():
 def test_catalogue_and_torrent_sources_load_with_proxy():
     cfg = Config()
     cfg.network.proxy_url = "http://127.0.0.1:8080"
-    cfg.enabled_sources = ["tvmaze", "jikan", "kitsu", "yts", "rarbg"]
+    cfg.enabled_sources = ["tvmaze", "jikan", "kitsu", "yts"]
     by_id = {s.id: s for s in registry.load_sources(cfg)}
-    assert set(by_id) == {"tvmaze", "jikan", "kitsu", "yts", "rarbg"}
+    assert set(by_id) == {"tvmaze", "jikan", "kitsu", "yts"}
     for source in by_id.values():
         assert source.proxy_url == "http://127.0.0.1:8080"
 
@@ -549,3 +549,29 @@ def test_list_sources_groups_by_category(capsys):
     assert "[Streams]" in out
     assert "aiostreams" in out
     assert "[Adult (opt-in)]" in out
+
+
+# -- multilingual playback ----------------------------------------------------
+
+
+def test_mpv_passes_preferred_languages(monkeypatch, tmp_path):
+    import subprocess
+
+    import torrentio_tui.player.mpv as mpv_mod
+    from torrentio_tui.models import StreamLink
+
+    # Isolate from any real user config so defaults apply.
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    captured: dict = {}
+
+    def fake_run(cmd, **_kwargs):
+        captured["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0)
+
+    monkeypatch.setattr(mpv_mod, "run_supervised", fake_run)
+    mpv_mod.MpvPlayer().play(StreamLink(url="https://example.com/a.mp4", quality="1080p"), "Title")
+    # Defaults: subtitle_languages eng/spa/fre, audio eng/jpn/kor.
+    slang = next(c for c in captured["cmd"] if c.startswith("--slang="))
+    alang = next(c for c in captured["cmd"] if c.startswith("--alang="))
+    assert slang == "--slang=en,es,fr"
+    assert alang == "--alang=en,ja,ko"

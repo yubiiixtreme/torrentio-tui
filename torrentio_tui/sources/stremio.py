@@ -80,19 +80,21 @@ def _get_json(url: str, timeout: float, proxy_url: str | None = None) -> dict:
     except ProxyError as exc:
         raise SourceError(str(exc)) from exc
     except urllib.error.HTTPError as exc:
-        if exc.code == 403 and "torrentio" in url.lower():
+        if exc.code == 403:
             hint = (
                 "Already routed through your configured proxy — try a different "
-                "one, or self-host Torrentio"
+                "one, or self-host the addon"
                 if proxy_url
                 else "Try setting network.proxy_url (e.g. Cloudflare WARP's local "
-                "proxy mode) in config.toml, self-host Torrentio, or point "
-                "stream_url at a compatible addon (MediaFusion/Knightcrawler)"
+                "proxy mode), paste your *configured* addon URL (with debrid "
+                "key) into [sources.*] stream_url, or self-host the addon"
             )
-            raise SourceError(
-                f"Torrentio blocked this request (HTTP 403 — Cloudflare often "
-                f"blocks datacenter/VPN IPs). {hint}."
-            ) from exc
+            blocked = (
+                "Torrentio Cloudflare-blocks some datacenter/VPN IPs"
+                if "torrentio" in url.lower()
+                else "This addon refused the request, often a datacenter/VPN IP block"
+            )
+            raise SourceError(f"{blocked} (HTTP 403). {hint}.") from exc
         raise SourceError(f"Request failed ({exc.code}): {url}") from exc
     except urllib.error.URLError as exc:
         raise SourceError(f"Network error for {url}: {exc.reason}") from exc

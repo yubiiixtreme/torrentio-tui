@@ -5,7 +5,7 @@ from pathlib import Path
 from textual.app import App
 from textual.theme import Theme
 
-from torrentio_tui.config import Config
+from torrentio_tui.config import Config, config_file
 from torrentio_tui.sources.base import Source
 from torrentio_tui.themes import load_custom_themes
 from torrentio_tui.ui.screens.main import MainScreen
@@ -139,7 +139,22 @@ class TorrentioTuiApp(App):
     def on_mount(self) -> None:
         self.sync_custom_themes()
         wanted = self.config.ui.theme
-        self.theme = wanted if wanted in self.available_themes else "torrentio"
+        if wanted in self.available_themes:
+            self.theme = wanted
+        else:
+            # Don't silently swap: an unknown name in config.toml is a
+            # typo or a theme that no longer exists, and swapping it for
+            # "torrentio" with no word looks exactly like the theme
+            # failing to persist. Say so, once, and leave the config
+            # alone so the user can see what they actually asked for.
+            self.theme = "torrentio"
+            self.notify(
+                f"Unknown theme {wanted!r} in config — using torrentio. "
+                f"Press t to pick one, or edit [ui] theme in "
+                f"{config_file()}.",
+                severity="warning",
+                timeout=8,
+            )
         self.push_screen(MainScreen(self.sources, self.config))
 
     def watch_theme(self, theme: str) -> None:

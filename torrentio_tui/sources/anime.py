@@ -293,8 +293,8 @@ class NyaaSource(Source):
 
             title = title_elem.text or ""
             link = link_elem.text or ""
-            desc = desc_elem.text or ""
-            pub_date = pub_date_elem.text or ""
+            desc = (desc_elem.text or "") if desc_elem is not None else ""
+            pub_date = (pub_date_elem.text or "") if pub_date_elem is not None else ""
 
             # Extract size, seeds, peers from description
             size = ""
@@ -400,8 +400,8 @@ class SubsPleaseSource(Source):
 
             title = title_elem.text or ""
             link = link_elem.text or ""
-            desc = desc_elem.text or ""
-            pub_date = pub_date_elem.text or ""
+            desc = (desc_elem.text or "") if desc_elem is not None else ""
+            pub_date = (pub_date_elem.text or "") if pub_date_elem is not None else ""
 
             # Filter by query
             if query not in title.lower():

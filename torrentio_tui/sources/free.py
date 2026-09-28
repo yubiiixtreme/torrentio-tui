@@ -9,8 +9,8 @@ URL from the addon's own `/configure` page into
 `[sources.<id>] stream_url` for the full experience (debrid keys,
 private trackers, higher rate limits).
 
-Verified reachable 2026-09: AIOStreams, StremThru, Jackettio and
-NuvioStreams public instances; Comet and MediaFusion as before.
+Verified reachable 2026-09: AIOStreams, StremThru and Jackettio
+public instances; Comet and MediaFusion as before.
 Knightcrawler's public instance was retired by ElfHosted (project
 ceased development in 2024) — the id stays registered for existing
 configs but is no longer recommended.
@@ -28,7 +28,8 @@ class CometSource(StremioSource):
     name = "Comet (Free Addon)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://comet.strem.io")
+        # Public instance moved from comet.strem.io (dead) to ElfHosted.
+        kwargs.setdefault("stream_url", "https://comet.elfhosted.com")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
         kwargs.setdefault("display_name", "Comet")
         super().__init__(**kwargs)
@@ -75,20 +76,6 @@ class JackettioSource(StremioSource):
         kwargs.setdefault("stream_url", "https://jackettio.elfhosted.com")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
         kwargs.setdefault("display_name", "Jackettio")
-        super().__init__(**kwargs)
-
-
-class NuvioStreamsSource(StremioSource):
-    """NuvioStreams — direct HTTP streams (no P2P, no debrid needed),
-    a good fallback for titles missing from debrid caches."""
-
-    id = "nuviostreams"
-    name = "NuvioStreams (Direct HTTP)"
-
-    def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://nuviostreams.hayd.uk")
-        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "NuvioStreams")
         super().__init__(**kwargs)
 
 

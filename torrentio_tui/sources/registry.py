@@ -26,14 +26,13 @@ from torrentio_tui.sources.free import (
     CometSource,
     DeflixSource,
     JackettioSource,
-    NuvioStreamsSource,
     StremifySource,
     StremThruStoreSource,
 )
 from torrentio_tui.sources.iptv import IPTVSource
 from torrentio_tui.sources.local import LocalSource
 from torrentio_tui.sources.stremio import StremioSource
-from torrentio_tui.sources.torrentapi import RARBGSource, YTSSource
+from torrentio_tui.sources.torrentapi import YTSSource
 
 #: Friendly names for ids that share one class (plain `StremioSource`
 #: instances get their real name only after construction with
@@ -75,11 +74,9 @@ _AVAILABLE: dict[str, type[Source]] = {
     "aiostreams": AIOStreamsSource,
     "stremthru": StremThruStoreSource,
     "jackettio": JackettioSource,
-    "nuviostreams": NuvioStreamsSource,
     "deflix": DeflixSource,
     "stremify": StremifySource,
     "yts": YTSSource,
-    "rarbg": RARBGSource,
     "tvmaze": TVMazeSource,
     "jikan": JikanSource,
     "kitsu": KitsuSource,
@@ -107,6 +104,7 @@ def _stremio_kwargs(config: Config, source_id: str) -> dict:
             "mediafusion": "https://mediafusion.elfhosted.com",
             "knightcrawler": "https://knightcrawler.elfhosted.com",
             "torrentio-selfhost": "http://localhost:7000",
+            "comet": "https://comet.elfhosted.com",
         }.get(source_id, config.stremio.stream_url)
     return {
         "cinemeta_url": cinemeta_url,
@@ -126,7 +124,7 @@ def load_sources(config: Config) -> list[Source]:
         if issubclass(cls, StremioSource):
             # Every Stremio-protocol addon (stremio, mediafusion,
             # knightcrawler, torrentio-selfhost, comet, aiostreams,
-            # stremthru, jackettio, nuviostreams, deflix, stremify, ...)
+            # stremthru, jackettio, deflix, stremify, ...)
             # shares this branch so per-source [sources.<id>] config
             # and the global proxy are honoured instead of silently
             # falling back to hardcoded defaults.
@@ -143,7 +141,7 @@ def load_sources(config: Config) -> list[Source]:
                     source_id=source_id,
                 )
             )
-        elif issubclass(cls, (YTSSource, RARBGSource)):
+        elif issubclass(cls, YTSSource):
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(

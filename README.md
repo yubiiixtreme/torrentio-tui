@@ -37,7 +37,7 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
 
 - 🔍 **Search multiple sources at once** — every enabled provider
   (Torrentio, MediaFusion, Comet, AIOStreams, StremThru, Jackettio,
-  NuvioStreams, YTS, RARBG, TVMaze, Jikan, Kitsu, your own self-hosted
+  YTS, TVMaze, Jikan, Kitsu, your own self-hosted
   instance, ...) is queried and results are merged, each tagged with a
   colored source badge, so one provider being down or blocked never
   leaves you with zero results. Sources are grouped into categories
@@ -281,7 +281,7 @@ timeout_seconds = 15.0
 
 [sources.comet]
 cinemeta_url = "https://v3-cinemeta.strem.io"
-stream_url = "https://comet.strem.io"
+stream_url = "https://comet.elfhosted.com"
 timeout_seconds = 15.0
 
 [subtitles]
@@ -411,10 +411,10 @@ torrentio_tui/
     base.py        # Source ABC — the plugin contract (search / get_episodes / get_streams)
     stremio.py     # Cinemeta catalogue + Torrentio-style streams (movie/series/anime);
                     # also backs mediafusion/comet/aiostreams/stremthru/jackettio/
-                    # nuviostreams/deflix/stremify/torrentio-selfhost (different stream_url)
+                    # deflix/stremify/torrentio-selfhost (different stream_url)
     free.py        # More Stremio-protocol addons (Comet, AIOStreams, StremThru,
-                    # Jackettio, NuvioStreams, Deflix, Stremify)
-    torrentapi.py  # Real torrent-index APIs: YTS movies, RARBG (torrentapi.org)
+                    # Jackettio, Deflix, Stremify)
+    torrentapi.py  # Real torrent-index API: YTS movies (magnets)
     catalogues.py  # Metadata companions (TVMaze, Jikan, Kitsu) with playback
                     # bridged through your stream addon
     iptv.py        # Live TV from an M3U playlist
