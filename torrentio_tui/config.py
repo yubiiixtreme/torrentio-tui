@@ -82,31 +82,34 @@ hud = false
 theme = "torrentio"
 
 [sources]
-# Order controls search fan-out / result ranking.
-# "stremio" = Cinemeta catalogue (movie/series/anime search) + Torrentio-style
-# streams, playable in mpv/vlc on the user's own machine.
-# "local" = local video files (indexes ~/Videos by default).
-# "mediafusion" = MediaFusion addon (https://mediafusion.elfhosted.com)
-# "knightcrawler" = Knightcrawler addon (https://knightcrawler.ml)
-# "torrentio-selfhost" = Self-hosted Torrentio instance
-# "iptv" = Live TV channels from M3U playlist
-# "anilist" = Anime metadata from AniList
-# "nyaa" = Anime torrents from Nyaa.si
-# "subsplease" = Latest anime from SubsPlease
-# "stremio-adult" = Adult content via Stremio (requires [adult] enabled)
-# "hanime" = Hentai anime from Hanime.tv (requires [adult] enabled)
-# "nhentai" = Hentai manga/doujinshi galleries (requires [adult] enabled)
-# "rule34" = Rule34.xxx artwork (requires [adult] enabled)
-# "debridmediamanager" = Debrid Media Manager (https://debridmediamanager.com)
-# "comet" = Comet addon (https://comet.strem.io)
-# "yts" = YTS movies (https://yts.mx)
-# "eztv" = EZTV shows (https://eztv.re)
-# "rarbg" = RARBG torrents (https://rarbg.to)
-# "1337x" = 1337x torrents (https://1337x.to)
-# "horriblesubs" = HorribleSubs legacy (backup)
-# "subscene" = Subscene subtitles
-# "opensubtitles" = OpenSubtitles.org subtitles
-enabled = ["stremio", "mediafusion", "comet", "debridmediamanager", "local"]
+# Order controls search fan-out / result ranking. Sources are grouped by
+# category (`torrentio-tui --list-sources` shows the same grouping):
+#
+# [streams]  playable movies/series. "stremio" = Cinemeta catalogue +
+#   Torrentio-style streams. "mediafusion"/"comet" = alternative addons
+#   enabled by default so one being blocked/down never leaves you with
+#   zero results. "aiostreams" = super-addon merging 80+ community
+#   addons (paste your configured URL). "stremthru" = your debrid-store
+#   catalog (needs store token in the configured URL). "jackettio" =
+#   Jackett trackers via debrid. "nuviostreams" = direct HTTP streams,
+#   no debrid needed. "deflix"/"stremify"/"torrentio-selfhost" =
+#   self-hosted addons (run locally, point stream_url at them).
+#   "yts" = YTS/YIFY movie torrents (official API, magnets).
+#   "rarbg" = RARBG index via torrentapi.org (magnets).
+#   "knightcrawler" = deprecated (project ceased 2024, public instance
+#   retired) — kept for old configs, not recommended.
+# [catalogue]  metadata companions (free, keyless). "tvmaze" = series
+#   air-dates/episodes (streams bridged via IMDb id). "jikan" =
+#   MyAnimeList anime data. "kitsu" = Kitsu anime data. "anilist" =
+#   AniList anime data. Catalogue results resolve playback through your
+#   configured stream addon by title/IMDb match.
+# [anime]  "nyaa" = anime torrents from Nyaa.si. "subsplease" = latest
+#   anime releases from SubsPlease.
+# [live]  "iptv" = Live TV channels from an M3U playlist.
+# [local]  "local" = your own video files (indexes ~/Videos by default).
+# [adult]  opt-in, requires [adult] enabled = true below:
+#   "stremio-adult", "hanime", "nhentai", "rule34".
+enabled = ["stremio", "mediafusion", "comet", "local"]
 
 [sources.stremio]
 # Metadata catalogue (search + episodes). Default is the public Cinemeta.
@@ -133,14 +136,46 @@ cinemeta_url = "https://v3-cinemeta.strem.io"
 stream_url = "https://comet.strem.io"
 timeout_seconds = 15.0
 
-[sources.debridmediamanager]
-cinemeta_url = "https://v3-cinemeta.strem.io"
-stream_url = "https://debridmediamanager.com"
-timeout_seconds = 15.0
-
-# [sources.knightcrawler]
+# --- More stream addons (opt-in: add the id to [sources].enabled) ---
+# [sources.aiostreams]
+# # Paste your *configured* URL from https://aiostreams.elfhosted.com/stremio/configure
+# # (embeds your addons + debrid keys); the bare public instance is limited.
+# stream_url = "https://aiostreams.elfhosted.com"
+# timeout_seconds = 15.0
+#
+# [sources.stremthru]
+# # Paste your configured Store URL from https://stremthru.elfhosted.com/stremio
+# # (embeds your debrid-store token).
+# stream_url = "https://stremthru.elfhosted.com/stremio/store"
+# timeout_seconds = 15.0
+#
+# [sources.jackettio]
 # cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://knightcrawler.ml"
+# stream_url = "https://jackettio.elfhosted.com"
+# timeout_seconds = 15.0
+#
+# [sources.nuviostreams]
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://nuviostreams.hayd.uk"
+# timeout_seconds = 15.0
+#
+# [sources.deflix]
+# # Self-hosted: run deflix-stremio, open http://localhost:8080/configure.
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:8080"
+# timeout_seconds = 15.0
+#
+# [sources.stremify]
+# # Self-hosted: run stremify, point at your instance.
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "http://localhost:3000"
+# timeout_seconds = 15.0
+#
+# [sources.knightcrawler]
+# # DEPRECATED: project ceased development in 2024 and the public instance
+# # was retired. Kept so old configs still load; prefer comet/mediafusion.
+# cinemeta_url = "https://v3-cinemeta.strem.io"
+# stream_url = "https://knightcrawler.elfhosted.com"
 # timeout_seconds = 15.0
 #
 # [sources.torrentio-selfhost]
@@ -148,45 +183,31 @@ timeout_seconds = 15.0
 # stream_url = "http://localhost:7000"
 # timeout_seconds = 15.0
 #
-# [sources.debridmediamanager]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://debridmediamanager.com"
-# timeout_seconds = 15.0
-#
+# --- Torrent-index sources (real APIs, magnets play via the torrent bridge) ---
 # [sources.yts]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://yts.mx"
-# timeout_seconds = 15.0
-#
-# [sources.eztv]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://eztv.re"
+# api_url = "https://yts.mx/api/v2"
 # timeout_seconds = 15.0
 #
 # [sources.rarbg]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://rarbg.to"
+# api_url = "https://torrentapi.org/pubapi_v2.php"
 # timeout_seconds = 15.0
 #
-# [sources.1337x]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://1337x.to"
-# timeout_seconds = 15.0
+# --- Catalogue companions (free, keyless; playback bridges through your
+#     configured stream addon, so a debrid URL helps these too) ---
+# [sources.tvmaze]
+# # api_url = "https://api.tvmaze.com"
+# # stream_url = "https://torrentio.strem.fun"  # addon used for playback
+# # timeout_seconds = 15.0
 #
-# [sources.horriblesubs]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://horriblesubs.info"
-# timeout_seconds = 15.0
+# [sources.jikan]
+# # api_url = "https://api.jikan.moe/v4"
+# # stream_url = "https://torrentio.strem.fun"
+# # timeout_seconds = 15.0
 #
-# [sources.subscene]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://subscene.com"
-# timeout_seconds = 15.0
-#
-# [sources.opensubtitles]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://opensubtitles.org"
-# timeout_seconds = 15.0
+# [sources.kitsu]
+# # api_url = "https://kitsu.io/api/edge"
+# # stream_url = "https://torrentio.strem.fun"
+# # timeout_seconds = 15.0
 
 # --- IPTV / Live TV ---
 # [sources.iptv]
@@ -221,6 +242,23 @@ timeout_seconds = 15.0
 # socks5:// needs `pip install pysocks` (or install as torrentio-tui[proxy]).
 # Env override: TORRENTIO_TUI_PROXY.
 # proxy_url = "socks5://127.0.0.1:40000"
+
+[subtitles]
+# Auto-attach subtitles at playback time. When a picked stream has no
+# subtitle of its own, the enabled providers are queried (in order) and
+# the best preferred-language match is downloaded to the cache and passed
+# to mpv/vlc. Providers that aren't configured are skipped quietly, so
+# subtitles can never break playback. Preferred languages come from
+# [language] subtitle_languages. Env override: TORRENTIO_TUI_SUBTITLES=1.
+enabled = false
+providers = ["subdb", "opensubtitles"]
+timeout_seconds = 15.0
+# OpenSubtitles.com: free API key from https://www.opensubtitles.com
+# (needed for search; env TORRENTIO_TUI_OS_API_KEY). Downloads also need
+# a username+password (env TORRENTIO_TUI_OS_USERNAME/_PASSWORD).
+# opensubtitles_api_key = ""
+# opensubtitles_username = ""
+# opensubtitles_password = ""
 
 [downloads]
 directory = "~/Videos/torrentio-tui"
@@ -310,6 +348,24 @@ class NetworkConfig:
 
 
 @dataclass(slots=True)
+class SubtitlesConfig:
+    """Auto-subtitle providers for playback. Off by default; when enabled,
+    streams without their own subtitle get the best preferred-language
+    match attached (downloaded to the cache, so mpv/vlc always get a
+    local file). Providers that aren't configured are skipped quietly."""
+
+    enabled: bool = False
+    providers: list[str] = field(default_factory=lambda: ["subdb", "opensubtitles"])
+    timeout_seconds: float = 15.0
+    # OpenSubtitles.com: free API key from opensubtitles.com (needed for
+    # search); username+password additionally needed for downloads.
+    # Env overrides: TORRENTIO_TUI_OS_API_KEY / _OS_USERNAME / _OS_PASSWORD.
+    opensubtitles_api_key: str | None = None
+    opensubtitles_username: str | None = None
+    opensubtitles_password: str | None = None
+
+
+@dataclass(slots=True)
 class UIConfig:
     theme: str = "torrentio"
 
@@ -322,6 +378,7 @@ class Config:
     iptv: IPTVConfig = field(default_factory=IPTVConfig)
     adult: AdultConfig = field(default_factory=AdultConfig)
     network: NetworkConfig = field(default_factory=NetworkConfig)
+    subtitles: SubtitlesConfig = field(default_factory=SubtitlesConfig)
     downloads: DownloadConfig = field(default_factory=DownloadConfig)
     ui: UIConfig = field(default_factory=UIConfig)
     # NB: default_factory=LanguageConfig (not a shared DEFAULT instance) —
@@ -405,6 +462,27 @@ class Config:
             if network_cfg.get("proxy_url"):
                 cfg.network.proxy_url = str(network_cfg["proxy_url"])
 
+            # Parse subtitles config
+            sub_cfg = data.get("subtitles", {})
+            if not isinstance(sub_cfg, dict):
+                sub_cfg = {}
+            if "enabled" in sub_cfg:
+                cfg.subtitles.enabled = bool(sub_cfg["enabled"])
+            if isinstance(sub_cfg.get("providers"), list):
+                cfg.subtitles.providers = [
+                    str(p) for p in sub_cfg["providers"] if isinstance(p, str)
+                ]
+            if "timeout_seconds" in sub_cfg:
+                with contextlib.suppress(ValueError, TypeError):
+                    cfg.subtitles.timeout_seconds = float(sub_cfg["timeout_seconds"])
+            for key in (
+                "opensubtitles_api_key",
+                "opensubtitles_username",
+                "opensubtitles_password",
+            ):
+                if sub_cfg.get(key):
+                    setattr(cfg.subtitles, key, str(sub_cfg[key]))
+
             downloads = data.get("downloads", {})
             if not isinstance(downloads, dict):
                 downloads = {}
@@ -442,6 +520,14 @@ class Config:
                 cfg.stremio.timeout_seconds = float(env_timeout)
         if env_proxy := os.environ.get("TORRENTIO_TUI_PROXY"):
             cfg.network.proxy_url = env_proxy
+        if env_subs := os.environ.get("TORRENTIO_TUI_SUBTITLES"):
+            cfg.subtitles.enabled = env_subs.lower() in ("1", "true", "yes", "on")
+        if env_os_key := os.environ.get("TORRENTIO_TUI_OS_API_KEY"):
+            cfg.subtitles.opensubtitles_api_key = env_os_key
+        if env_os_user := os.environ.get("TORRENTIO_TUI_OS_USERNAME"):
+            cfg.subtitles.opensubtitles_username = env_os_user
+        if env_os_pass := os.environ.get("TORRENTIO_TUI_OS_PASSWORD"):
+            cfg.subtitles.opensubtitles_password = env_os_pass
         if (env_hwdec := os.environ.get("TORRENTIO_TUI_HWDEC")) is not None:
             cfg.player.hwdec = env_hwdec
         if env_hud := os.environ.get("TORRENTIO_TUI_HUD"):

@@ -1,5 +1,8 @@
 """Wires source ids (from config) to `Source` instances.
 
+Sources are grouped into categories (see `CATEGORIES`) surfaced by
+`--list-sources`, the in-app help screen, and the config template:
+
 Add your own source here once it's implemented:
 
     from torrentio_tui.sources.mysource import MySource
@@ -17,20 +20,50 @@ from torrentio_tui.sources.adult import (
 )
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.base import Source
+from torrentio_tui.sources.catalogues import JikanSource, KitsuSource, TVMazeSource
 from torrentio_tui.sources.free import (
+    AIOStreamsSource,
     CometSource,
-    DebridMediaManagerSource,
-    EZTVSource,
-    HorribleSubsSource,
-    One337xSource,
-    OpenSubtitlesSource,
-    RARBGSource,
-    SubsceneSource,
-    YTSSource,
+    DeflixSource,
+    JackettioSource,
+    NuvioStreamsSource,
+    StremifySource,
+    StremThruStoreSource,
 )
 from torrentio_tui.sources.iptv import IPTVSource
 from torrentio_tui.sources.local import LocalSource
 from torrentio_tui.sources.stremio import StremioSource
+from torrentio_tui.sources.torrentapi import RARBGSource, YTSSource
+
+#: Friendly names for ids that share one class (plain `StremioSource`
+#: instances get their real name only after construction with
+#: `source_id=` — see `_stremio_kwargs`).
+_SOURCE_DISPLAY_NAMES = {
+    "stremio": "Stremio (Cinemeta + Torrentio)",
+    "mediafusion": "MediaFusion",
+    "knightcrawler": "Knightcrawler (deprecated)",
+    "torrentio-selfhost": "Torrentio (self-hosted)",
+}
+
+
+def describe_source(source_id: str) -> str:
+    """Human-readable name for `source_id` (per-id override when several
+    ids share one class, otherwise the class name)."""
+    if source_id in _SOURCE_DISPLAY_NAMES:
+        return _SOURCE_DISPLAY_NAMES[source_id]
+    cls = _AVAILABLE.get(source_id)
+    return cls.name if cls is not None else source_id
+
+
+#: Category id -> (label, description), in display order.
+CATEGORIES: dict[str, tuple[str, str]] = {
+    "streams": ("Streams", "Playable movies & series (addons and torrent indexes)"),
+    "catalogue": ("Catalogue", "Metadata companions — playback bridges via your stream addon"),
+    "anime": ("Anime", "Anime torrents and trackers"),
+    "live": ("Live TV", "Live channels from playlists"),
+    "local": ("Local", "Your own media files"),
+    "adult": ("Adult (opt-in)", "Requires [adult] enabled = true"),
+}
 
 _AVAILABLE: dict[str, type[Source]] = {
     "local": LocalSource,
@@ -39,14 +72,17 @@ _AVAILABLE: dict[str, type[Source]] = {
     "knightcrawler": StremioSource,
     "torrentio-selfhost": StremioSource,
     "comet": CometSource,
-    "debridmediamanager": DebridMediaManagerSource,
+    "aiostreams": AIOStreamsSource,
+    "stremthru": StremThruStoreSource,
+    "jackettio": JackettioSource,
+    "nuviostreams": NuvioStreamsSource,
+    "deflix": DeflixSource,
+    "stremify": StremifySource,
     "yts": YTSSource,
-    "eztv": EZTVSource,
     "rarbg": RARBGSource,
-    "1337x": One337xSource,
-    "horriblesubs": HorribleSubsSource,
-    "subscene": SubsceneSource,
-    "opensubtitles": OpenSubtitlesSource,
+    "tvmaze": TVMazeSource,
+    "jikan": JikanSource,
+    "kitsu": KitsuSource,
     "iptv": IPTVSource,
     "anilist": AnilistSource,
     "nyaa": NyaaSource,
@@ -58,6 +94,29 @@ _AVAILABLE: dict[str, type[Source]] = {
 }
 
 
+def _stremio_kwargs(config: Config, source_id: str) -> dict:
+    """Shared constructor args for every Stremio-protocol addon so
+    per-source `[sources.<id>]` overrides and the global proxy apply."""
+    source_cfg = config.sources_config.get(source_id, {})
+    cinemeta_url = source_cfg.get("cinemeta_url") or config.stremio.cinemeta_url
+    stream_url = source_cfg.get("stream_url")
+    timeout = source_cfg.get("timeout_seconds", config.stremio.timeout_seconds)
+    if not stream_url:
+        # Defaults for known alternative addons.
+        stream_url = {
+            "mediafusion": "https://mediafusion.elfhosted.com",
+            "knightcrawler": "https://knightcrawler.elfhosted.com",
+            "torrentio-selfhost": "http://localhost:7000",
+        }.get(source_id, config.stremio.stream_url)
+    return {
+        "cinemeta_url": cinemeta_url,
+        "stream_url": stream_url,
+        "timeout": timeout,
+        "proxy_url": config.network.proxy_url,
+        "source_id": source_id,
+    }
+
+
 def load_sources(config: Config) -> list[Source]:
     sources = []
     for source_id in config.enabled_sources:
@@ -66,40 +125,31 @@ def load_sources(config: Config) -> list[Source]:
             continue
         if issubclass(cls, StremioSource):
             # Every Stremio-protocol addon (stremio, mediafusion,
-            # knightcrawler, torrentio-selfhost, comet, debridmediamanager,
-            # ...) shares this branch so per-source [sources.<id>] config
+            # knightcrawler, torrentio-selfhost, comet, aiostreams,
+            # stremthru, jackettio, nuviostreams, deflix, stremify, ...)
+            # shares this branch so per-source [sources.<id>] config
             # and the global proxy are honoured instead of silently
             # falling back to hardcoded defaults.
+            sources.append(cls(**_stremio_kwargs(config, source_id)))
+        elif issubclass(cls, (TVMazeSource, JikanSource, KitsuSource)):
             source_cfg = config.sources_config.get(source_id, {})
-            cinemeta_url = source_cfg.get("cinemeta_url")
-            stream_url = source_cfg.get("stream_url")
-            timeout = source_cfg.get("timeout_seconds", config.stremio.timeout_seconds)
-
-            # Fall back to main stremio config if not specified
-            if not cinemeta_url:
-                cinemeta_url = config.stremio.cinemeta_url
-            if not stream_url:
-                # Use defaults for known alternative addons
-                if source_id == "mediafusion":
-                    stream_url = "https://mediafusion.elfhosted.com"
-                elif source_id == "knightcrawler":
-                    stream_url = "https://knightcrawler.ml"
-                elif source_id == "torrentio-selfhost":
-                    stream_url = "http://localhost:7000"
-                elif source_id == "comet":
-                    stream_url = "https://comet.strem.io"
-                elif source_id == "debridmediamanager":
-                    stream_url = "https://debridmediamanager.com"
-                else:
-                    stream_url = config.stremio.stream_url
-
             sources.append(
                 cls(
-                    cinemeta_url=cinemeta_url,
-                    stream_url=stream_url,
-                    timeout=timeout,
+                    api_url=source_cfg.get("api_url"),
+                    stream_url=source_cfg.get("stream_url"),
+                    cinemeta_url=source_cfg.get("cinemeta_url"),
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
                     proxy_url=config.network.proxy_url,
                     source_id=source_id,
+                )
+            )
+        elif issubclass(cls, (YTSSource, RARBGSource)):
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
+                    api_url=source_cfg.get("api_url"),
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
                 )
             )
         elif cls is IPTVSource:
@@ -123,3 +173,13 @@ def load_sources(config: Config) -> list[Source]:
 
 def available_source_ids() -> list[str]:
     return list(_AVAILABLE.keys())
+
+
+def sources_by_category() -> dict[str, list[tuple[str, type[Source]]]]:
+    """Registered `(source_id, class)` pairs grouped by category, in
+    display order; unknown categories trail at the end."""
+    grouped: dict[str, list[tuple[str, type[Source]]]] = {cid: [] for cid in CATEGORIES}
+    for source_id, cls in _AVAILABLE.items():
+        category = getattr(cls, "category", "streams")
+        grouped.setdefault(category, []).append((source_id, cls))
+    return {cid: entries for cid, entries in grouped.items() if entries}

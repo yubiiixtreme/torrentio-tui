@@ -142,6 +142,16 @@ class TorrentioTuiApp(App):
         self.theme = wanted if wanted in self.available_themes else "torrentio"
         self.push_screen(MainScreen(self.sources, self.config))
 
+    def watch_theme(self, theme: str) -> None:
+        """Persist every theme change — `t` cycling, the Ctrl+P theme
+        picker, anything else that sets `app.theme` — so the selection is
+        the default next launch. Runs on startup too, where it just
+        re-saves the already-stored value (harmless)."""
+        from torrentio_tui.config import save_theme
+
+        self.config.ui.theme = theme
+        save_theme(theme)
+
     def sync_custom_themes(self) -> None:
         """(Re-)register the built-ins plus every theme file under
         ~/.config/torrentio-tui/themes/. Safe to call repeatedly -- Textual

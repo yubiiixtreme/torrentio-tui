@@ -106,8 +106,20 @@ class ResultItem(ListItem):
         colors = {
             "stremio": "yellow",
             "mediafusion": "green",
+            "comet": "gold",
+            "aiostreams": "gold",
+            "stremthru": "cyan",
+            "jackettio": "orange",
+            "nuviostreams": "teal",
+            "deflix": "purple",
+            "stremify": "magenta",
             "knightcrawler": "blue",
             "torrentio-selfhost": "magenta",
+            "yts": "lime",
+            "rarbg": "red",
+            "tvmaze": "dodger_blue",
+            "jikan": "pink",
+            "kitsu": "orange",
             "iptv": "red",
             "anilist": "cyan",
             "nyaa": "orange",
@@ -115,6 +127,8 @@ class ResultItem(ListItem):
             "local": "gray",
             "stremio-adult": "red",
             "hanime": "magenta",
+            "nhentai": "pink",
+            "rule34": "red",
         }
         return colors.get(source_id, "white")
 
@@ -533,7 +547,11 @@ class MainScreen(Screen):
         self, item: SearchResult, episode: Episode, stream, resume_seconds: float = 0.0
     ) -> None:
         from torrentio_tui.player.torrent import is_torrent_link
+        from torrentio_tui.sources.subtitles import attach_subtitles
 
+        # Auto-subtitles (opt-in via [subtitles]): runs off the event loop,
+        # never raises, returns the stream unchanged when disabled.
+        stream = await asyncio.to_thread(attach_subtitles, stream, item, episode, self.config)
         use_hud = (
             self.config.player.backend == "mpv"
             and self.config.player.hud

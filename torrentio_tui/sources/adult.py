@@ -29,6 +29,7 @@ def _adult_allowed(config: Config | None = None) -> bool:
 class AdultSourceBase(Source):
     """Base class for adult sources with age gating."""
 
+    category = "adult"
     supports_live = False
 
     def __init__(self, config: Config | None = None) -> None:

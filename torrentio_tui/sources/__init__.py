@@ -8,20 +8,29 @@ from torrentio_tui.sources.adult import (
 )
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.base import Source, SourceError
+from torrentio_tui.sources.catalogues import JikanSource, KitsuSource, TVMazeSource
 from torrentio_tui.sources.free import (
+    AIOStreamsSource,
     CometSource,
-    DebridMediaManagerSource,
-    EZTVSource,
-    HorribleSubsSource,
-    One337xSource,
-    OpenSubtitlesSource,
-    RARBGSource,
-    SubsceneSource,
-    YTSSource,
+    DeflixSource,
+    JackettioSource,
+    NuvioStreamsSource,
+    StremifySource,
+    StremThruStoreSource,
 )
 from torrentio_tui.sources.iptv import IPTVSource
 from torrentio_tui.sources.local import LocalSource
 from torrentio_tui.sources.stremio import StremioSource
+from torrentio_tui.sources.subtitles import (
+    OpenSubtitlesProvider,
+    SubDBProvider,
+    SubtitleFile,
+    SubtitleProvider,
+    attach_subtitles,
+    available_provider_ids,
+    load_subtitle_providers,
+)
+from torrentio_tui.sources.torrentapi import RARBGSource, YTSSource
 
 __all__ = [
     "Source",
@@ -29,14 +38,17 @@ __all__ = [
     "LocalSource",
     "StremioSource",
     "CometSource",
-    "DebridMediaManagerSource",
+    "AIOStreamsSource",
+    "StremThruStoreSource",
+    "JackettioSource",
+    "NuvioStreamsSource",
+    "DeflixSource",
+    "StremifySource",
     "YTSSource",
-    "EZTVSource",
     "RARBGSource",
-    "One337xSource",
-    "HorribleSubsSource",
-    "SubsceneSource",
-    "OpenSubtitlesSource",
+    "TVMazeSource",
+    "JikanSource",
+    "KitsuSource",
     "IPTVSource",
     "AnilistSource",
     "NyaaSource",
@@ -45,4 +57,11 @@ __all__ = [
     "HanimeSource",
     "NHentaiSource",
     "Rule34Source",
+    "SubtitleProvider",
+    "SubtitleFile",
+    "SubDBProvider",
+    "OpenSubtitlesProvider",
+    "attach_subtitles",
+    "available_provider_ids",
+    "load_subtitle_providers",
 ]

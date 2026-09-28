@@ -28,6 +28,7 @@ class IPTVSource(Source):
 
     id = "iptv"
     name = "IPTV (M3U Playlist)"
+    category = "live"
     supports_live = True
 
     def __init__(

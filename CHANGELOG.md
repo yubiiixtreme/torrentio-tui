@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Source categories** — every source now declares a category
+  (`streams`, `catalogue`, `anime`, `live`, `local`, `adult`);
+  `--list-sources`, the in-app `?` help, and the config template all
+  render the same grouping, generated from the registry so docs never
+  go stale.
+- **More stream addons** (all speaking Stremio's `/stream/` protocol):
+  `aiostreams` (80+ addon super-addon), `stremthru` (debrid-store
+  catalog), `jackettio` (Jackett trackers via debrid), `nuviostreams`
+  (direct HTTP, no debrid needed), `deflix` and `stremify`
+  (self-hosted). All honour per-source `[sources.<id>]` overrides and
+  the global proxy.
+- **Real torrent-index sources**: `yts` reimplemented against the
+  official YTS API and `rarbg` against `torrentapi.org` (token handling
+  + rate-limit throttling built in) — both return genuine playable
+  magnets instead of dead website URLs.
+- **Catalogue providers**: `tvmaze` (series air-dates/episodes),
+  `jikan` (MyAnimeList anime), `kitsu` (Kitsu anime) — free, keyless,
+  and playable: TVMaze bridges via IMDb ids, all three fall back to a
+  Cinemeta title resolve through your configured stream addon.
+- **Subtitle providers** (`[subtitles]`, opt-in): `subdb` (keyless
+  hash match for local files) and `opensubtitles` (API key + optional
+  login) behind a plugin interface; playback auto-attaches the best
+  preferred-language caption, cached locally for mpv/vlc.
+- **Theme persistence for every path** — any theme change (`t`
+  cycling *and* the Ctrl+P picker) is watched and saved, so the pick
+  is the default next launch.
+
+### Removed
+- `debridmediamanager` (a web app, not a Stremio addon — it
+  could never return streams) from the registry and the default
+  `enabled` list, and the never-functional website-URL
+  "addons" (`eztv`, `1337x`, `horriblesubs`, `subscene`,
+  `opensubtitles`-as-streams). Old configs referencing them skip
+  gracefully.
+- `knightcrawler` default URL updated (project ceased 2024, public
+  instance retired) and marked deprecated in docs.
+
 ### Fixed
 - **Startup no longer dies on corrupt state** — a half-written
   `history.json`/`library.json` (crash mid-save) or malformed
@@ -54,6 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a missing `[ui]` section (scoped to that section), and `Config`
   instances no longer share one mutable `LanguageConfig`.
 - Repo-wide `ruff format` applied, so CI's format gate passes again.
+- 20 new provider tests (catalogue, torrent-index, subtitles,
+  categories, theme persistence).
 
 ## [0.4.0] - 2026-09-26
 

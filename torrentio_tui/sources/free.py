@@ -1,22 +1,24 @@
-"""Free content sources: Stremio-compatible addons for free movie/TV streaming.
+"""Stremio-protocol stream addons (free, no API keys).
 
-These sources use the Stremio protocol with free addons that don't require
-any API keys or subscriptions. They use the same Cinemeta catalogue for
-metadata but different stream addons for actual playback links.
+Every class here speaks Stremio's `/stream/{type}/{videoId}.json`
+protocol and reuses `StremioSource` for catalogue (Cinemeta) +
+search, only swapping the stream backend. Addons that need personal
+configuration (AIOStreams, StremThru, Deflix, ...) work with their
+public/shared defaults where one exists, but paste your *configured*
+URL from the addon's own `/configure` page into
+`[sources.<id>] stream_url` for the full experience (debrid keys,
+private trackers, higher rate limits).
 
-All of these are free, no API keys required, no geo-blocking, no paywalls.
+Verified reachable 2026-09: AIOStreams, StremThru, Jackettio and
+NuvioStreams public instances; Comet and MediaFusion as before.
+Knightcrawler's public instance was retired by ElfHosted (project
+ceased development in 2024) — the id stays registered for existing
+configs but is no longer recommended.
 """
 
 from __future__ import annotations
 
-import os
-from typing import TYPE_CHECKING
-
-from torrentio_tui.sources.base import Source
 from torrentio_tui.sources.stremio import StremioSource
-
-if TYPE_CHECKING:
-    from torrentio_tui.config import Config
 
 
 class CometSource(StremioSource):
@@ -32,105 +34,89 @@ class CometSource(StremioSource):
         super().__init__(**kwargs)
 
 
-class DebridMediaManagerSource(StremioSource):
-    """Debrid Media Manager - free addon for debrid users."""
+class AIOStreamsSource(StremioSource):
+    """AIOStreams — super-addon merging 80+ community addons with unified
+    filtering/sorting. Paste your configured URL for debrid + full addons."""
 
-    id = "debridmediamanager"
-    name = "Debrid Media Manager"
+    id = "aiostreams"
+    name = "AIOStreams (Super-Addon)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://debridmediamanager.com")
+        kwargs.setdefault("stream_url", "https://aiostreams.elfhosted.com")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "Debrid Media Manager")
+        kwargs.setdefault("display_name", "AIOStreams")
         super().__init__(**kwargs)
 
 
-class YTSSource(StremioSource):
-    """YTS/YIFY movies - high quality movie torrents."""
+class StremThruStoreSource(StremioSource):
+    """StremThru Store — search your debrid-store catalog (RealDebrid,
+    AllDebrid, TorBox, ...). Needs your store token: paste the configured
+    URL from the StremThru dashboard."""
 
-    id = "yts"
-    name = "YTS / YIFY Movies"
+    id = "stremthru"
+    name = "StremThru Store (Debrid Catalog)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://yts.mx")
+        kwargs.setdefault("stream_url", "https://stremthru.elfhosted.com/stremio/store")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "YTS")
+        kwargs.setdefault("display_name", "StremThru")
         super().__init__(**kwargs)
 
 
-class EZTVSource(StremioSource):
-    """EZTV - TV show torrents."""
+class JackettioSource(StremioSource):
+    """Jackettio — Jackett-backed streams (public + private trackers)
+    resolved through debrid. Public ElfHosted instance works out of the
+    box; self-host for private trackers."""
 
-    id = "eztv"
-    name = "EZTV Shows"
+    id = "jackettio"
+    name = "Jackettio (Jackett + Debrid)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://eztv.re")
+        kwargs.setdefault("stream_url", "https://jackettio.elfhosted.com")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "EZTV")
+        kwargs.setdefault("display_name", "Jackettio")
         super().__init__(**kwargs)
 
 
-class RARBGSource(StremioSource):
-    """RARBG - general torrent index."""
+class NuvioStreamsSource(StremioSource):
+    """NuvioStreams — direct HTTP streams (no P2P, no debrid needed),
+    a good fallback for titles missing from debrid caches."""
 
-    id = "rarbg"
-    name = "RARBG"
+    id = "nuviostreams"
+    name = "NuvioStreams (Direct HTTP)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://rarbg.to")
+        kwargs.setdefault("stream_url", "https://nuviostreams.hayd.uk")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "RARBG")
+        kwargs.setdefault("display_name", "NuvioStreams")
         super().__init__(**kwargs)
 
 
-class One337xSource(StremioSource):
-    """1337x - general torrent index."""
+class DeflixSource(StremioSource):
+    """Deflix — self-hosted addon turning YTS/TPB/1337x/RARBG torrents
+    into cached debrid HTTP streams. Run `deflix-stremio` locally, then
+    point `stream_url` at it (default http://localhost:8080)."""
 
-    id = "1337x"
-    name = "1337x"
+    id = "deflix"
+    name = "Deflix (Self-Hosted Debrid)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://1337x.to")
+        kwargs.setdefault("stream_url", "http://localhost:8080")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "1337x")
+        kwargs.setdefault("display_name", "Deflix")
         super().__init__(**kwargs)
 
 
-class HorribleSubsSource(StremioSource):
-    """HorribleSubs - anime subtitles (legacy, backup)."""
+class StremifySource(StremioSource):
+    """Stremify — self-hosted addon streaming via movie-web providers
+    (incl. non-English sources). Run it locally, then point `stream_url`
+    at it (default http://localhost:3000)."""
 
-    id = "horriblesubs"
-    name = "HorribleSubs (Legacy)"
-
-    def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://horriblesubs.info")
-        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "HorribleSubs")
-        super().__init__(**kwargs)
-
-
-class SubsceneSource(StremioSource):
-    """Subscene - subtitles."""
-
-    id = "subscene"
-    name = "Subscene"
+    id = "stremify"
+    name = "Stremify (Self-Hosted Providers)"
 
     def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://subscene.com")
+        kwargs.setdefault("stream_url", "http://localhost:3000")
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "Subscene")
-        super().__init__(**kwargs)
-
-
-class OpenSubtitlesSource(StremioSource):
-    """OpenSubtitles.org - subtitles."""
-
-    id = "opensubtitles"
-    name = "OpenSubtitles"
-
-    def __init__(self, **kwargs):
-        kwargs.setdefault("stream_url", "https://opensubtitles.org")
-        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
-        kwargs.setdefault("display_name", "OpenSubtitles")
+        kwargs.setdefault("display_name", "Stremify")
         super().__init__(**kwargs)

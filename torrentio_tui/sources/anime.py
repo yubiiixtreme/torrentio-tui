@@ -181,6 +181,7 @@ class AnilistSource(Source):
 
     id = "anilist"
     name = "AniList (Anime Metadata)"
+    category = "catalogue"
 
     def __init__(self, include_adult: bool = False) -> None:
         self.include_adult = include_adult
@@ -249,6 +250,7 @@ class NyaaSource(Source):
 
     id = "nyaa"
     name = "Nyaa.si (Anime Torrents)"
+    category = "anime"
 
     def search(self, query: str) -> list[SearchResult]:
         query = query.strip()
@@ -356,6 +358,7 @@ class SubsPleaseSource(Source):
 
     id = "subsplease"
     name = "SubsPlease (Latest Anime)"
+    category = "anime"
 
     SUBSPLEASE_RSS = "https://subsplease.org/rss/?r=1080"
 

@@ -36,10 +36,13 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
 ## Features
 
 - 🔍 **Search multiple sources at once** — every enabled provider
-  (Torrentio, MediaFusion, Knightcrawler, your own self-hosted instance,
-  ...) is queried in parallel and results are merged, each tagged with a
+  (Torrentio, MediaFusion, Comet, AIOStreams, StremThru, Jackettio,
+  NuvioStreams, YTS, RARBG, TVMaze, Jikan, Kitsu, your own self-hosted
+  instance, ...) is queried and results are merged, each tagged with a
   colored source badge, so one provider being down or blocked never
-  leaves you with zero results
+  leaves you with zero results. Sources are grouped into categories
+  (streams, catalogue, anime, live, local, adult) — see
+  `torrentio-tui --list-sources`
 - 🖼️ **Real poster art**, rendered inline in your terminal (Kitty/iTerm2/
   Sixel graphics where supported, a Unicode-block approximation
   everywhere else) — not ASCII placeholders, actual cached images, with
@@ -49,7 +52,9 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
   cinematic gold/red theme and a true-black OLED theme, plus Dracula,
   Nord, Gruvbox, Catppuccin Mocha/Latte, Tokyo Night, Monokai), or drop
   your own JSON theme file in `~/.config/torrentio-tui/themes/` — no
-  restart needed, it's picked up the next time you cycle
+  restart needed, it's picked up the next time you cycle. Any theme you
+  pick (cycling or the Ctrl+P picker) is saved and becomes the default
+  next launch
 - 📊 **Live playback HUD** *(opt-in, `[player] hud = true`)* — buffer
   health and cache-speed sparkline in-app instead of a full-screen mpv,
   with pause/seek/stop keys (needs mpv's own GUI window; see
@@ -61,6 +66,10 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
   Stremio addon) and play in mpv/vlc
 - 📺 **Episode & quality picker** — full season/episode lists, qualities
   ranked with seeders and size
+- 💬 **Auto-subtitles** *(opt-in, `[subtitles] enabled = true`)* —
+  SubDB (keyless) and OpenSubtitles.com providers attach the best
+  preferred-language caption to streams missing one, cached locally so
+  mpv/vlc always get a file path
 - 📚 **Continue watching + library** — history and favorites stored locally
 - ⬇️ **Downloads** via `yt-dlp` for direct http streams, with a live
   percent/speed/ETA status line instead of just a start/end notification
@@ -255,9 +264,10 @@ hud = false               # live buffer/speed HUD instead of full-screen mpv -- 
 theme = "torrentio"       # torrentio | dracula | nord | gruvbox | catppuccin-mocha | catppuccin-latte | tokyo-night | monokai | oled-black | <your custom theme's name>
 
 [sources]
-# Searched in parallel and merged — having more than one enabled means a
+# Searched and merged — having more than one enabled means a
 # single provider being down/blocked doesn't leave you with zero results.
-enabled = ["stremio", "mediafusion", "local"]
+# Full catalogue with categories: `torrentio-tui --list-sources`.
+enabled = ["stremio", "mediafusion", "comet", "local"]
 
 [sources.stremio]
 cinemeta_url = "https://v3-cinemeta.strem.io"
@@ -269,6 +279,15 @@ cinemeta_url = "https://v3-cinemeta.strem.io"
 stream_url = "https://mediafusion.elfhosted.com"
 timeout_seconds = 15.0
 
+[sources.comet]
+cinemeta_url = "https://v3-cinemeta.strem.io"
+stream_url = "https://comet.strem.io"
+timeout_seconds = 15.0
+
+[subtitles]
+enabled = false            # auto-attach SubDB/OpenSubtitles captions at playback
+providers = ["subdb", "opensubtitles"]
+
 [network]
 # proxy_url = "socks5://127.0.0.1:40000"   # see "Routing around the 403"
 
@@ -276,11 +295,12 @@ timeout_seconds = 15.0
 directory = "~/Videos/torrentio-tui"
 ```
 
-`torrentio-tui --list-sources` prints every source id the app knows how
-to load, `?` inside the app lists what each one does, and the full set of
-options (IPTV, anime-specific sources, adult content behind an explicit
-opt-in) is documented with examples in the generated config file itself
-— open `~/.config/torrentio-tui/config.toml` and read the comments.
+`torrentio-tui --list-sources` prints every source id grouped by category,
+`?` inside the app lists the same grouping, and the full set of options
+(stream addons, catalogue companions, anime-specific sources, subtitles,
+adult content behind an explicit opt-in) is documented with examples in
+the generated config file itself — open
+`~/.config/torrentio-tui/config.toml` and read the comments.
 
 | Env var | Purpose |
 |---------|---------|
@@ -291,6 +311,8 @@ opt-in) is documented with examples in the generated config file itself
 | `TORRENTIO_TUI_PLAYER` / `--player` | `mpv`, `vlc`, `termux`, or `vlc-android` |
 | `TORRENTIO_TUI_HWDEC` / `--hwdec` | mpv `--hwdec` mode (`auto-safe`, `auto`, `""` to disable) |
 | `TORRENTIO_TUI_THEME` | color theme name (see `[ui]` above, or a custom theme's name) |
+| `TORRENTIO_TUI_SUBTITLES` | `1`/`true` to enable auto-subtitles (same as `[subtitles] enabled`) |
+| `TORRENTIO_TUI_OS_API_KEY` | OpenSubtitles.com API key |
 | `TORRENTIO_TUI_HUD` | `1`/`true` to enable the live HUD (see below); same as `[player] hud` |
 | `TORRENTIO_TUI_LOCAL_DIR` | folder indexed by the `local` source (default `~/Videos`) |
 | `TORRENTIO_TUI_DOWNLOAD_DIR` | download folder |
@@ -388,9 +410,16 @@ torrentio_tui/
   sources/
     base.py        # Source ABC — the plugin contract (search / get_episodes / get_streams)
     stremio.py     # Cinemeta catalogue + Torrentio-style streams (movie/series/anime);
-                    # also backs mediafusion/knightcrawler/torrentio-selfhost (different stream_url)
+                    # also backs mediafusion/comet/aiostreams/stremthru/jackettio/
+                    # nuviostreams/deflix/stremify/torrentio-selfhost (different stream_url)
+    free.py        # More Stremio-protocol addons (Comet, AIOStreams, StremThru,
+                    # Jackettio, NuvioStreams, Deflix, Stremify)
+    torrentapi.py  # Real torrent-index APIs: YTS movies, RARBG (torrentapi.org)
+    catalogues.py  # Metadata companions (TVMaze, Jikan, Kitsu) with playback
+                    # bridged through your stream addon
     iptv.py        # Live TV from an M3U playlist
     anime.py       # AniList metadata, Nyaa.si and SubsPlease torrents
+    subtitles.py   # Subtitle providers (SubDB, OpenSubtitles) + auto-attach
     local.py       # Indexes a local media folder
     example.py     # Annotated template for a real scraper/API source (not registered)
     registry.py    # Maps config source ids -> Source classes

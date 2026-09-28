@@ -7,7 +7,7 @@ import sys
 from torrentio_tui.config import Config, config_file, ensure_dirs
 from torrentio_tui.player.registry import available_player_ids
 from torrentio_tui.sources.base import SourceError
-from torrentio_tui.sources.registry import available_source_ids, load_sources
+from torrentio_tui.sources.registry import load_sources
 from torrentio_tui.sources.stremio import StremioSource
 from torrentio_tui.termux import is_termux
 
@@ -131,7 +131,7 @@ def run_doctor(proxy_override: str | None = None, offline: bool = False) -> int:
     _check_reachable("Cinemeta", f"{config.stremio.cinemeta_url}/manifest.json", 8.0, proxy_url)
     # Check each enabled Stremio-protocol source's stream addon, resolved
     # through the registry so per-source [sources.<id>] overrides (and the
-    # default-enabled comet/debridmediamanager addons) are probed too —
+    # default-enabled comet addon) are probed too —
     # not just the hardcoded ids this used to list.
     try:
         stremio_sources = [s for s in load_sources(config) if isinstance(s, StremioSource)]
@@ -159,9 +159,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.list_sources:
+        from torrentio_tui.sources.registry import (
+            CATEGORIES,
+            describe_source,
+            sources_by_category,
+        )
+
         out = sys.stdout
-        for source_id in available_source_ids():
-            out.write(source_id + "\n")
+        for category_id, entries in sources_by_category().items():
+            label, _desc = CATEGORIES.get(category_id, (category_id, ""))
+            out.write(f"[{label}]\n")
+            for source_id, _cls in entries:
+                out.write(f"  {source_id} — {describe_source(source_id)}\n")
         return 0
 
     if args.doctor:

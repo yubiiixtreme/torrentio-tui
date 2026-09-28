@@ -30,6 +30,10 @@ class Source(ABC):
     """Stable short id, e.g. "local", "myscraper". Used in config + routing."""
     name: str
     """Human-readable name shown in the UI."""
+    category: str = "streams"
+    """Grouping bucket for `--list-sources`, help, and config docs. One of
+    the keys of `torrentio_tui.sources.registry.CATEGORIES` ("streams",
+    "catalogue", "anime", "live", "local", "adult")."""
     supports_live: bool = False
 
     @abstractmethod

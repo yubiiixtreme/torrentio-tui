@@ -20,6 +20,7 @@ VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".m4v"}
 class LocalSource(Source):
     id = "local"
     name = "Local Files"
+    category = "local"
 
     def __init__(self, root: Path | None = None) -> None:
         self.root = root or Path(os.environ.get("TORRENTIO_TUI_LOCAL_DIR", "~/Videos")).expanduser()

@@ -235,9 +235,9 @@ def test_comet_gets_proxy_and_custom_stream_url():
     assert source.proxy_url == "socks5://127.0.0.1:40000"
 
 
-def test_debridmediamanager_gets_proxy():
+def test_aiostreams_gets_proxy():
     cfg = Config()
-    cfg.enabled_sources = ["debridmediamanager"]
+    cfg.enabled_sources = ["aiostreams"]
     cfg.network.proxy_url = "http://127.0.0.1:8080"
     (source,) = registry.load_sources(cfg)
     assert source.proxy_url == "http://127.0.0.1:8080"

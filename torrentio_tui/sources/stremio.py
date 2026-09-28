@@ -197,6 +197,7 @@ class StremioSource(Source):
 
     id = "stremio"
     name = "Stremio (Cinemeta + Torrentio)"
+    category = "streams"
 
     def __init__(
         self,
