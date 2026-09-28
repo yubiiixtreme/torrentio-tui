@@ -20,19 +20,34 @@ from torrentio_tui.sources.adult import (
 )
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.base import Source
-from torrentio_tui.sources.catalogues import JikanSource, KitsuSource, TVMazeSource
+from torrentio_tui.sources.catalogues import (
+    JikanSource,
+    KitsuSource,
+    TMDBSource,
+    TraktSource,
+    TVMazeSource,
+)
 from torrentio_tui.sources.free import (
     AIOStreamsSource,
+    AniWorldSource,
     CometSource,
     DeflixSource,
+    HorribleSubsSource,
     JackettioSource,
+    NuvioStreamsSource,
+    OtakuStreamSource,
     StremifySource,
     StremThruStoreSource,
 )
 from torrentio_tui.sources.iptv import IPTVSource
 from torrentio_tui.sources.local import LocalSource
 from torrentio_tui.sources.stremio import StremioSource
-from torrentio_tui.sources.torrentapi import YTSSource
+from torrentio_tui.sources.torrentapi import (
+    PirateBaySource,
+    RARBGSource,
+    Thirteen37xSource,
+    YTSSource,
+)
 
 #: Friendly names for ids that share one class (plain `StremioSource`
 #: instances get their real name only after construction with
@@ -42,6 +57,13 @@ _SOURCE_DISPLAY_NAMES = {
     "mediafusion": "MediaFusion",
     "knightcrawler": "Knightcrawler (deprecated)",
     "torrentio-selfhost": "Torrentio (self-hosted)",
+    "1337x": "1337x (Torrent Index)",
+    "piratebay": "The Pirate Bay",
+    "tmdb": "TMDB (Movie/TV Catalogue)",
+    "trakt": "Trakt (Trending/Personal)",
+    "horriblesubs": "HorribleSubs (Legacy)",
+    "aniworld": "AniWorld (German Anime)",
+    "otakustream": "OtakuStream (Anime)",
 }
 
 
@@ -76,7 +98,14 @@ _AVAILABLE: dict[str, type[Source]] = {
     "jackettio": JackettioSource,
     "deflix": DeflixSource,
     "stremify": StremifySource,
+    "nuviostreams": NuvioStreamsSource,
+    "horriblesubs": HorribleSubsSource,
+    "aniworld": AniWorldSource,
+    "otakustream": OtakuStreamSource,
     "yts": YTSSource,
+    "rarbg": RARBGSource,
+    "1337x": Thirteen37xSource,
+    "piratebay": PirateBaySource,
     "tvmaze": TVMazeSource,
     "jikan": JikanSource,
     "kitsu": KitsuSource,
@@ -84,6 +113,8 @@ _AVAILABLE: dict[str, type[Source]] = {
     "anilist": AnilistSource,
     "nyaa": NyaaSource,
     "subsplease": SubsPleaseSource,
+    "tmdb": TMDBSource,
+    "trakt": TraktSource,
     "stremio-adult": StremioAdultSource,
     "hanime": HanimeSource,
     "nhentai": NHentaiSource,
@@ -148,6 +179,28 @@ def load_sources(config: Config) -> list[Source]:
                     api_url=source_cfg.get("api_url"),
                     timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
                     proxy_url=config.network.proxy_url,
+                )
+            )
+        elif issubclass(cls, (Thirteen37xSource, PirateBaySource)):
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
+                )
+            )
+        elif issubclass(cls, (TMDBSource, TraktSource)):
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
+                    api_key=source_cfg.get("api_key"),
+                    client_id=source_cfg.get("client_id"),
+                    client_secret=source_cfg.get("client_secret"),
+                    stream_url=source_cfg.get("stream_url"),
+                    cinemeta_url=source_cfg.get("cinemeta_url"),
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
+                    source_id=source_id,
                 )
             )
         elif cls is IPTVSource:

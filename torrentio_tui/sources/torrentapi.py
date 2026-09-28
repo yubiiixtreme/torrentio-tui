@@ -4,6 +4,9 @@ YTS exposes its official API (movies only) — search returns genuine
 playable magnets, resolved through the app's usual webtorrent/peerflix
 bridge or a debrid-backed addon. Honors `network.proxy_url` via
 `torrentio_tui.proxy.open_url`.
+
+RARBG uses torrentapi.org/pubapi_v2.php — returns magnets that need
+the torrent bridge (webtorrent/peerflix or debrid).
 """
 
 from __future__ import annotations
@@ -155,3 +158,310 @@ class YTSSource(Source):
                 )
             )
         return links
+
+
+class RARBGSource(Source):
+    """RARBG via torrentapi.org — movies & series as magnets."""
+
+    id = "rarbg"
+    name = "RARBG (torrentapi.org)"
+    category = "streams"
+
+    API = "https://torrentapi.org/pubapi_v2.php"
+    APP_ID = "torrentio-tui"
+
+    def __init__(
+        self,
+        api_url: str | None = None,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        limit: int = 20,
+    ) -> None:
+        self.api_url = (api_url or self.API).rstrip("/")
+        self.timeout = timeout
+        self.proxy_url = proxy_url
+        self.limit = limit
+        self._token: str | None = None
+
+    def _get_token(self) -> str:
+        if self._token:
+            return self._token
+        url = f"{self.api_url}?get_token=get_token&app_id={urllib.parse.quote(self.APP_ID)}"
+        data = _read_json(url, self.timeout, self.proxy_url)
+        if not isinstance(data, dict) or "token" not in data:
+            raise SourceError("RARBG: failed to get token")
+        self._token = str(data["token"])
+        return self._token
+
+    def _search_api(self, query: str, mode: str = "search") -> list[dict]:
+        token = self._get_token()
+        encoded_query = urllib.parse.quote(query.strip())
+        url = (
+            f"{self.api_url}?mode={mode}&search_string={encoded_query}"
+            f"&format=json_extended&token={urllib.parse.quote(token)}"
+            f"&app_id={urllib.parse.quote(self.APP_ID)}&limit={self.limit}"
+        )
+        data = _read_json(url, self.timeout, self.proxy_url)
+        if not isinstance(data, dict):
+            raise SourceError("RARBG: unexpected response format")
+        if data.get("error_code") == 20:
+            # token expired
+            self._token = None
+            return self._search_api(query, mode)
+        if "error" in data:
+            raise SourceError(f"RARBG API error: {data['error']}")
+        return data.get("torrent_results") or []
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        results = []
+        for item in self._search_api(query):
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title", ""))
+            if not title:
+                continue
+            info_hash = item.get("download") or item.get("info_hash")
+            if not info_hash:
+                continue
+            year = _guess_year(title)
+            resolution = _guess_resolution(title)
+            seeders = item.get("seeders", 0)
+            size = item.get("size", "")
+            label_parts = [resolution]
+            if seeders:
+                label_parts.append(f"👤{seeders}")
+            if size:
+                label_parts.append(f"💾{size}")
+            quality_label = " ".join(label_parts)
+            kind = MediaKind.MOVIE
+            if "S0" in title.upper() or "EPISODE" in title.upper():
+                kind = MediaKind.SERIES
+            results.append(
+                SearchResult(
+                    id=f"rarbg:{info_hash}",
+                    title=title,
+                    kind=kind,
+                    source_id=self.id,
+                    year=year,
+                    overview=None,
+                    genres=(),
+                )
+            )
+        return results
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        try:
+            info_hash = item.id.split(":", 1)[1]
+        except IndexError as exc:
+            raise SourceError(f"Bad RARBG id: {item.id}") from exc
+        magnet = _magnet(info_hash, item.title)
+        return [StreamLink(url=magnet, quality=item.title)]
+
+
+class Thirteen37xSource(Source):
+    """1337x — torrent index via RSS feed."""
+
+    id = "1337x"
+    name = "1337x (Torrent Index)"
+    category = "streams"
+
+    RSS_URL = "https://1337x.to/rss/search/{query}/1/"
+
+    def __init__(
+        self,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        limit: int = 20,
+    ) -> None:
+        self.timeout = timeout
+        self.proxy_url = proxy_url
+        self.limit = limit
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        url = self.RSS_URL.format(query=urllib.parse.quote(query))
+
+        try:
+            import urllib.request
+            import xml.etree.ElementTree as ET
+
+            headers = {"User-Agent": _USER_AGENT, "Accept": "application/rss+xml"}
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+        except Exception as exc:
+            raise SourceError(f"1337x search failed: {exc}") from exc
+
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError as exc:
+            raise SourceError(f"Bad RSS response: {exc}") from exc
+
+        results = []
+        for item in root.findall(".//item")[: self.limit]:
+            title_elem = item.find("title")
+            link_elem = item.find("link")
+            desc_elem = item.find("description")
+            pub_date_elem = item.find("pubDate")
+
+            if title_elem is None or link_elem is None:
+                continue
+
+            title = title_elem.text or ""
+            link = link_elem.text or ""
+            desc = desc_elem.text or ""
+            pub_date = pub_date_elem.text or ""
+
+            # Extract magnet or torrent link from description
+            magnet_match = re.search(r"magnet:\?[^\"'>\s]+", desc)
+            torrent_match = re.search(r"https?://[^\"'>\s]+\.torrent", desc)
+
+            if magnet_match:
+                stream_url = magnet_match.group(0)
+            elif torrent_match:
+                stream_url = torrent_match.group(0)
+            else:
+                stream_url = link
+
+            year = _guess_year(title)
+            resolution = _guess_resolution(title)
+            seeders_match = re.search(r"Seeders?:\s*(\d+)", desc)
+            leechers_match = re.search(r"Leechers?:\s*(\d+)", desc)
+            size_match = re.search(r"Size:\s*([\d.]+\s*[GM]i?B)", desc)
+
+            label_parts = [resolution]
+            if seeders_match:
+                label_parts.append(f"👤{seeders_match.group(1)}")
+            if size_match:
+                label_parts.append(f"💾{size_match.group(1)}")
+            quality_label = " ".join(label_parts)
+
+            kind = MediaKind.MOVIE
+            if "S0" in title.upper() or "EPISODE" in title.upper():
+                kind = MediaKind.SERIES
+
+            results.append(
+                SearchResult(
+                    id=f"1337x:{stream_url}",
+                    title=title,
+                    kind=kind,
+                    source_id=self.id,
+                    year=year,
+                    overview=pub_date,
+                    genres=("torrent",),
+                )
+            )
+        return results
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        try:
+            stream_url = item.id.split(":", 1)[1]
+        except IndexError as exc:
+            raise SourceError(f"Bad 1337x id: {item.id}") from exc
+        return [StreamLink(url=stream_url, quality=item.title)]
+
+
+class PirateBaySource(Source):
+    """The Pirate Bay — torrent index via RSS."""
+
+    id = "piratebay"
+    name = "The Pirate Bay"
+    category = "streams"
+
+    RSS_URL = "https://thepiratebay.org/rss.php?q={query}"
+
+    def __init__(
+        self,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        limit: int = 20,
+    ) -> None:
+        self.timeout = timeout
+        self.proxy_url = proxy_url
+        self.limit = limit
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        url = self.RSS_URL.format(query=urllib.parse.quote(query))
+
+        try:
+            import urllib.request
+            import xml.etree.ElementTree as ET
+
+            headers = {"User-Agent": _USER_AGENT, "Accept": "application/rss+xml"}
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+        except Exception as exc:
+            raise SourceError(f"Pirate Bay search failed: {exc}") from exc
+
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError as exc:
+            raise SourceError(f"Bad RSS response: {exc}") from exc
+
+        results = []
+        for item in root.findall(".//item")[: self.limit]:
+            title_elem = item.find("title")
+            link_elem = item.find("link")
+            desc_elem = item.find("description")
+            pub_date_elem = item.find("pubDate")
+
+            if title_elem is None or link_elem is None:
+                continue
+
+            title = title_elem.text or ""
+            link = link_elem.text or ""
+            desc = desc_elem.text or ""
+            pub_date = pub_date_elem.text or ""
+
+            # TPB uses magnet links in description
+            magnet_match = re.search(r"magnet:\?[^\"'>\s]+", desc)
+
+            if not magnet_match:
+                continue
+
+            stream_url = magnet_match.group(0)
+            year = _guess_year(title)
+            resolution = _guess_resolution(title)
+
+            seeders_match = re.search(r"Seeders?:\s*(\d+)", desc)
+            size_match = re.search(r"Size\s+([\d.]+\s*[GM]i?B)", desc)
+
+            label_parts = [resolution]
+            if seeders_match:
+                label_parts.append(f"👤{seeders_match.group(1)}")
+            if size_match:
+                label_parts.append(f"💾{size_match.group(1)}")
+            quality_label = " ".join(label_parts)
+
+            kind = MediaKind.MOVIE
+            if "S0" in title.upper() or "EPISODE" in title.upper():
+                kind = MediaKind.SERIES
+
+            results.append(
+                SearchResult(
+                    id=f"piratebay:{stream_url}",
+                    title=title,
+                    kind=kind,
+                    source_id=self.id,
+                    year=year,
+                    overview=pub_date,
+                    genres=("torrent",),
+                )
+            )
+        return results
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        try:
+            stream_url = item.id.split(":", 1)[1]
+        except IndexError as exc:
+            raise SourceError(f"Bad Pirate Bay id: {item.id}") from exc
+        return [StreamLink(url=stream_url, quality=item.title)]

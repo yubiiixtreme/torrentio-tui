@@ -107,3 +107,60 @@ class StremifySource(StremioSource):
         kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
         kwargs.setdefault("display_name", "Stremify")
         super().__init__(**kwargs)
+
+
+class NuvioStreamsSource(StremioSource):
+    """NuvioStreams — free Stremio addon with multi-source streams."""
+
+    id = "nuviostreams"
+    name = "NuvioStreams"
+    category = "streams"
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("stream_url", "https://nuviostreams.hayd.uk")
+        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
+        kwargs.setdefault("display_name", "NuvioStreams")
+        super().__init__(**kwargs)
+
+
+class HorribleSubsSource(StremioSource):
+    """HorribleSubs — legacy anime releases (now mostly historical,
+    kept for completeness)."""
+
+    id = "horriblesubs"
+    name = "HorribleSubs (Legacy)"
+    category = "anime"
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("stream_url", "https://horriblesubs.info")
+        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
+        kwargs.setdefault("display_name", "HorribleSubs")
+        super().__init__(**kwargs)
+
+
+class AniWorldSource(StremioSource):
+    """AniWorld — German anime streaming addon."""
+
+    id = "aniworld"
+    name = "AniWorld (German Anime)"
+    category = "anime"
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("stream_url", "https://aniworld.to/stremio")
+        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
+        kwargs.setdefault("display_name", "AniWorld")
+        super().__init__(**kwargs)
+
+
+class OtakuStreamSource(StremioSource):
+    """OtakuStream — anime-focused Stremio addon."""
+
+    id = "otakustream"
+    name = "OtakuStream (Anime)"
+    category = "anime"
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("stream_url", "https://otakustream.strem.io")
+        kwargs.setdefault("cinemeta_url", "https://v3-cinemeta.strem.io")
+        kwargs.setdefault("display_name", "OtakuStream")
+        super().__init__(**kwargs)

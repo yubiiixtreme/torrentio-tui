@@ -557,7 +557,7 @@ def save_theme(theme: str) -> None:
     # a similarly-named key under some other table).
     ui_match = re.search(r"^\[ui\][ \t]*$", text, flags=re.MULTILINE)
     if ui_match is None:
-        text = text.rstrip("\n") + '\n\n[ui]\ntheme = "torrentio"\n'
+        text = text.rstrip("\n") + f'\n\n[ui]\ntheme = "{theme}"\n'
         ui_match = re.search(r"^\[ui\][ \t]*$", text, flags=re.MULTILINE)
         assert ui_match is not None
     section_start = ui_match.end()
@@ -572,11 +572,13 @@ def save_theme(theme: str) -> None:
         flags=re.MULTILINE,
     )
     if count:
-        path.write_text(text[:section_start] + new_section + text[section_end:])
+        new_text = text[:section_start] + new_section + text[section_end:]
     else:
-        path.write_text(
-            text[:section_end].rstrip("\n") + f'\ntheme = "{theme}"\n' + text[section_end:]
-        )
+        new_text = text[:section_end].rstrip("\n") + f'\ntheme = "{theme}"\n' + text[section_end:]
+    # Ensure file ends with newline
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+    path.write_text(new_text)
 
 
 def ensure_dirs() -> None:

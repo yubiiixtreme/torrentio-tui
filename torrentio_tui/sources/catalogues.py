@@ -509,3 +509,359 @@ class KitsuSource(BridgedCatalogueSource):
         if item.kind == MediaKind.MOVIE:
             return self._bridge_by_title(item.title, MediaKind.MOVIE)
         return self._bridge_by_title(item.title, MediaKind.ANIME, number=episode.number)
+
+
+class TMDBSource(BridgedCatalogueSource):
+    """TMDB (The Movie Database) — comprehensive movie/TV catalogue with
+    API key. Free tier available at https://www.themoviedb.org/settings/api."""
+
+    id = "tmdb"
+    name = "TMDB (Movie/TV Catalogue)"
+
+    API = "https://api.themoviedb.org/3"
+    IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        stream_url: str | None = None,
+        cinemeta_url: str | None = None,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        source_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            stream_url=stream_url,
+            cinemeta_url=cinemeta_url,
+            timeout=timeout,
+            proxy_url=proxy_url,
+            source_id=source_id,
+        )
+        import os
+
+        self.api_key = api_key or os.environ.get("TMDB_API_KEY", "")
+
+    def _api(self, path: str, params: dict | None = None) -> dict | list | None:
+        if not self.api_key:
+            raise SourceError("TMDB API key required. Set TMDB_API_KEY env var or add to config.")
+        params = params or {}
+        params["api_key"] = self.api_key
+        query = urllib.parse.urlencode(params)
+        url = f"{self.API}{path}?{query}"
+        return _get_json(url, self.timeout, self.proxy_url)
+
+    def _to_movie_result(self, movie: dict, source_id: str) -> SearchResult | None:
+        if not isinstance(movie, dict) or not movie.get("id"):
+            return None
+        poster = movie.get("poster_path")
+        poster_url = f"{self.IMAGE_BASE}{poster}" if poster else None
+        genres = tuple(g.get("name", "") for g in movie.get("genres", []) if isinstance(g, dict))
+        year = _parse_year(movie.get("release_date"))
+        overview = movie.get("overview") or ""
+        vote = movie.get("vote_average")
+        if vote:
+            overview = f"⭐ {vote}/10 — {overview}" if overview else f"⭐ {vote}/10"
+        return SearchResult(
+            id=f"tmdb:movie:{movie['id']}",
+            title=str(movie.get("title", f"Movie {movie['id']}")),
+            kind=MediaKind.MOVIE,
+            source_id=source_id,
+            year=year,
+            poster_url=poster_url,
+            overview=overview[:300],
+            genres=genres,
+        )
+
+    def _to_tv_result(self, show: dict, source_id: str) -> SearchResult | None:
+        if not isinstance(show, dict) or not show.get("id"):
+            return None
+        poster = show.get("poster_path")
+        poster_url = f"{self.IMAGE_BASE}{poster}" if poster else None
+        genres = tuple(g.get("name", "") for g in show.get("genres", []) if isinstance(g, dict))
+        kind = MediaKind.ANIME if "Animation" in genres or "Anime" in genres else MediaKind.SERIES
+        year = _parse_year(show.get("first_air_date"))
+        overview = show.get("overview") or ""
+        vote = show.get("vote_average")
+        if vote:
+            overview = f"⭐ {vote}/10 — {overview}" if overview else f"⭐ {vote}/10"
+        return SearchResult(
+            id=f"tmdb:tv:{show['id']}",
+            title=str(show.get("name", f"Show {show['id']}")),
+            kind=kind,
+            source_id=source_id,
+            year=year,
+            poster_url=poster_url,
+            overview=overview[:300],
+            genres=genres,
+        )
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        results = []
+        data = self._api("/search/movie", {"query": query, "page": 1})
+        if isinstance(data, dict):
+            for movie in data.get("results", [])[:10]:
+                res = self._to_movie_result(movie, self.id)
+                if res:
+                    results.append(res)
+        data = self._api("/search/tv", {"query": query, "page": 1})
+        if isinstance(data, dict):
+            for show in data.get("results", [])[:10]:
+                res = self._to_tv_result(show, self.id)
+                if res:
+                    results.append(res)
+        return results
+
+    def get_episodes(self, item: SearchResult) -> list[Episode]:
+        try:
+            _, media_type, tmdb_id = item.id.split(":", 2)
+        except ValueError as exc:
+            raise SourceError(f"Bad TMDB id: {item.id}") from exc
+
+        if media_type == "movie":
+            return [Episode(id=item.id, title=item.title)]
+
+        data = self._api(f"/tv/{tmdb_id}", {"append_to_response": "external_ids"})
+        if not isinstance(data, dict):
+            return [Episode(id=item.id, title=item.title)]
+
+        episodes = []
+        for season in data.get("seasons", []):
+            season_num = season.get("season_number")
+            if season_num == 0:
+                continue
+            ep_data = self._api(f"/tv/{tmdb_id}/season/{season_num}")
+            if not isinstance(ep_data, dict):
+                continue
+            for ep in ep_data.get("episodes", []):
+                ep_num = ep.get("episode_number")
+                if not isinstance(ep_num, int):
+                    continue
+                episodes.append(
+                    Episode(
+                        id=f"tmdb:tv:{tmdb_id}:{season_num}:{ep_num}",
+                        title=ep.get("name") or f"Episode {ep_num}",
+                        season=season_num,
+                        number=ep_num,
+                    )
+                )
+        episodes.sort(key=lambda e: (e.season or 0, e.number or 0))
+        return episodes or [Episode(id=item.id, title=item.title)]
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        try:
+            parts = item.id.split(":")
+            if len(parts) >= 3:
+                media_type = parts[1]
+                tmdb_id = parts[2]
+                ext_data = self._api(f"/{media_type}/{tmdb_id}/external_ids")
+                if isinstance(ext_data, dict) and ext_data.get("imdb_id"):
+                    imdb_id = ext_data["imdb_id"]
+                    if media_type == "tv":
+                        return self._series_streams_by_imdb(
+                            imdb_id, item.title, episode.season, episode.number
+                        )
+                    return self._bridge_by_title(item.title, MediaKind.MOVIE)
+        except Exception:
+            pass
+        kind = item.kind
+        if kind == MediaKind.ANIME:
+            kind = MediaKind.SERIES
+        return self._bridge_by_title(item.title, kind, season=episode.season, number=episode.number)
+
+
+class TraktSource(BridgedCatalogueSource):
+    """Trakt.tv — personal media tracking with trending/popular lists.
+    Needs API key from https://trakt.tv/oauth/applications."""
+
+    id = "trakt"
+    name = "Trakt (Trending/Personal)"
+
+    API = "https://api.trakt.tv"
+
+    def __init__(
+        self,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        stream_url: str | None = None,
+        cinemeta_url: str | None = None,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        source_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            stream_url=stream_url,
+            cinemeta_url=cinemeta_url,
+            timeout=timeout,
+            proxy_url=proxy_url,
+            source_id=source_id,
+        )
+        import os
+
+        self.client_id = client_id or os.environ.get("TRAKT_CLIENT_ID", "")
+        self.client_secret = client_secret or os.environ.get("TRAKT_CLIENT_SECRET", "")
+
+    def _headers(self) -> dict:
+        return {
+            "User-Agent": _USER_AGENT,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "trakt-api-version": "2",
+            "trakt-api-key": self.client_id,
+        }
+
+    def _trakt_get(self, path: str, params: dict | None = None) -> dict | list | None:
+        if not self.client_id:
+            raise SourceError(
+                "Trakt client ID required. Set TRAKT_CLIENT_ID env var or add to config."
+            )
+        import urllib.request
+
+        query = urllib.parse.urlencode(params or {})
+        url = f"{self.API}{path}?{query}"
+        headers = self._headers()
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with open_url(url, self.timeout, self.proxy_url, headers) as resp:
+                import json
+
+                return json.loads(resp.read().decode("utf-8", errors="replace"))
+        except ProxyError as exc:
+            raise SourceError(str(exc)) from exc
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            raise SourceError(f"Trakt request failed (HTTP {exc.code}): {url}") from exc
+        except Exception as exc:
+            raise SourceError(f"Trakt error: {exc}") from exc
+
+    def _to_movie_result(self, item: dict, source_id: str) -> SearchResult | None:
+        movie = item.get("movie") if "movie" in item else item
+        if not isinstance(movie, dict) or not movie.get("ids"):
+            return None
+        tmdb_id = movie.get("ids", {}).get("tmdb")
+        imdb_id = movie.get("ids", {}).get("imdb")
+        year = movie.get("year")
+        title = movie.get("title", "")
+        overview = movie.get("overview", "")[:300]
+        rating = movie.get("rating")
+        if rating:
+            overview = f"⭐ {rating}/10 — {overview}" if overview else f"⭐ {rating}/10"
+        genres = tuple(movie.get("genres", []) or [])
+        poster = None
+        if tmdb_id:
+            poster = f"https://image.tmdb.org/t/p/w500/{tmdb_id}"
+        return SearchResult(
+            id=f"trakt:movie:{movie['ids'].get('trakt', tmdb_id or imdb_id)}",
+            title=title,
+            kind=MediaKind.MOVIE,
+            source_id=source_id,
+            year=year,
+            poster_url=poster,
+            overview=overview,
+            genres=genres,
+        )
+
+    def _to_show_result(self, item: dict, source_id: str) -> SearchResult | None:
+        show = item.get("show") if "show" in item else item
+        if not isinstance(show, dict) or not show.get("ids"):
+            return None
+        tmdb_id = show.get("ids", {}).get("tmdb")
+        imdb_id = show.get("ids", {}).get("imdb")
+        year = show.get("year")
+        title = show.get("title", "")
+        overview = show.get("overview", "")[:300]
+        rating = show.get("rating")
+        if rating:
+            overview = f"⭐ {rating}/10 — {overview}" if overview else f"⭐ {rating}/10"
+        genres = tuple(show.get("genres", []) or [])
+        kind = MediaKind.ANIME if "anime" in genres or "animation" in genres else MediaKind.SERIES
+        poster = None
+        if tmdb_id:
+            poster = f"https://image.tmdb.org/t/p/w500/{tmdb_id}"
+        return SearchResult(
+            id=f"trakt:show:{show['ids'].get('trakt', tmdb_id or imdb_id)}",
+            title=title,
+            kind=kind,
+            source_id=source_id,
+            year=year,
+            poster_url=poster,
+            overview=overview,
+            genres=genres,
+        )
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        results = []
+        data = self._trakt_get("/search/movie", {"query": query, "limit": 10})
+        if isinstance(data, list):
+            for item in data:
+                res = self._to_movie_result(item, self.id)
+                if res:
+                    results.append(res)
+        data = self._trakt_get("/search/show", {"query": query, "limit": 10})
+        if isinstance(data, list):
+            for item in data:
+                res = self._to_show_result(item, self.id)
+                if res:
+                    results.append(res)
+        return results
+
+    def get_episodes(self, item: SearchResult) -> list[Episode]:
+        try:
+            _, media_type, trakt_id = item.id.split(":", 2)
+        except ValueError as exc:
+            raise SourceError(f"Bad Trakt id: {item.id}") from exc
+
+        if media_type == "movie":
+            return [Episode(id=item.id, title=item.title)]
+
+        data = self._trakt_get(f"/shows/{trakt_id}/seasons", {"extended": "episodes"})
+        if not isinstance(data, list):
+            return [Episode(id=item.id, title=item.title)]
+
+        episodes = []
+        for season in data:
+            season_num = season.get("number")
+            if season_num == 0:
+                continue
+            for ep in season.get("episodes", []):
+                ep_num = ep.get("number")
+                if not isinstance(ep_num, int):
+                    continue
+                episodes.append(
+                    Episode(
+                        id=f"trakt:show:{trakt_id}:{season_num}:{ep_num}",
+                        title=ep.get("title") or f"Episode {ep_num}",
+                        season=season_num,
+                        number=ep_num,
+                    )
+                )
+        episodes.sort(key=lambda e: (e.season or 0, e.number or 0))
+        return episodes or [Episode(id=item.id, title=item.title)]
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        try:
+            parts = item.id.split(":")
+            if len(parts) >= 3:
+                media_type = parts[1]
+                trakt_id = parts[2]
+                ext_data = self._trakt_get(f"/{media_type}s/{trakt_id}", {"extended": "ids"})
+                if isinstance(ext_data, dict):
+                    imdb_id = ext_data.get("ids", {}).get("imdb")
+                    if imdb_id:
+                        if media_type == "show":
+                            return self._series_streams_by_imdb(
+                                imdb_id, item.title, episode.season, episode.number
+                            )
+                        return self._bridge_by_title(item.title, MediaKind.MOVIE)
+        except Exception:
+            pass
+        kind = item.kind
+        if kind == MediaKind.ANIME:
+            kind = MediaKind.SERIES
+        return self._bridge_by_title(item.title, kind, season=episode.season, number=episode.number)

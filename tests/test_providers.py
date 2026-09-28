@@ -476,20 +476,25 @@ def test_new_sources_registered_and_dead_ones_gone():
         "deflix",
         "stremify",
         "yts",
+        "rarbg",
+        "nuviostreams",
+        "1337x",
+        "piratebay",
+        "horriblesubs",
+        "aniworld",
+        "otakustream",
+        "tmdb",
+        "trakt",
         "tvmaze",
         "jikan",
         "kitsu",
     ):
         assert expected in ids
     for removed in (
-        "debridmediamanager",
+        "debridmediamanager",  # web app, never a Stremio addon
         "eztv",
-        "1337x",
-        "horriblesubs",
         "subscene",
-        "opensubtitles",
-        "rarbg",  # torrentapi.org dead (HTTP 400 on token)
-        "nuviostreams",  # public instance broken (SPA at /manifest.json)
+        "opensubtitles",  # subtitle providers live in sources/subtitles.py
     ):
         assert removed not in ids
 

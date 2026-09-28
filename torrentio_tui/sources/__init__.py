@@ -8,12 +8,22 @@ from torrentio_tui.sources.adult import (
 )
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.base import Source, SourceError
-from torrentio_tui.sources.catalogues import JikanSource, KitsuSource, TVMazeSource
+from torrentio_tui.sources.catalogues import (
+    JikanSource,
+    KitsuSource,
+    TMDBSource,
+    TraktSource,
+    TVMazeSource,
+)
 from torrentio_tui.sources.free import (
     AIOStreamsSource,
+    AniWorldSource,
     CometSource,
     DeflixSource,
+    HorribleSubsSource,
     JackettioSource,
+    NuvioStreamsSource,
+    OtakuStreamSource,
     StremifySource,
     StremThruStoreSource,
 )
@@ -29,7 +39,12 @@ from torrentio_tui.sources.subtitles import (
     available_provider_ids,
     load_subtitle_providers,
 )
-from torrentio_tui.sources.torrentapi import YTSSource
+from torrentio_tui.sources.torrentapi import (
+    PirateBaySource,
+    RARBGSource,
+    Thirteen37xSource,
+    YTSSource,
+)
 
 __all__ = [
     "Source",
@@ -42,10 +57,19 @@ __all__ = [
     "JackettioSource",
     "DeflixSource",
     "StremifySource",
+    "NuvioStreamsSource",
+    "HorribleSubsSource",
+    "AniWorldSource",
+    "OtakuStreamSource",
     "YTSSource",
+    "RARBGSource",
+    "Thirteen37xSource",
+    "PirateBaySource",
     "TVMazeSource",
     "JikanSource",
     "KitsuSource",
+    "TMDBSource",
+    "TraktSource",
     "IPTVSource",
     "AnilistSource",
     "NyaaSource",
