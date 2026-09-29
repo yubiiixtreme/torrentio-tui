@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings choices persist to `config.toml` immediately
   (`save_adult_enabled`, `save_player_backend`,
   `save_subtitles_enabled`, `save_download_dir`).
+- **App frame rebuilt from scratch:** tabs are gone, replaced by a
+  sidebar (Search / Trending / Continue / Library / Sources) with
+  `1`–`5` jump keys and a live on/total source count. The app opens
+  on auto-loading Trending so it never greets you with empty panels;
+  every section has its own view + hint line.
 
 ### Fixed
 - **1337x, Pirate Bay, and RARBG-mirror searches crashed every time:**

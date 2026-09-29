@@ -386,11 +386,15 @@ up: `Space` pause/resume, `←`/`→` seek ±10s, `q`/`Esc` stop.
 |-----|--------|
 | `Enter` | search / open selected item |
 | `↑` / `↓` or `k` / `j` | move selection; `Tab` switches focus between panes |
+| `1`–`5` | jump to sidebar section (Search / Trending / Continue / Library / Sources) |
 | `/` | jump to the search box and select its contents |
+| `f` | show/hide the ⩔ funnel (kind · category · genre · year · sort) |
+| `g` | open Settings (adult lock, theme, player, subtitles, folders) |
 | `l` | save / unsave highlighted result to Library |
 | `d` | download the highlighted result (needs `yt-dlp`) |
 | `i` | quick info popup for the highlighted result |
 | `t` | cycle color theme (saved automatically) |
+| `s` | open the Sources section |
 | `?` | show the in-app keybindings help |
 | `Esc` | back out of episode / quality / help dialogs |
 | `q` | quit |
@@ -443,7 +447,8 @@ torrentio_tui/
 
   ui/
     app.py                  # Textual App + theme
-    screens/main.py         # Search / Continue Watching / Library tabs
+    screens/main.py         # Sidebar + Search / Trending / Continue / Library / Sources views
+    screens/settings.py     # Settings modal (adult lock, theme, player, subtitles, folders)
     screens/episodes.py     # Episode picker modal
     screens/quality.py      # Quality/stream picker modal
     screens/help.py         # Keybindings help modal ('?')
