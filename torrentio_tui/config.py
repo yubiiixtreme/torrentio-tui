@@ -134,52 +134,82 @@ cinemeta_url = "https://v3-cinemeta.strem.io"
 stream_url = "https://comet.elfhosted.com"
 timeout_seconds = 15.0
 
-# --- More stream addons (opt-in: add the id to [sources].enabled) ---
-# [sources.aiostreams]
-# # Paste your *configured* URL from https://aiostreams.elfhosted.com/stremio/configure
-# # (embeds your addons + debrid keys); the bare public instance is limited.
-# stream_url = "https://aiostreams.elfhosted.com"
-# timeout_seconds = 15.0
-#
-# [sources.stremthru]
-# # Paste your configured Store URL from https://stremthru.elfhosted.com/stremio
-# # (embeds your debrid-store token).
-# stream_url = "https://stremthru.elfhosted.com/stremio/store"
-# timeout_seconds = 15.0
-#
-# [sources.jackettio]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://jackettio.elfhosted.com"
-# timeout_seconds = 15.0
-#
-# [sources.deflix]
-# # Self-hosted: run deflix-stremio, open http://localhost:8080/configure.
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "http://localhost:8080"
-# timeout_seconds = 15.0
-#
-# [sources.stremify]
-# # Self-hosted: run stremify, point at your instance.
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "http://localhost:3000"
-# timeout_seconds = 15.0
-#
-# [sources.knightcrawler]
-# # DEPRECATED: project ceased development in 2024 and the public instance
-# # was retired. Kept so old configs still load; prefer comet/mediafusion.
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "https://knightcrawler.elfhosted.com"
-# timeout_seconds = 15.0
-#
-# [sources.torrentio-selfhost]
-# cinemeta_url = "https://v3-cinemeta.strem.io"
-# stream_url = "http://localhost:7000"
-# timeout_seconds = 15.0
-#
-# --- Torrent-index sources (real APIs, magnets play via the torrent bridge) ---
-# [sources.yts]
-# api_url = "https://movies-api.accel.li/api/v2"
-# timeout_seconds = 15.0
+    # --- More stream addons (opt-in: add the id to [sources].enabled) ---
+    # [sources.aiostreams]
+    # # Paste your *configured* URL from https://aiostreams.elfhosted.com/stremio/configure
+    # # (embeds your addons + debrid keys); the bare public instance is limited.
+    # stream_url = "https://aiostreams.elfhosted.com"
+    # timeout_seconds = 15.0
+    #
+    # [sources.stremthru]
+    # # Paste your configured Store URL from https://stremthru.elfhosted.com/stremio
+    # # (embeds your debrid-store token).
+    # stream_url = "https://stremthru.elfhosted.com/stremio/store"
+    # timeout_seconds = 15.0
+    #
+    # [sources.jackettio]
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "https://jackettio.elfhosted.com"
+    # timeout_seconds = 15.0
+    #
+    # [sources.deflix]
+    # # Self-hosted: run deflix-stremio, open http://localhost:8080/configure.
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "http://localhost:8080"
+    # timeout_seconds = 15.0
+    #
+    # [sources.stremify]
+    # # Self-hosted: run stremify, point at your instance.
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "http://localhost:3000"
+    # timeout_seconds = 15.0
+    #
+    # [sources.knightcrawler]
+    # # DEPRECATED: project ceased development in 2024 and the public instance
+    # # was retired. Kept so old configs still load; prefer comet/mediafusion.
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "https://knightcrawler.elfhosted.com"
+    # timeout_seconds = 15.0
+    #
+    # [sources.torrentio-selfhost]
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "http://localhost:7000"
+    # timeout_seconds = 15.0
+    #
+    # [sources.stremio-community]
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "https://stremio-community.github.io"
+    # timeout_seconds = 15.0
+    #
+    # [sources.superstream]
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "https://superstream.strem.io"
+    # timeout_seconds = 15.0
+    #
+    # [sources.torrentio-cloud]
+    # cinemeta_url = "https://v3-cinemeta.strem.io"
+    # stream_url = "https://torrentio-cloud.strem.fun"
+    # timeout_seconds = 15.0
+    #
+    # --- Torrent-index sources (real APIs, magnets play via the torrent bridge) ---
+    # [sources.yts]
+    # api_url = "https://movies-api.accel.li/api/v2"
+    # timeout_seconds = 15.0
+    #
+    # [sources.eztv]
+    # timeout_seconds = 15.0
+    #
+    # [sources.torrentgalaxy]
+    # timeout_seconds = 15.0
+    #
+    # [sources.magnetdl]
+    # timeout_seconds = 15.0
+    #
+    # [sources.vumoo]
+    # timeout_seconds = 15.0
+    #
+    # [sources.solarmovie]
+    # timeout_seconds = 15.0
 #
 # --- Catalogue companions (free, keyless; playback bridges through your
 #     configured stream addon, so a debrid URL helps these too) ---

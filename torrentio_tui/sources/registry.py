@@ -27,6 +27,16 @@ from torrentio_tui.sources.catalogues import (
     TraktSource,
     TVMazeSource,
 )
+from torrentio_tui.sources.extended import (
+    EZTVRSSSource,
+    MagnetDLSource,
+    SolarMovieSource,
+    StremioCommunitySource,
+    StremioSuperStreamSource,
+    StremioTorrentioCloudSource,
+    TorrentGalaxySource,
+    VumooSource,
+)
 from torrentio_tui.sources.free import (
     AIOStreamsSource,
     AniWorldSource,
@@ -64,6 +74,14 @@ _SOURCE_DISPLAY_NAMES = {
     "horriblesubs": "HorribleSubs (Legacy)",
     "aniworld": "AniWorld (German Anime)",
     "otakustream": "OtakuStream (Anime)",
+    "eztv-rss": "EZTV (TV Series Torrents)",
+    "torrentgalaxy": "TorrentGalaxy (Torrent Index)",
+    "magnetdl": "MagnetDL (Magnet Search)",
+    "vumoo": "Vumoo (Free Streaming)",
+    "solarmovie": "SolarMovie (Free Streaming)",
+    "stremio-community": "Stremio Community (Free Addon)",
+    "superstream": "SuperStream (Free Addon)",
+    "torrentio-cloud": "Torrentio Cloud (Free)",
 }
 
 
@@ -119,6 +137,14 @@ _AVAILABLE: dict[str, type[Source]] = {
     "hanime": HanimeSource,
     "nhentai": NHentaiSource,
     "rule34": Rule34Source,
+    "eztv-rss": EZTVRSSSource,
+    "torrentgalaxy": TorrentGalaxySource,
+    "magnetdl": MagnetDLSource,
+    "vumoo": VumooSource,
+    "solarmovie": SolarMovieSource,
+    "stremio-community": StremioCommunitySource,
+    "superstream": StremioSuperStreamSource,
+    "torrentio-cloud": StremioTorrentioCloudSource,
 }
 
 
@@ -191,6 +217,14 @@ def load_sources(config: Config) -> list[Source]:
                 )
             )
         elif issubclass(cls, (Thirteen37xSource, PirateBaySource)):
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
+                )
+            )
+        elif issubclass(cls, (EZTVRSSSource, TorrentGalaxySource, MagnetDLSource, VumooSource, SolarMovieSource)):
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(

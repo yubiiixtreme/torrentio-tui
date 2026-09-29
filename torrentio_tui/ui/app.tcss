@@ -160,7 +160,7 @@ ListView:focus > ListItem.--highlight {
 }
 
 #detail-poster {
-    height: 22;
+    height: 14;
     content-align: center middle;
     text-style: bold;
     border: round #00ffff;
@@ -173,24 +173,31 @@ ListView:focus > ListItem.--highlight {
     text-style: bold;
     color: #00ffff;
     height: auto;
-    margin-bottom: 1;
+    margin-bottom: 0;
 }
 
 #detail-meta {
     color: #8bffff;
     height: auto;
-    margin-bottom: 1;
+    margin-bottom: 0;
 }
 
 #detail-genres {
     color: #9d00ff;
     height: auto;
-    margin-bottom: 1;
+    margin-bottom: 0;
 }
 
 #detail-overview {
     height: 1fr;
     color: #e0ffff;
+    margin-bottom: 0;
+}
+
+#detail-source {
+    color: #8bffff;
+    height: auto;
+    text-style: italic;
 }
 
 #episode-list-container, #quality-list-container, #help-container {

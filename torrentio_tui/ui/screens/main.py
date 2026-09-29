@@ -46,6 +46,43 @@ def _kind_style(kind: MediaKind) -> tuple[str, str, str]:
     return KIND_STYLE.get(kind, ("🎞", "white", kind.value.upper()))
 
 
+def _source_color(source_id: str) -> str:
+    colors = {
+        "stremio": "yellow",
+        "mediafusion": "green",
+        "comet": "gold",
+        "aiostreams": "gold",
+        "stremthru": "cyan",
+        "jackettio": "orange",
+        "deflix": "purple",
+        "stremify": "magenta",
+        "knightcrawler": "blue",
+        "torrentio-selfhost": "magenta",
+        "yts": "lime",
+        "tvmaze": "dodger_blue",
+        "jikan": "pink",
+        "kitsu": "orange",
+        "iptv": "red",
+        "anilist": "cyan",
+        "nyaa": "orange",
+        "subsplease": "purple",
+        "local": "gray",
+        "stremio-adult": "red",
+        "hanime": "magenta",
+        "nhentai": "pink",
+        "rule34": "red",
+        "eztv-rss": "orange",
+        "torrentgalaxy": "gold",
+        "magnetdl": "cyan",
+        "vumoo": "green",
+        "solarmovie": "green",
+        "stremio-community": "magenta",
+        "superstream": "cyan",
+        "torrentio-cloud": "magenta",
+    }
+    return colors.get(source_id, "white")
+
+
 #: yt-dlp's own progress line, e.g. "[download]  42.3% of  700.00MiB at
 #: 5.00MiB/s ETA 00:30" -- speed/ETA are absent on the final 100% line.
 _DOWNLOAD_PROGRESS_RE = re.compile(
@@ -93,8 +130,7 @@ class ResultItem(ListItem):
 
         overview = (item.overview or "").strip()
         snippet = f"{overview[:100]}…" if len(overview) > 100 else overview
-        # Show source with colored badge
-        source_color = self._source_color(item.source_id)
+        source_color = _source_color(item.source_id)
         line2 = f"   [{color}]{label}[/{color}] [dim]·[/dim] [{source_color}]{item.source_id}[/{source_color}]"
         if snippet:
             line2 += f"  [dim]{snippet}[/dim]"
@@ -103,34 +139,6 @@ class ResultItem(ListItem):
             Static(f"{line1}\n{line2}", markup=True), classes=f"kind-{item.kind.value}"
         )
         self.item = item
-
-    def _source_color(self, source_id: str) -> str:
-        colors = {
-            "stremio": "yellow",
-            "mediafusion": "green",
-            "comet": "gold",
-            "aiostreams": "gold",
-            "stremthru": "cyan",
-            "jackettio": "orange",
-            "deflix": "purple",
-            "stremify": "magenta",
-            "knightcrawler": "blue",
-            "torrentio-selfhost": "magenta",
-            "yts": "lime",
-            "tvmaze": "dodger_blue",
-            "jikan": "pink",
-            "kitsu": "orange",
-            "iptv": "red",
-            "anilist": "cyan",
-            "nyaa": "orange",
-            "subsplease": "purple",
-            "local": "gray",
-            "stremio-adult": "red",
-            "hanime": "magenta",
-            "nhentai": "pink",
-            "rule34": "red",
-        }
-        return colors.get(source_id, "white")
 
 
 class HistoryItem(ListItem):
@@ -214,6 +222,7 @@ class MainScreen(Screen):
             Static(id="detail-meta"),
             Static(id="detail-genres"),
             Static(id="detail-overview"),
+            Static(id="detail-source"),
             id="detail-panel",
         )
 
@@ -258,6 +267,7 @@ class MainScreen(Screen):
         meta = self.query_one("#detail-meta", Static)
         genres = self.query_one("#detail-genres", Static)
         overview = self.query_one("#detail-overview", Static)
+        source = self.query_one("#detail-source", Static)
 
         if item is None:
             poster.show_fallback("🍿")
@@ -265,6 +275,7 @@ class MainScreen(Screen):
             meta.update("")
             genres.update("")
             overview.update("[dim]Use ↑/↓ to browse results. Enter to play.[/dim]")
+            source.update("")
             return
 
         icon, color, label = _kind_style(item.kind)
@@ -275,11 +286,16 @@ class MainScreen(Screen):
 
         title.update(f"[bold]{item.title}[/bold]")
         year = str(item.year) if item.year else "—"
-        meta.update(f"[{color}]{label}[/{color}]  ·  {year}  ·  [dim]{item.source_id}[/dim]")
+        source_color = _source_color(item.source_id)
+        meta.update(
+            f"[{color}]{label}[/{color}]  ·  {year}  ·  "
+            f"[{source_color}]{item.source_id}[/{source_color}]"
+        )
         genres.update(f"[dim]{', '.join(item.genres)}[/dim]" if item.genres else "")
         overview.update(
             item.overview.strip() if item.overview else "[dim]No synopsis available.[/dim]"
         )
+        source.update(f"[dim]Source: {item.source_id}[/dim]  [dim]ID: {item.id}[/dim]")
 
     @work(exclusive=True, thread=True)
     def _load_poster(self, url: str) -> None:
