@@ -6,22 +6,23 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![GitHub stars](https://img.shields.io/github/stars/yubiiixtreme/torrentio-tui?style=flat&color=gold)](https://github.com/yubiiixtreme/torrentio-tui/stargazers)
 
-**Netflix, but it's your terminal.** Search movies, series and anime
-across multiple sources at once, pick a quality, and it's playing in
-mpv/vlc seconds later — real poster art rendered inline, your pick of
-color themes, everything stored locally on your own machine. No account,
+**Netflix, but it's your terminal.** It opens on 🔥 Trending so
+there's always something to watch — search movies, series and anime
+across 53 free sources at once, funnel the results by kind, category,
+genre, year and sort, pick a quality, and it's playing in mpv/vlc
+seconds later. Real poster art rendered inline, your pick of color
+themes, everything stored locally on your own machine. No account,
 no tracking, no ads.
 
 ```
- ┌─ Search ──────────────────────────────┐┌─ Dune: Part Two (2024) ─────┐
- │ 🔍 dune                                ││ ┌──────────┐                │
- │                                        ││ │  poster  │ MOVIE · 2024   │
- │ 🎬 Dune: Part Two (2024)   [stremio]   ││ │  image   │ stremio        │
- │ 🎬 Dune: Part Two (2024)   [mediafusion]│ └──────────┘                │
- │ 🎬 Dune: Part One (2021)   [stremio]   ││ Paul Atreides unites with   │
- │ 🎬 Dune (1984)             [stremio]   ││ the Fremen while seeking    │
- └────────────────────────────────────────┘└ revenge...                 ┘
-   l Save   d Download   i Info   t Theme   ?  Help   q Quit
+ ┌ sidebar ────────┐ ┌─ 🔥 Trending ─────────────────────────┐
+ │ 🔍 Search       │ │ 🎬 Dune: Part Two (2024)  [stremio]   │
+ │ 🔥 Trending     │ │ 📺 Breaking Bad (2008)    [stremio]   │
+ │ ❤️ Library      │ │ 🎴 Solo Leveling (2024)   [anilist]   │
+ │ ⏯ Continue      │ │                                       │
+ │ 🔌 Sources 4/53 │ │ Enter to play · l to save · i info    │
+ └─────────────────┘ └───────────────────────────────────────┘
+  1-5 sections · / search · ⩔ funnel · g settings · t theme · ? help
 ```
 
 New here? Jump to **[Quickstart](#quickstart)** — three commands and
@@ -35,14 +36,15 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
 
 ## Features
 
-- 🔍 **Search multiple sources at once** — every enabled provider
-  (Torrentio, MediaFusion, Comet, AIOStreams, StremThru, Jackettio,
-  YTS, TVMaze, Jikan, Kitsu, your own self-hosted
-  instance, ...) is queried and results are merged, each tagged with a
-  colored source badge, so one provider being down or blocked never
-  leaves you with zero results. Sources are grouped into categories
-  (streams, catalogue, anime, live, local, adult) — see
-  `torrentio-tui --list-sources`
+- 🔍 **Search 53 free sources at once** — every enabled provider
+  (Torrentio, MediaFusion, Comet, AIOStreams, Torrentio Cloud,
+  SuperStream, YTS, RARBG, 1337x, Pirate Bay, EZTV, LimeTorrents,
+  Nyaa, AniDex, TVMaze, TMDB, Trakt, Jikan, Kitsu, AniList, free
+  world IPTV, your own self-hosted instance, ...) is queried and
+  results are merged, each tagged with a colored source badge, so one
+  provider being down or blocked never leaves you with zero results.
+  Sources are grouped into categories (streams, catalogue, anime,
+  live, local, adult) — see `torrentio-tui --list-sources`
 - 🖼️ **Real poster art**, rendered inline in your terminal (Kitty/iTerm2/
   Sixel graphics where supported, a Unicode-block approximation
   everywhere else) — not ASCII placeholders, actual cached images, with
@@ -185,8 +187,8 @@ installed — `torrentio-tui --doctor` checks for it.
 
 ## Quickstart
 
-1. Launch `torrentio-tui`.
-2. Type a title in **Search** and hit Enter — e.g. `breaking bad`.
+1. Launch `torrentio-tui` — you land on 🔥 **Trending** (already full).
+2. Type a title in **Search** (press `1` or `/`) and hit Enter — e.g. `breaking bad`.
 3. Select the show/movie → pick an episode (series/anime) → pick a quality.
 4. mpv (or vlc) opens and plays. Press `l` on a highlighted result to
    save/unsave it to your **Library**; resume from **Continue Watching**.
@@ -268,7 +270,7 @@ hwdec = "auto-safe"       # mpv hardware decoding; "" to disable, "auto" for mor
 hud = false               # live buffer/speed HUD instead of full-screen mpv -- see "Live HUD mode" below
 
 [ui]
-theme = "torrentio"       # torrentio | dracula | nord | gruvbox | catppuccin-mocha | catppuccin-latte | tokyo-night | monokai | oled-black | <your custom theme's name>
+theme = "torrentio"       # torrentio | oled-black | matrix | void | synthwave | amber | dracula | nord | gruvbox | catppuccin-mocha | catppuccin-latte | tokyo-night | monokai | <your custom theme's name>
 
 [sources]
 # Searched and merged — having more than one enabled means a
@@ -294,6 +296,10 @@ timeout_seconds = 15.0
 [subtitles]
 enabled = false            # auto-attach SubDB/OpenSubtitles captions at playback
 providers = ["subdb", "opensubtitles"]
+
+[adult]
+enabled = false            # adult sources stay locked until you opt in
+                           # (also toggleable live via Settings with `g`)
 
 [network]
 # proxy_url = "socks5://127.0.0.1:40000"   # see "Routing around the 403"
@@ -419,21 +425,30 @@ torrentio_tui/
   cli.py           # Entry point (`torrentio-tui`), argument parsing, --doctor
 
   sources/
-    base.py        # Source ABC — the plugin contract (search / get_episodes / get_streams)
+    base.py        # Source ABC — the plugin contract
+                    # (search / get_episodes / get_streams / trending)
     stremio.py     # Cinemeta catalogue + Torrentio-style streams (movie/series/anime);
                     # also backs mediafusion/comet/aiostreams/stremthru/jackettio/
-                    # deflix/stremify/torrentio-selfhost (different stream_url)
+                    # deflix/stremify/nuviostreams/community/superstream/cloud/
+                    # torrentio-selfhost (different stream_url each)
     free.py        # More Stremio-protocol addons (Comet, AIOStreams, StremThru,
-                    # Jackettio, Deflix, Stremify)
-    torrentapi.py  # Real torrent-index API: YTS movies (magnets)
-    catalogues.py  # Metadata companions (TVMaze, Jikan, Kitsu) with playback
-                    # bridged through your stream addon
-    iptv.py        # Live TV from an M3U playlist
+                    # Jackettio, Deflix, Stremify, NuvioStreams, HorribleSubs,
+                    # AniWorld, OtakuStream)
+    extended.py    # EZTV, TorrentGalaxy, MagnetDL, Vumoo, SolarMovie,
+                    # Stremio Community/SuperStream/Cloud
+    rss_indexes.py # LimeTorrents, TorrentDownloads, GloDLS (RSS magnets)
+    torrentapi.py  # YTS, RARBG, 1337x, Pirate Bay torrent indexes (magnets)
+    torrent_extended.py  # TPB API, RARBG mirrors, Nyaa mirrors
+    catalogues.py  # Metadata companions (TVMaze, Jikan, Kitsu, TMDB,
+                    # Trakt) with playback bridged through your stream addon
+    iptv.py        # Live TV from an M3U playlist + built-in free iptv-org world TV
     anime.py       # AniList metadata, Nyaa.si and SubsPlease torrents
+    anime_extended.py  # AniDex, Anime Tosho, Tokyo Toshokan anime indexes
+    adult.py + adult_extended.py  # Opt-in adult sources (locked by default)
     subtitles.py   # Subtitle providers (SubDB, OpenSubtitles) + auto-attach
     local.py       # Indexes a local media folder
     example.py     # Annotated template for a real scraper/API source (not registered)
-    registry.py    # Maps config source ids -> Source classes
+    registry.py    # Maps config source ids -> Source classes (53 registered)
 
   player/
     base.py        # Player ABC
