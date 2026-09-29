@@ -18,8 +18,6 @@ from textual.widgets import (
     LoadingIndicator,
     Select,
     Static,
-    TabbedContent,
-    TabPane,
 )
 
 from torrentio_tui.config import Config
@@ -258,6 +256,16 @@ class HistoryItem(ListItem):
         self.source_id = source_id
 
 
+#: Sidebar sections in order: (view id, button id, label, number key).
+SECTIONS: tuple[tuple[str, str, str, str], ...] = (
+    ("search", "nav-search", "🔍 Search", "1"),
+    ("trending", "nav-trending", "🔥 Trending", "2"),
+    ("continue", "nav-continue", "⏯ Continue", "3"),
+    ("library", "nav-library", "❤️ Library", "4"),
+    ("sources", "nav-sources", "🔌 Sources", "5"),
+)
+
+
 class MainScreen(Screen):
     BINDINGS = [
         ("l", "toggle_library", "Save/unsave"),
@@ -270,6 +278,11 @@ class MainScreen(Screen):
         ("slash", "focus_search", "Search"),
         ("question_mark", "help", "Help"),
         ("q", "app.quit", "Quit"),
+        ("1", "view_search", "Search"),
+        ("2", "view_trending", "Trending"),
+        ("3", "view_continue", "Continue"),
+        ("4", "view_library", "Library"),
+        ("5", "view_sources", "Sources"),
     ]
 
     def __init__(self, sources: list[Source], config: Config) -> None:
@@ -281,37 +294,93 @@ class MainScreen(Screen):
         self._last_results: list[SearchResult] = []
         self._pending_poster_url: str | None = None
         self._trending_loaded = False
+        self._active_view = "trending"
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static(id="download-status", classes="download-status")
-        with TabbedContent(initial="search"):
-            with TabPane("🔍  Search", id="search"), Vertical():
-                with Horizontal(id="search-row"):
-                    yield Input(
-                        placeholder="Search movies, series, anime... (Enter to search)",
-                        id="search-input",
+        with Horizontal(id="app-body"):
+            with Vertical(id="sidebar"):
+                yield Static("★ BROWSE", id="sidebar-heading")
+                for _view, button_id, label, _key in SECTIONS:
+                    yield Button(label, id=button_id, variant="default", classes="nav-button")
+                yield Static("", id="sidebar-status")
+            with Vertical(id="content"):
+                with Vertical(id="view-search"):
+                    with Horizontal(id="search-row"):
+                        yield Input(
+                            placeholder="Search movies, series, anime... (Enter to search)",
+                            id="search-input",
+                        )
+                        yield Button("⩔ Filters", id="filter-toggle", variant="default")
+                    yield self._build_filter_bar()
+                    yield LoadingIndicator(id="search-loading")
+                    with Horizontal(id="search-body"):
+                        yield VimListView(id="search-results", classes="results-panel")
+                        yield self._build_detail_panel()
+                with Vertical(id="view-trending"):
+                    yield Static(
+                        "Top movies & series right now — Enter to play, l to save",
+                        id="trending-hint",
                     )
-                    yield Button("⩔ Filters", id="filter-toggle", variant="default")
-                yield self._build_filter_bar()
-                yield LoadingIndicator(id="search-loading")
-                with Horizontal(id="search-body"):
-                    yield VimListView(id="search-results", classes="results-panel")
-                    yield self._build_detail_panel()
-            with TabPane("🔥  Trending", id="trending"), Vertical():
-                yield Static(
-                    "Top movies & series right now — Enter to play, l to save",
-                    id="trending-hint",
-                )
-                yield LoadingIndicator(id="trending-loading")
-                yield VimListView(id="trending-results", classes="results-panel")
-            with TabPane("⏯  Continue Watching", id="continue"):
-                yield VimListView(id="continue-results", classes="results-panel")
-            with TabPane("❤️  Library", id="library"):
-                yield VimListView(id="library-results", classes="results-panel")
-            with TabPane("🔌  Sources", id="sources"):
-                yield VimListView(id="sources-list", classes="results-panel")
+                    yield LoadingIndicator(id="trending-loading")
+                    yield VimListView(id="trending-results", classes="results-panel")
+                with Vertical(id="view-continue"):
+                    yield Static(
+                        "Pick up where you left off — Enter to resume",
+                        id="continue-hint",
+                    )
+                    yield VimListView(id="continue-results", classes="results-panel")
+                with Vertical(id="view-library"):
+                    yield Static(
+                        "Your saved titles — l saves/unsaves the highlighted title",
+                        id="library-hint",
+                    )
+                    yield VimListView(id="library-results", classes="results-panel")
+                with Vertical(id="view-sources"):
+                    yield Static(
+                        "Enter toggles a source — 53 free providers and counting",
+                        id="sources-hint",
+                    )
+                    yield VimListView(id="sources-list", classes="results-panel")
         yield Footer()
+
+    # -- sidebar navigation ----------------------------------------------
+    def _show_view(self, name: str) -> None:
+        """Switch the main content area to one sidebar section."""
+        self._active_view = name
+        for view_id, button_id, _label, _key in SECTIONS:
+            try:
+                self.query_one(f"#view-{view_id}").display = view_id == name
+                button = self.query_one(f"#{button_id}", Button)
+                button.variant = "primary" if view_id == name else "default"
+            except Exception:  # noqa: BLE001 -- never break navigation
+                continue
+        if name == "trending":
+            self.load_trending()
+        elif name == "sources":
+            self._populate_sources_list()
+        elif name == "continue":
+            self.refresh_continue_watching()
+        elif name == "library":
+            self.refresh_library()
+        elif name == "search":
+            self.query_one("#search-input", Input).focus()
+
+    def action_view_search(self) -> None:
+        self._show_view("search")
+
+    def action_view_trending(self) -> None:
+        self._show_view("trending")
+
+    def action_view_continue(self) -> None:
+        self._show_view("continue")
+
+    def action_view_library(self) -> None:
+        self._show_view("library")
+
+    def action_view_sources(self) -> None:
+        self._show_view("sources")
 
     def _build_filter_bar(self) -> Horizontal:
         """The ⩔ funnel bar: kind / category / genre / year / sort.
@@ -376,11 +445,18 @@ class MainScreen(Screen):
         self.query_one("#search-loading", LoadingIndicator).display = False
         self.query_one("#trending-loading", LoadingIndicator).display = False
         self.query_one("#download-status", Static).display = False
-        self.refresh_continue_watching()
-        self.refresh_library()
-        self._populate_sources_list()
         self._update_filter_count(0, 0)
-        self.query_one("#search-input", Input).focus()
+        self._update_sidebar_status()
+        # Open alive: trending loads itself so the app never greets
+        # you with two empty boxes.
+        self._show_view("trending")
+
+    def _update_sidebar_status(self) -> None:
+        from torrentio_tui.sources.registry import available_source_ids
+
+        total = len(available_source_ids())
+        on = len(self.sources)
+        self.query_one("#sidebar-status", Static).update(f"[dim]{on}/{total} sources on[/dim]")
 
     def on_screen_resume(self) -> None:
         self.refresh_continue_watching()
@@ -488,15 +564,21 @@ class MainScreen(Screen):
             self._apply_filters_and_render()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "filter-clear":
+        button_id = event.button.id or ""
+        if button_id == "filter-clear":
             self.query_one("#filter-kind", Select).value = "All"
             self.query_one("#filter-category", Select).value = "All"
             self.query_one("#filter-genre", Input).value = ""
             self.query_one("#filter-year", Select).value = YEAR_OPTIONS[0]
             self.query_one("#filter-sort", Select).value = SORT_OPTIONS[0]
             self._apply_filters_and_render()
-        elif event.button.id == "filter-toggle":
+        elif button_id == "filter-toggle":
             self.action_toggle_filters()
+        elif button_id.startswith("nav-"):
+            for view_id, nav_id, _label, _key in SECTIONS:
+                if nav_id == button_id:
+                    self._show_view(view_id)
+                    break
 
     def action_toggle_filters(self) -> None:
         """Show/hide the ⩔ funnel bar."""
@@ -589,17 +671,20 @@ class MainScreen(Screen):
                 list_view.append(ResultItem(item))
             if results:
                 list_view.index = 0
-            else:
-                self.app.notify("No trending feed available", severity="warning")
+            # No toast when empty: the tab hint already explains itself,
+            # and local-only setups would otherwise warn on every launch.
         finally:
             loading.display = False
 
-    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
-        pane_id = getattr(event.pane, "id", None)
-        if pane_id == "trending":
-            self.load_trending()
-        elif pane_id == "sources":
-            self._populate_sources_list()
+    def action_focus_search(self) -> None:
+        self._show_view("search")
+        search_input = self.query_one("#search-input", Input)
+        search_input.focus()
+        search_input.select_all()
+
+    def action_sources(self) -> None:
+        """Show the sources management view."""
+        self._show_view("sources")
 
     def _find_source(self, source_id: str) -> Source | None:
         return next((s for s in self.sources if s.id == source_id), None)
@@ -683,19 +768,8 @@ class MainScreen(Screen):
             timeout=8,
         )
 
-    def action_focus_search(self) -> None:
-        self.query_one(TabbedContent).active = "search"
-        search_input = self.query_one("#search-input", Input)
-        search_input.focus()
-        search_input.select_all()
-
     def action_help(self) -> None:
         self.app.push_screen(HelpScreen())
-
-    def action_sources(self) -> None:
-        """Show the sources management tab."""
-        self.query_one(TabbedContent).active = "sources"
-        self._populate_sources_list()
 
     def _populate_sources_list(self) -> None:
         """Populate the sources list view with all available sources,
@@ -815,6 +889,7 @@ class MainScreen(Screen):
             self.sources = load_sources(self.config)
         except Exception as exc:  # noqa: BLE001 -- config gates raise SourceError
             self.app.notify(f"Failed to reload sources: {exc}", severity="error")
+        self._update_sidebar_status()
         self._populate_sources_list()
 
     @work(exclusive=True)

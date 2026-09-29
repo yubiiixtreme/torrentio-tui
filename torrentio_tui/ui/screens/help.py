@@ -10,7 +10,7 @@ from torrentio_tui.sources.registry import CATEGORIES, describe_source, sources_
 
 KEYBINDINGS = (
     ("↑ / ↓ or k / j", "Move selection in lists"),
-    ("← / →", "Switch tabs (Search / Trending / Continue / Library / Sources)"),
+    ("1–5", "Jump to sidebar section (Search / Trending / Continue / Library / Sources)"),
     ("Enter", "Play selected title / episode / stream"),
     ("Tab", "Switch focus between search box, results, detail panel"),
     ("/", "Jump to search box and select its contents"),

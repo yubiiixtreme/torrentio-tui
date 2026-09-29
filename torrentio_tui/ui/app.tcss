@@ -43,35 +43,65 @@ Footer > .footer-key-background {
     color: #4dffff44;
 }
 
-Tabs {
-    background: #1a2d50;
-    border-bottom: solid #00ffff;
+#app-body {
+    height: 1fr;
+}
+
+#sidebar {
+    width: 20;
+    min-width: 20;
+    background: #0c1426;
+    border-right: solid #00ffff;
+    padding: 1 1;
+}
+
+#sidebar-heading {
+    height: 1;
     padding: 0 1;
-}
-
-Tab {
-    padding: 0 2;
-    margin: 0 1;
-    color: #8bffff;
+    color: #ffbf00;
     text-style: bold;
+    margin-bottom: 1;
+}
+
+.nav-button {
+    width: 100%;
+    margin: 0 0 1 0;
     background: transparent;
-    border-bottom: solid transparent;
+    color: #8bffff;
+    border: none;
+    padding: 0 1;
+    text-style: bold;
 }
 
-Tab:hover {
+.nav-button:hover {
     color: #00ffff;
     background: rgba(17, 30, 58, 0.7);
 }
 
-Tab.-active {
-    color: #00ffff;
-    border-bottom: solid #00ffff;
-    background: rgba(17, 30, 58, 0.7);
+.nav-button.--primary {
+    background: #00ffff;
+    color: #020617;
 }
 
-Underline {
-    color: #00ffff;
-    opacity: 1;
+#sidebar-status {
+    height: auto;
+    padding: 1 1 0 1;
+    color: #8bffff;
+}
+
+#content {
+    width: 1fr;
+    height: 1fr;
+}
+
+#view-search, #view-trending, #view-continue, #view-library, #view-sources {
+    height: 1fr;
+}
+
+#continue-hint, #library-hint, #sources-hint {
+    height: 1;
+    padding: 0 2;
+    color: #8bffff;
 }
 
 #search-row {
