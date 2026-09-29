@@ -362,7 +362,9 @@ class UIConfig:
 @dataclass(slots=True)
 class Config:
     player: PlayerConfig = field(default_factory=PlayerConfig)
-    enabled_sources: list[str] = field(default_factory=lambda: ["stremio", "local"])
+    enabled_sources: list[str] = field(
+        default_factory=lambda: ["stremio", "mediafusion", "comet", "local"]
+    )
     stremio: StremioConfig = field(default_factory=StremioConfig)
     iptv: IPTVConfig = field(default_factory=IPTVConfig)
     adult: AdultConfig = field(default_factory=AdultConfig)
@@ -576,6 +578,43 @@ def save_theme(theme: str) -> None:
     else:
         new_text = text[:section_end].rstrip("\n") + f'\ntheme = "{theme}"\n' + text[section_end:]
     # Ensure file ends with newline
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+    path.write_text(new_text)
+
+
+def save_enabled_sources(enabled: list[str]) -> None:
+    """Best-effort persistence for source toggles: patches just the
+    `enabled = [...]` line under `[sources]` in config.toml, preserving
+    comments. Silently does nothing if the file isn't there."""
+    import re
+
+    path = config_file()
+    if not path.exists():
+        return
+    text = path.read_text()
+    quoted = ", ".join(f'"{s}"' for s in enabled)
+    replacement = f"enabled = [{quoted}]"
+    sources_match = re.search(r"^\[sources\][ \t]*$", text, flags=re.MULTILINE)
+    if sources_match is None:
+        text = text.rstrip("\n") + f"\n\n[sources]\n{replacement}\n"
+        path.write_text(text if text.endswith("\n") else text + "\n")
+        return
+    section_start = sources_match.end()
+    next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
+    section_end = section_start + next_section.start() if next_section else len(text)
+    section = text[section_start:section_end]
+    new_section, count = re.subn(
+        r"""^enabled\s*=\s*\[.*\]\s*$""",
+        replacement,
+        section,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count:
+        new_text = text[:section_start] + new_section + text[section_end:]
+    else:
+        new_text = text[:section_end].rstrip("\n") + f"\n{replacement}\n" + text[section_end:]
     if not new_text.endswith("\n"):
         new_text += "\n"
     path.write_text(new_text)

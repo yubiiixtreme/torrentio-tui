@@ -194,7 +194,7 @@ class TVMazeSource(BridgedCatalogueSource):
     def _show(self, show_id: int) -> dict:
         if show_id not in self._shows:
             data = _get_json(
-                f"{self.api_url}/shows/{show_id}/episodes",
+                f"{self.api_url}/shows/{show_id}",
                 self.timeout,
                 self.proxy_url,
                 self.api_accept,

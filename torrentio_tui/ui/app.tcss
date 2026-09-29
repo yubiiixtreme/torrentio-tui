@@ -448,3 +448,25 @@ Collapsible > .collapsible--content {
     padding: 1 2;
     color: #8bffff;
 }
+
+.download-status {
+    background: #111e3a;
+    color: #ffbf00;
+    padding: 0 2;
+    height: 1;
+}
+
+#filter-bar, .filter-bar {
+    height: auto;
+    padding: 0 1;
+}
+
+.filter-label {
+    padding: 1 1 0 0;
+    color: #8bffff;
+}
+
+#sources-list .category-header {
+    color: #00ff41;
+    text-style: bold;
+}

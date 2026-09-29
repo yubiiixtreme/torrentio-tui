@@ -223,7 +223,14 @@ class RARBGSource(Source):
             title = str(item.get("title", ""))
             if not title:
                 continue
-            info_hash = item.get("download") or item.get("info_hash")
+            info_hash = item.get("info_hash")
+            if not info_hash:
+                # torrentapi.org's `download` field is already a full
+                # magnet: URL — extract the btih hash so get_streams
+                # doesn't double-wrap it into magnet:?xt=urn:btih:magnet:?...
+                download = str(item.get("download") or "")
+                m = re.search(r"btih:([A-Za-z0-9]{32,40})", download, re.IGNORECASE)
+                info_hash = m.group(1) if m else None
             if not info_hash:
                 continue
             year = _guess_year(title)

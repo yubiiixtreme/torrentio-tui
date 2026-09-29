@@ -221,6 +221,9 @@ class MainScreen(Screen):
         self._show_detail(None)
         self.query_one("#search-loading", LoadingIndicator).display = False
         self.query_one("#download-status", Static).display = False
+        self.refresh_continue_watching()
+        self.refresh_library()
+        self._populate_sources_list()
         self.query_one("#search-input", Input).focus()
 
     def on_screen_resume(self) -> None:
@@ -238,12 +241,16 @@ class MainScreen(Screen):
             if entry.duration_seconds:
                 pct = f" ({entry.position_seconds / entry.duration_seconds:.0%})"
             list_view.append(HistoryItem(label + pct, entry.item_id, entry.source_id))
+        if len(list_view.children) > 0:
+            list_view.index = 0
 
     def refresh_library(self) -> None:
         list_view = self.query_one("#library-results", ListView)
         list_view.clear()
         for item in self.library.all():
             list_view.append(ResultItem(item))
+        if len(list_view.children) > 0:
+            list_view.index = 0
 
     def _show_detail(self, item: SearchResult | None) -> None:
         poster = self.query_one("#detail-poster", PosterWidget)
@@ -385,7 +392,7 @@ class MainScreen(Screen):
             self._toggle_source(item.source_id, not item.source_enabled)
 
     def _toggle_source(self, source_id: str, enable: bool) -> None:
-        """Enable or disable a source."""
+        """Enable or disable a source (persisted to config.toml)."""
         if enable:
             if source_id not in self.config.enabled_sources:
                 self.config.enabled_sources.append(source_id)
@@ -394,6 +401,12 @@ class MainScreen(Screen):
             if source_id in self.config.enabled_sources:
                 self.config.enabled_sources.remove(source_id)
                 self.app.notify(f"Disabled source: {source_id}")
+        try:
+            from torrentio_tui.config import save_enabled_sources
+
+            save_enabled_sources(self.config.enabled_sources)
+        except Exception:
+            pass
         # Reload sources
         from torrentio_tui.sources.registry import load_sources
 
@@ -444,22 +457,27 @@ class MainScreen(Screen):
         self._populate_sources_list()
 
     def _populate_sources_list(self) -> None:
-        """Populate the sources list view with all available sources."""
-        from torrentio_tui.models import MediaKind, SearchResult
-        from torrentio_tui.sources.registry import CATEGORIES, describe_source
+        """Populate the sources list view with all available sources,
+        including disabled ones so they can be re-enabled."""
+        from torrentio_tui.sources.registry import (
+            _AVAILABLE,
+            CATEGORIES,
+            describe_source,
+        )
 
         list_view = self.query_one("#sources-list", ListView)
         list_view.clear()
 
-        # Group sources by category
-        sources_by_cat: dict[str, list[Source]] = {}
-        for source in self.sources:
-            cat = getattr(source, "category", "streams")
-            sources_by_cat.setdefault(cat, []).append(source)
+        # Group ALL registered sources by category (not just enabled),
+        # so disabled ids remain visible and toggleable.
+        sources_by_cat: dict[str, list[str]] = {}
+        for source_id, cls in _AVAILABLE.items():
+            cat = getattr(cls, "category", "streams")
+            sources_by_cat.setdefault(cat, []).append(source_id)
 
         # Add category headers and sources
         for cat_id, (cat_label, cat_desc) in CATEGORIES.items():
-            cat_sources = sources_by_cat.get(cat_id, [])
+            cat_sources = sorted(sources_by_cat.get(cat_id, []))
             if not cat_sources:
                 continue
 
@@ -472,14 +490,16 @@ class MainScreen(Screen):
             list_view.append(header)
 
             # Sources in this category
-            for source in cat_sources:
-                enabled = source.id in self.config.enabled_sources
+            for source_id in cat_sources:
+                enabled = source_id in self.config.enabled_sources
                 status = "[green]✓ Enabled[/green]" if enabled else "[red]✗ Disabled[/red]"
-                label = f"  {describe_source(source.id)}  {status}"
+                label = f"  {describe_source(source_id)}  {status}"
                 item = ListItem(Static(label, markup=True))
-                item.source_id = source.id
+                item.source_id = source_id
                 item.source_enabled = enabled
                 list_view.append(item)
+        if len(list_view.children) > 0:
+            list_view.index = 0
 
     def action_cycle_theme(self) -> None:
         from torrentio_tui.config import THEMES, save_theme
@@ -654,13 +674,20 @@ class MainScreen(Screen):
         entry = self.history.get(hist_item.source_id, hist_item.item_id)
         if entry is None:
             return
+        # History doesn't store MediaKind; an episode label means this was
+        # a series/anime episode, so resume as SERIES to keep
+        # get_episodes/get_streams routing working.
+        kind = MediaKind.SERIES if entry.episode_label else MediaKind.MOVIE
         result = SearchResult(
             id=hist_item.item_id,
             title=entry.title,
-            kind=MediaKind.MOVIE,
+            kind=kind,
             source_id=hist_item.source_id,
         )
-        episode = Episode(id=hist_item.item_id, title=entry.title)
+        episode = Episode(
+            id=hist_item.item_id,
+            title=entry.episode_label or entry.title,
+        )
         try:
             streams = await asyncio.to_thread(source.get_streams, result, episode)
         except SourceError as exc:

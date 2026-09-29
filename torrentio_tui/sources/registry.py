@@ -130,20 +130,29 @@ def _stremio_kwargs(config: Config, source_id: str) -> dict:
     stream_url = source_cfg.get("stream_url")
     timeout = source_cfg.get("timeout_seconds", config.stremio.timeout_seconds)
     if not stream_url:
-        # Defaults for known alternative addons.
+        # Defaults for ids sharing the base StremioSource class (no
+        # subclass setdefault to fall back to). Subclasses (comet,
+        # aiostreams, ...) define their own stream_url defaults via
+        # kwargs.setdefault, so pass None and let those apply instead
+        # of forcing everything onto the Torrentio URL.
         stream_url = {
             "mediafusion": "https://mediafusion.elfhosted.com",
             "knightcrawler": "https://knightcrawler.elfhosted.com",
             "torrentio-selfhost": "http://localhost:7000",
-            "comet": "https://comet.elfhosted.com",
-        }.get(source_id, config.stremio.stream_url)
-    return {
+        }.get(source_id)
+    kwargs = {
         "cinemeta_url": cinemeta_url,
-        "stream_url": stream_url,
         "timeout": timeout,
         "proxy_url": config.network.proxy_url,
         "source_id": source_id,
     }
+    # Only pass stream_url when explicitly configured or for base-class
+    # ids without a subclass default. Omitting the key lets subclass
+    # kwargs.setdefault defaults (comet, aiostreams, ...) apply instead
+    # of forcing everything onto the Torrentio URL.
+    if stream_url:
+        kwargs["stream_url"] = stream_url
+    return kwargs
 
 
 def load_sources(config: Config) -> list[Source]:
@@ -172,7 +181,7 @@ def load_sources(config: Config) -> list[Source]:
                     source_id=source_id,
                 )
             )
-        elif issubclass(cls, YTSSource):
+        elif issubclass(cls, (YTSSource, RARBGSource)):
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(
