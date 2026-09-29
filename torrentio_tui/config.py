@@ -636,8 +636,11 @@ def save_theme(theme: str) -> None:
     next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
     section_end = section_start + next_section.start() if next_section else len(text)
     section = text[section_start:section_end]
+    # NB: `[ \t]*` (not `\s*`) around the value — `\s` also eats the
+    # newline, and after enough saves that eats the blank line before
+    # the next `[section]` header and glues them onto one line.
     new_section, count = re.subn(
-        r"""^theme\s*=\s*["'].*["']\s*$""",
+        r"""^theme[ \t]*=[ \t]*["'].*["'][ \t]*$""",
         f'theme = "{theme}"',
         section,
         count=1,
@@ -663,7 +666,7 @@ def _patch_toml_value(section: str, key: str, formatted_value: str) -> None:
     if not path.exists():
         return
     text = path.read_text()
-    section_match = re.search(rf"^\\[{section}\\][ \\t]*$", text, flags=re.MULTILINE)
+    section_match = re.search(rf"^\[{section}\][ \t]*$", text, flags=re.MULTILINE)
     if section_match is None:
         text = text.rstrip("\n") + f"\n\n[{section}]\n{key} = {formatted_value}\n"
         path.write_text(text if text.endswith("\n") else text + "\n")
@@ -672,8 +675,10 @@ def _patch_toml_value(section: str, key: str, formatted_value: str) -> None:
     next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
     section_end = section_start + next_section.start() if next_section else len(text)
     section_text = text[section_start:section_end]
+    # `[ \t]*`, never `\s*`: the match must not eat newlines (see
+    # save_theme), and the section header must really match.
     new_section, count = re.subn(
-        rf"""^{key}\\s*=\\s*.*$""",
+        rf"""^{key}[ \t]*=[ \t]*.*$""",
         f"{key} = {formatted_value}",
         section_text,
         count=1,
@@ -731,8 +736,9 @@ def save_enabled_sources(enabled: list[str]) -> None:
     next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
     section_end = section_start + next_section.start() if next_section else len(text)
     section = text[section_start:section_end]
+    # Same `[ \t]*` rule as save_theme: never let the match eat newlines.
     new_section, count = re.subn(
-        r"""^enabled\s*=\s*\[.*\]\s*$""",
+        r"""^enabled[ \t]*=[ \t]*\[.*\][ \t]*$""",
         replacement,
         section,
         count=1,

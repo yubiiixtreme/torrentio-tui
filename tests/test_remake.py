@@ -3,6 +3,8 @@ new sources, episode season-jump."""
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from torrentio_tui.models import Episode, MediaKind, SearchResult
@@ -256,6 +258,66 @@ def test_save_subtitles_and_download_dir(tmp_path, monkeypatch) -> None:
     text = cfg.read_text()
     assert "[downloads]" in text
     assert 'directory = "~/Movies"' in text
+
+
+# -- save-helper stability (no section glue, no dupes) ----------------------
+
+
+def _assert_config_sane(text: str) -> None:
+    for line in text.splitlines():
+        # A value line glued onto a section header, e.g.
+        # `theme = "void"[sources]`.
+        assert not re.search(r".+\]\s*\[.+\]", line), f"glued line: {line!r}"
+        assert not re.search(r"""["']\s*\[.+\]""", line), f"glued line: {line!r}"
+
+
+def test_repeated_theme_saves_stay_stable(tmp_path, monkeypatch) -> None:
+    import torrentio_tui.config as config_mod
+    from torrentio_tui.config import _default_config_toml, save_theme
+
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(_default_config_toml())
+    monkeypatch.setattr(config_mod, "config_file", lambda: cfg)
+    for theme in ("nord", "dracula", "matrix", "nord", "torrentio"):
+        save_theme(theme)
+    text = cfg.read_text()
+    _assert_config_sane(text)
+    assert text.count('theme = "') == 1
+    assert "[sources]" in text
+
+
+def test_repeated_source_and_setting_saves_stay_stable(tmp_path, monkeypatch) -> None:
+    import torrentio_tui.config as config_mod
+    from torrentio_tui.config import (
+        _default_config_toml,
+        save_adult_enabled,
+        save_download_dir,
+        save_enabled_sources,
+        save_player_backend,
+        save_subtitles_enabled,
+    )
+
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(_default_config_toml())
+    monkeypatch.setattr(config_mod, "config_file", lambda: cfg)
+    for _ in range(3):
+        save_enabled_sources(["stremio", "yts"])
+        save_enabled_sources(["stremio", "mediafusion", "comet", "local"])
+        save_adult_enabled(True)
+        save_adult_enabled(False)
+        save_player_backend("vlc")
+        save_player_backend("mpv")
+        save_subtitles_enabled(True)
+        save_download_dir("/tmp/x")
+    text = cfg.read_text()
+    _assert_config_sane(text)
+    headers = [line for line in text.splitlines() if line.startswith("[")]
+    assert headers.count("[adult]") == 1
+    assert headers.count("[downloads]") == 1
+    assert headers.count("[player]") == 1
+    assert headers.count("[subtitles]") == 1
+    assert headers.count("[sources]") == 1
+    assert sum(1 for line in text.splitlines() if line.startswith("enabled = [")) == 1
 
 
 # -- settings screen --------------------------------------------------------

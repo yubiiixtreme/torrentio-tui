@@ -339,7 +339,7 @@ class MainScreen(Screen):
                     yield VimListView(id="library-results", classes="results-panel")
                 with Vertical(id="view-sources"):
                     yield Static(
-                        "Enter toggles a source — 53 free providers and counting",
+                        "Enter toggles a source",
                         id="sources-hint",
                     )
                     yield VimListView(id="sources-list", classes="results-panel")
@@ -358,12 +358,16 @@ class MainScreen(Screen):
                 continue
         if name == "trending":
             self.load_trending()
+            self.query_one("#trending-results", ListView).focus()
         elif name == "sources":
             self._populate_sources_list()
+            self.query_one("#sources-list", ListView).focus()
         elif name == "continue":
             self.refresh_continue_watching()
+            self.query_one("#continue-results", ListView).focus()
         elif name == "library":
             self.refresh_library()
+            self.query_one("#library-results", ListView).focus()
         elif name == "search":
             self.query_one("#search-input", Input).focus()
 
@@ -712,17 +716,25 @@ class MainScreen(Screen):
         elif getattr(item, "source_id", None):
             self._toggle_source(item.source_id, not item.source_enabled)
 
-    def _focused_result_item(self) -> SearchResult | None:
-        """The highlighted title in whichever results list has focus
-        (search, trending, or library)."""
-        for list_id in ("#search-results", "#trending-results", "#library-results"):
-            try:
-                highlighted = self.query_one(list_id, ListView).highlighted_child
-            except Exception:  # noqa: BLE001 -- tab may not be mounted yet
-                continue
-            if isinstance(highlighted, ResultItem):
-                return highlighted.item
-        return None
+    def _active_result_item(self) -> SearchResult | None:
+        """The highlighted title in the *visible* section's list.
+
+        Scoped to the active view on purpose: acting on a hidden list
+        (e.g. downloading a trending item while staring at empty search
+        results) is never what the user meant.
+        """
+        list_id = {
+            "search": "#search-results",
+            "trending": "#trending-results",
+            "library": "#library-results",
+        }.get(self._active_view)
+        if list_id is None:
+            return None
+        try:
+            highlighted = self.query_one(list_id, ListView).highlighted_child
+        except Exception:  # noqa: BLE001 -- view may not be mounted yet
+            return None
+        return highlighted.item if isinstance(highlighted, ResultItem) else None
 
     def _toggle_source(self, source_id: str, enable: bool) -> None:
         """Enable or disable a source (persisted to config.toml)."""
@@ -743,7 +755,7 @@ class MainScreen(Screen):
         self._reload_sources()
 
     def action_toggle_library(self) -> None:
-        item = self._focused_result_item()
+        item = self._active_result_item()
         if item is None:
             self.app.notify("Highlight a title first", severity="warning")
             return
@@ -756,7 +768,7 @@ class MainScreen(Screen):
         self.refresh_library()
 
     def action_info(self) -> None:
-        item = self._focused_result_item()
+        item = self._active_result_item()
         if item is None:
             return
         genres = ", ".join(item.genres) if item.genres else "—"
@@ -778,9 +790,13 @@ class MainScreen(Screen):
         from torrentio_tui.sources.registry import (
             _AVAILABLE,
             CATEGORIES,
+            available_source_ids,
             describe_source,
         )
 
+        self.query_one("#sources-hint", Static).update(
+            f"Enter toggles a source — {len(available_source_ids())} free providers"
+        )
         list_view = self.query_one("#sources-list", ListView)
         list_view.clear()
 
@@ -857,7 +873,7 @@ class MainScreen(Screen):
         self.app.notify(f"Theme: {next_theme}", timeout=3)
 
     def action_download(self) -> None:
-        item = self._focused_result_item()
+        item = self._active_result_item()
         if item is None:
             self.app.notify("Highlight a title first", severity="warning")
             return

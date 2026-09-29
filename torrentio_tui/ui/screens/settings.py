@@ -25,9 +25,6 @@ class SettingRow(ListItem):
         super().__init__(Static(label, markup=True))
         self.setting_action = action
 
-    def refresh_label(self, label: str) -> None:
-        self.query_one(Static).update(label)
-
 
 def _on_off(value: bool) -> str:
     return "[green]ON[/green]" if value else "[red]OFF[/red]"
@@ -122,8 +119,10 @@ class SettingsScreen(ModalScreen[bool]):
                 self.config.enabled_sources = remaining
                 save_enabled_sources(remaining)
         self._sources_changed = True
-        state = "unlocked 🔓" if enabled else "locked 🔒"
-        self.app.notify(f"Adult content {state}", timeout=4)
+        if enabled:
+            self.app.notify("Adult unlocked 🔓 — enable sources in the Sources tab", timeout=5)
+        else:
+            self.app.notify("Adult content locked 🔒", timeout=4)
 
     def _cycle_theme(self) -> None:
         from torrentio_tui.themes import load_custom_themes
