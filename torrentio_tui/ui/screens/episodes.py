@@ -79,7 +79,9 @@ class EpisodeScreen(ModalScreen[Episode | None]):
         yield Header()
         with Container(id="episode-list-container"):
             yield Static("📺  Choose Episode", id="episode-title")
-            yield Input(placeholder="Filter episodes (e.g. S02E05 or title)...", id="episode-search")
+            yield Input(
+                placeholder="Filter episodes (e.g. S02E05 or title)...", id="episode-search"
+            )
             yield VimListView(*_build_episode_rows(self._filtered_episodes))
         yield Footer()
 
@@ -96,9 +98,7 @@ class EpisodeScreen(ModalScreen[Episode | None]):
             self._filter_episodes(event.value)
 
     def _filter_episodes(self, query: str) -> None:
-        self._filtered_episodes = [
-            ep for ep in self.episodes if _episode_matches(ep, query)
-        ]
+        self._filtered_episodes = [ep for ep in self.episodes if _episode_matches(ep, query)]
         list_view = self.query_one(ListView)
         list_view.clear()
         for row in _build_episode_rows(self._filtered_episodes):

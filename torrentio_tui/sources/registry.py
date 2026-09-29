@@ -216,15 +216,18 @@ def load_sources(config: Config) -> list[Source]:
                     proxy_url=config.network.proxy_url,
                 )
             )
-        elif issubclass(cls, (Thirteen37xSource, PirateBaySource)):
-            source_cfg = config.sources_config.get(source_id, {})
-            sources.append(
-                cls(
-                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
-                    proxy_url=config.network.proxy_url,
-                )
-            )
-        elif issubclass(cls, (EZTVRSSSource, TorrentGalaxySource, MagnetDLSource, VumooSource, SolarMovieSource)):
+        elif issubclass(
+            cls,
+            (
+                Thirteen37xSource,
+                PirateBaySource,
+                EZTVRSSSource,
+                TorrentGalaxySource,
+                MagnetDLSource,
+                VumooSource,
+                SolarMovieSource,
+            ),
+        ):
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(

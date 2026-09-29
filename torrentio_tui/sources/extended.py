@@ -84,12 +84,14 @@ def _parse_rss_items(xml_content: str) -> list[dict]:
         if title_elem is None or link_elem is None:
             continue
 
-        items.append({
-            "title": title_elem.text or "",
-            "link": link_elem.text or "",
-            "description": desc_elem.text or "" if desc_elem is not None else "",
-            "pub_date": pub_date_elem.text or "" if pub_date_elem is not None else "",
-        })
+        items.append(
+            {
+                "title": title_elem.text or "",
+                "link": link_elem.text or "",
+                "description": desc_elem.text or "" if desc_elem is not None else "",
+                "pub_date": pub_date_elem.text or "" if pub_date_elem is not None else "",
+            }
+        )
     return items
 
 
