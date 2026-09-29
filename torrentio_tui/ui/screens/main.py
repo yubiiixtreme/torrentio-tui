@@ -326,7 +326,9 @@ class MainScreen(Screen):
 
             # Map category label back to category id
             category_id_map = {label: cid for cid, (label, _) in CATEGORIES.items()}
-            target_category = category_id_map.get(category_filter) if category_filter != "All" else None
+            target_category = (
+                category_id_map.get(category_filter) if category_filter != "All" else None
+            )
 
             results: list[SearchResult] = []
             errors: list[str] = []
