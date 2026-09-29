@@ -101,12 +101,15 @@ theme = "torrentio"
 #   MyAnimeList anime data. "kitsu" = Kitsu anime data. "anilist" =
 #   AniList anime data. Catalogue results resolve playback through your
 #   configured stream addon by title/IMDb match.
-# [anime]  "nyaa" = anime torrents from Nyaa.si. "subsplease" = latest
-#   anime releases from SubsPlease.
-# [live]  "iptv" = Live TV channels from an M3U playlist.
-# [local]  "local" = your own video files (indexes ~/Videos by default).
-# [adult]  opt-in, requires [adult] enabled = true below:
-#   "stremio-adult", "hanime", "nhentai", "rule34".
+    # [anime]  "nyaa" = anime torrents from Nyaa.si. "subsplease" = latest
+    #   anime releases from SubsPlease. "anidex"/"animetosho"/
+    #   "tokyotoshokan"/"nyaa-torrents" = more anime indexes.
+    # [live]  "iptv" = Live TV channels from an M3U playlist.
+    #   "iptv-org" = free world TV (built-in playlist, nothing to configure).
+    # [local]  "local" = your own video files (indexes ~/Videos by default).
+    # [adult]  opt-in, requires [adult] enabled = true below (or Settings):
+    #   "stremio-adult", "hanime", "nhentai", "rule34", "ehentai",
+    #   "hitomila", "hentaihaven".
 enabled = ["stremio", "mediafusion", "comet", "local"]
 
 [sources.stremio]
@@ -196,7 +199,7 @@ timeout_seconds = 15.0
     # api_url = "https://movies-api.accel.li/api/v2"
     # timeout_seconds = 15.0
     #
-    # [sources.eztv]
+    # [sources.eztv-rss]
     # timeout_seconds = 15.0
     #
     # [sources.torrentgalaxy]
@@ -205,11 +208,46 @@ timeout_seconds = 15.0
     # [sources.magnetdl]
     # timeout_seconds = 15.0
     #
+    # [sources.limetorrents]
+    # timeout_seconds = 15.0
+    #
+    # [sources.torrentdownloads]
+    # timeout_seconds = 15.0
+    #
+    # [sources.glodls]
+    # timeout_seconds = 15.0
+    #
+    # [sources.thepiratebay]
+    # timeout_seconds = 15.0
+    #
+    # [sources.rarbg-mirror]
+    # timeout_seconds = 15.0
+    #
     # [sources.vumoo]
     # timeout_seconds = 15.0
     #
     # [sources.solarmovie]
     # timeout_seconds = 15.0
+    #
+    # --- Anime torrent indexes (RSS, free, keyless) ---
+    # [sources.anidex]
+    # timeout_seconds = 15.0
+    #
+    # [sources.animetosho]
+    # timeout_seconds = 15.0
+    #
+    # [sources.tokyotoshokan]
+    # timeout_seconds = 15.0
+    #
+    # [sources.nyaa-torrents]
+    # # mirror = "https://nyaa.si"  # or nyaa.iss.one / sukebei.nyaa.si
+    # timeout_seconds = 15.0
+    #
+    # --- Free world live TV (iptv-org project, no key, no account) ---
+    # [sources.iptv-org]
+    # # m3u_url = "https://iptv-org.github.io/iptv/index.m3u"  # default
+    # # ...or a narrower list, e.g. https://iptv-org.github.io/iptv/countries/us.m3u
+    # timeout_seconds = 30.0
 #
 # --- Catalogue companions (free, keyless; playback bridges through your
 #     configured stream addon, so a debrid URL helps these too) ---
@@ -282,10 +320,12 @@ timeout_seconds = 15.0
 [downloads]
 directory = "~/Videos/torrentio-tui"
 
-[adult]
-# Enable adult content sources (stremio-adult, hanime, nhentai, rule34)
-# ONLY enable if you are of legal age in your jurisdiction!
-enabled = false
+    [adult]
+    # Enable adult content sources (stremio-adult, hanime, nhentai, rule34,
+    # ehentai, hitomila, hentaihaven). Locked by default — also toggleable
+    # live in-app via Settings (g).
+    # ONLY enable if you are of legal age in your jurisdiction!
+    enabled = false
 
 [language]
 # UI language (ISO 639-1 code): en, es, fr, de, it, pt, ru, zh, ja, ko, etc.
@@ -611,6 +651,63 @@ def save_theme(theme: str) -> None:
     if not new_text.endswith("\n"):
         new_text += "\n"
     path.write_text(new_text)
+
+
+def _patch_toml_value(section: str, key: str, formatted_value: str) -> None:
+    """Best-effort single-key patcher for config.toml: replaces (or adds)
+    `key = ...` inside `[section]`, preserving comments and everything
+    else. Silently does nothing if the file isn't there yet."""
+    import re
+
+    path = config_file()
+    if not path.exists():
+        return
+    text = path.read_text()
+    section_match = re.search(rf"^\\[{section}\\][ \\t]*$", text, flags=re.MULTILINE)
+    if section_match is None:
+        text = text.rstrip("\n") + f"\n\n[{section}]\n{key} = {formatted_value}\n"
+        path.write_text(text if text.endswith("\n") else text + "\n")
+        return
+    section_start = section_match.end()
+    next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
+    section_end = section_start + next_section.start() if next_section else len(text)
+    section_text = text[section_start:section_end]
+    new_section, count = re.subn(
+        rf"""^{key}\\s*=\\s*.*$""",
+        f"{key} = {formatted_value}",
+        section_text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if count:
+        new_text = text[:section_start] + new_section + text[section_end:]
+    else:
+        new_text = (
+            text[:section_end].rstrip("\n") + f"\n{key} = {formatted_value}\n" + text[section_end:]
+        )
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+    path.write_text(new_text)
+
+
+def save_adult_enabled(enabled: bool) -> None:
+    """Persist the Settings-screen adult toggle (`[adult] enabled`)."""
+    _patch_toml_value("adult", "enabled", "true" if enabled else "false")
+
+
+def save_player_backend(backend: str) -> None:
+    """Persist the Settings-screen player choice (`[player] backend`)."""
+    _patch_toml_value("player", "backend", f'"{backend}"')
+
+
+def save_subtitles_enabled(enabled: bool) -> None:
+    """Persist the Settings-screen subtitles toggle."""
+    _patch_toml_value("subtitles", "enabled", "true" if enabled else "false")
+
+
+def save_download_dir(directory: str) -> None:
+    """Persist the Settings-screen download directory."""
+    _patch_toml_value("downloads", "directory", f'"{directory}"')
 
 
 def save_enabled_sources(enabled: list[str]) -> None:

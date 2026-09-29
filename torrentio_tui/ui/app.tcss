@@ -74,13 +74,24 @@ Underline {
     opacity: 1;
 }
 
+#search-row {
+    height: auto;
+    margin: 1 1 0 1;
+}
+
 #search-input {
     border: tall #1a2d50;
     background: #1a2d50;
     color: #e0ffff;
-    margin: 1 1 0 1;
     padding: 0 2;
     height: 3;
+    width: 1fr;
+}
+
+#filter-toggle {
+    width: auto;
+    min-width: 14;
+    margin-left: 1;
 }
 
 #search-input:focus {
@@ -160,13 +171,26 @@ ListView:focus > ListItem.--highlight {
 }
 
 #detail-poster {
-    height: 14;
+    height: 10;
     content-align: center middle;
     text-style: bold;
     border: round #00ffff;
     margin-bottom: 1;
     background: #0c1426;
     color: #4dffff44;
+}
+
+#detail-badges {
+    color: #8bffff;
+    height: auto;
+}
+
+#detail-actions {
+    color: #ffbf00;
+    height: auto;
+    margin-top: 1;
+    border-top: solid #1a2d50;
+    padding-top: 1;
 }
 
 #detail-title {
@@ -453,11 +477,88 @@ Collapsible > .collapsible--content {
 }
 
 #filter-kind, #filter-category {
-    width: 24;
+    width: 20;
+}
+
+#filter-genre {
+    width: 16;
+    height: 3;
+    margin: 0 1;
+}
+
+#filter-year, #filter-sort {
+    width: 18;
+}
+
+#filter-count {
+    width: auto;
+    height: 3;
+    content-align: left middle;
+    padding: 0 1;
+    color: #ffbf00;
 }
 
 #filter-clear {
     width: auto;
+}
+
+#trending-hint {
+    height: 1;
+    padding: 0 2;
+    color: #8bffff;
+}
+
+#trending-loading {
+    height: 2;
+    color: #00ffff;
+    content-align: center middle;
+}
+
+#episode-count {
+    height: 1;
+    padding: 0 2;
+    color: #8bffff;
+}
+
+#episode-search {
+    margin: 0 2;
+}
+
+#settings-container {
+    width: 75%;
+    height: 75%;
+    margin: 3 6;
+    border: thick #00ffff;
+    background: #111e3a;
+}
+
+#settings-title {
+    height: 1;
+    padding: 0 2;
+    background: #1a2d50;
+    color: #00ffff;
+    text-style: bold;
+    border-bottom: solid #00ffff;
+}
+
+#settings-container ListView {
+    background: #1a2d50;
+    scrollbar-color: #00ffff;
+    height: 1fr;
+}
+
+#settings-container ListItem {
+    padding: 1 2;
+    border-bottom: solid #1a2d50;
+}
+
+#settings-downloaddir {
+    margin: 0 2;
+}
+
+#settings-download-hint {
+    height: 1;
+    padding: 0 2;
 }
 
 #sources-list .category-header {

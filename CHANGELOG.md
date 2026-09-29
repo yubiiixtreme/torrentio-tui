@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **UI remake:** ⩔ funnel filter bar (kind · category · genre · year ·
+  sort) that filters fetched results instantly with live counts;
+  🔥 Trending tab (top movies & series, no typing); ⚙️ Settings screen
+  (`g`) with adult-content lock (off by default), persistent theme
+  picker, player backend, auto-subtitles toggle and download folder;
+  detail panel now always shows badges, genres, position and action
+  hints instead of an empty box; episode picker shows counts and jumps
+  to seasons with digit keys.
+- **15 more free sources (53 total):** LimeTorrents, TorrentDownloads,
+  GloDLS, IPTV-org world TV, AniDex, Anime Tosho, Tokyo Toshokan, The
+  Pirate Bay (API), RARBG mirrors, Nyaa mirrors, E-Hentai, Hitomi.la,
+  HentaiHaven — plus a `Source.trending()` API powering the Trending
+  tab. Also fixed TMDB failing to construct (wrong kwargs passed).
+- Settings choices persist to `config.toml` immediately
+  (`save_adult_enabled`, `save_player_backend`,
+  `save_subtitles_enabled`, `save_download_dir`).
+
 ### Fixed
 - **1337x, Pirate Bay, and RARBG-mirror searches crashed every time:**
   `torrentapi.py`'s RSS-based sources called `urllib.parse.quote()`

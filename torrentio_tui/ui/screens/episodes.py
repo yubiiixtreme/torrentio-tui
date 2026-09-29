@@ -62,6 +62,10 @@ def _episode_matches(episode: Episode, query: str) -> bool:
     return False
 
 
+def _season_numbers(episodes: list[Episode]) -> list[int]:
+    return sorted({ep.season for ep in episodes if ep.season is not None})
+
+
 class EpisodeScreen(ModalScreen[Episode | None]):
     """Pick an episode. Dismisses with the chosen Episode, or None on cancel."""
 
@@ -70,28 +74,41 @@ class EpisodeScreen(ModalScreen[Episode | None]):
         ("slash", "focus_search", "Search"),
     ]
 
-    def __init__(self, episodes: list[Episode]) -> None:
+    def __init__(self, episodes: list[Episode], title: str = "Choose Episode") -> None:
         super().__init__()
         self.episodes = episodes
+        self.show_title = title
         self._filtered_episodes = list(episodes)
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="episode-list-container"):
-            yield Static("📺  Choose Episode", id="episode-title")
+            yield Static(f"📺  {self.show_title}", id="episode-title")
             yield Input(
-                placeholder="Filter episodes (e.g. S02E05 or title)...", id="episode-search"
+                placeholder="Filter (S02E05, title...) · / focuses · 1-9 jumps season...",
+                id="episode-search",
             )
+            yield Static("", id="episode-count")
             yield VimListView(*_build_episode_rows(self._filtered_episodes))
         yield Footer()
 
     def on_mount(self) -> None:
+        self._update_count()
         list_view = self.query_one(ListView)
         if self._filtered_episodes:
             list_view.index = 0
             if isinstance(list_view.highlighted_child, SeasonHeader):
                 list_view.action_cursor_down()
         list_view.focus()
+
+    def _update_count(self) -> None:
+        seasons = _season_numbers(self._filtered_episodes)
+        parts = [f"{len(self._filtered_episodes)} episode(s)"]
+        if len(seasons) > 1:
+            parts.append(f"{len(seasons)} seasons")
+        elif seasons:
+            parts.append(f"season {seasons[0]}")
+        self.query_one("#episode-count", Static).update(f"[dim]{' · '.join(parts)}[/dim]")
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "episode-search":
@@ -107,9 +124,25 @@ class EpisodeScreen(ModalScreen[Episode | None]):
             list_view.index = 0
             if isinstance(list_view.highlighted_child, SeasonHeader):
                 list_view.action_cursor_down()
+        self._update_count()
 
     def action_focus_search(self) -> None:
         self.query_one("#episode-search", Input).focus()
+
+    def on_key(self, event) -> None:
+        """Digit keys jump straight to that season's first episode."""
+        if self.query_one("#episode-search", Input).has_focus:
+            return  # typing a filter like "S02" must not jump
+        if event.character and event.character.isdigit():
+            season = int(event.character)
+            if season in _season_numbers(self._filtered_episodes):
+                list_view = self.query_one(ListView)
+                for index, child in enumerate(list_view.children):
+                    if isinstance(child, EpisodePicked) and child.episode.season == season:
+                        list_view.index = index
+                        break
+                event.prevent_default()
+                event.stop()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         item = event.item

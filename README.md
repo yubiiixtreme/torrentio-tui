@@ -64,8 +64,15 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
 - 🎬 **One-key playback** — streams resolve via
   [Torrentio](https://torrentio.strem.fun/configure) (or any compatible
   Stremio addon) and play in mpv/vlc
-- 📺 **Episode & quality picker** — full season/episode lists, qualities
-  ranked with seeders and size
+- ⩔ **Funnel filters** — kind, category, genre, year and sort filter
+  fetched results instantly (press `f`); result counts shown live
+- 🔥 **Trending tab** — top movies & series with zero typing
+- 📺 **Episode & quality picker** — full season/episode lists with live
+  search, `/` to focus, digit keys jump to seasons; qualities ranked
+  with seeders and size
+- ⚙️ **Settings screen** (press `g`) — adult-content lock (off by
+  default), theme picker, player backend, subtitles, download folder —
+  everything persisted to `config.toml` automatically
 - 💬 **Auto-subtitles** *(opt-in, `[subtitles] enabled = true`)* —
   SubDB (keyless) and OpenSubtitles.com providers attach the best
   preferred-language caption to streams missing one, cached locally so

@@ -18,7 +18,17 @@ from torrentio_tui.sources.adult import (
     Rule34Source,
     StremioAdultSource,
 )
+from torrentio_tui.sources.adult_extended import (
+    EHentaiSource,
+    HentaiHavenSource,
+    HitomiLaSource,
+)
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
+from torrentio_tui.sources.anime_extended import (
+    AniDexSource,
+    AnimeToshoSource,
+    TokyoToshokanSource,
+)
 from torrentio_tui.sources.base import Source
 from torrentio_tui.sources.catalogues import (
     JikanSource,
@@ -49,9 +59,19 @@ from torrentio_tui.sources.free import (
     StremifySource,
     StremThruStoreSource,
 )
-from torrentio_tui.sources.iptv import IPTVSource
+from torrentio_tui.sources.iptv import IPTVOrgSource, IPTVSource
 from torrentio_tui.sources.local import LocalSource
+from torrentio_tui.sources.rss_indexes import (
+    GloDLSSource,
+    LimeTorrentsSource,
+    TorrentDownloadsSource,
+)
 from torrentio_tui.sources.stremio import StremioSource
+from torrentio_tui.sources.torrent_extended import (
+    NyaaTorrentsSource,
+    RARBGMirrorSource,
+    ThePirateBaySource,
+)
 from torrentio_tui.sources.torrentapi import (
     PirateBaySource,
     RARBGSource,
@@ -82,6 +102,19 @@ _SOURCE_DISPLAY_NAMES = {
     "stremio-community": "Stremio Community (Free Addon)",
     "superstream": "SuperStream (Free Addon)",
     "torrentio-cloud": "Torrentio Cloud (Free)",
+    "limetorrents": "LimeTorrents (Torrent Index)",
+    "torrentdownloads": "TorrentDownloads (Torrent Index)",
+    "glodls": "GloDLS (Torrent Index)",
+    "iptv-org": "IPTV-org (Free World TV)",
+    "anidex": "AniDex (Anime Torrents)",
+    "animetosho": "Anime Tosho (Anime Releases)",
+    "tokyotoshokan": "Tokyo Toshokan (Anime Index)",
+    "thepiratebay": "The Pirate Bay (API + RSS)",
+    "rarbg-mirror": "RARBG Mirrors (torrentapi.org)",
+    "nyaa-torrents": "Nyaa Torrents (Mirrors)",
+    "ehentai": "E-Hentai (Adult)",
+    "hitomila": "Hitomi.la (Adult)",
+    "hentaihaven": "HentaiHaven (Adult)",
 }
 
 
@@ -145,6 +178,19 @@ _AVAILABLE: dict[str, type[Source]] = {
     "stremio-community": StremioCommunitySource,
     "superstream": StremioSuperStreamSource,
     "torrentio-cloud": StremioTorrentioCloudSource,
+    "limetorrents": LimeTorrentsSource,
+    "torrentdownloads": TorrentDownloadsSource,
+    "glodls": GloDLSSource,
+    "iptv-org": IPTVOrgSource,
+    "anidex": AniDexSource,
+    "animetosho": AnimeToshoSource,
+    "tokyotoshokan": TokyoToshokanSource,
+    "thepiratebay": ThePirateBaySource,
+    "rarbg-mirror": RARBGMirrorSource,
+    "nyaa-torrents": NyaaTorrentsSource,
+    "ehentai": EHentaiSource,
+    "hitomila": HitomiLaSource,
+    "hentaihaven": HentaiHavenSource,
 }
 
 
@@ -207,7 +253,7 @@ def load_sources(config: Config) -> list[Source]:
                     source_id=source_id,
                 )
             )
-        elif issubclass(cls, (YTSSource, RARBGSource)):
+        elif issubclass(cls, (YTSSource, RARBGSource, RARBGMirrorSource)):
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(
@@ -226,6 +272,9 @@ def load_sources(config: Config) -> list[Source]:
                 MagnetDLSource,
                 VumooSource,
                 SolarMovieSource,
+                LimeTorrentsSource,
+                TorrentDownloadsSource,
+                GloDLSSource,
             ),
         ):
             source_cfg = config.sources_config.get(source_id, {})
@@ -235,11 +284,22 @@ def load_sources(config: Config) -> list[Source]:
                     proxy_url=config.network.proxy_url,
                 )
             )
-        elif issubclass(cls, (TMDBSource, TraktSource)):
+        elif cls is TMDBSource:
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(
                     api_key=source_cfg.get("api_key"),
+                    stream_url=source_cfg.get("stream_url"),
+                    cinemeta_url=source_cfg.get("cinemeta_url"),
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
+                    source_id=source_id,
+                )
+            )
+        elif cls is TraktSource:
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
                     client_id=source_cfg.get("client_id"),
                     client_secret=source_cfg.get("client_secret"),
                     stream_url=source_cfg.get("stream_url"),
@@ -256,11 +316,48 @@ def load_sources(config: Config) -> list[Source]:
             m3u_path = iptv_cfg.get("m3u_path") or config.iptv.m3u_path
             timeout = iptv_cfg.get("timeout_seconds", config.iptv.timeout_seconds)
             sources.append(cls(m3u_url=m3u_url, m3u_path=m3u_path, timeout=timeout))
+        elif cls is IPTVOrgSource:
+            # Free world playlist built in; overridable per usual.
+            org_cfg = config.sources_config.get("iptv-org", {})
+            timeout = org_cfg.get("timeout_seconds", config.iptv.timeout_seconds)
+            sources.append(
+                cls(
+                    m3u_url=org_cfg.get("m3u_url"),
+                    m3u_path=org_cfg.get("m3u_path"),
+                    timeout=timeout,
+                )
+            )
+        elif cls is ThePirateBaySource:
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
+                    base_url=source_cfg.get("base_url"),
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
+                )
+            )
+        elif cls is NyaaTorrentsSource:
+            source_cfg = config.sources_config.get(source_id, {})
+            sources.append(
+                cls(
+                    mirror=source_cfg.get("mirror"),
+                    timeout=source_cfg.get("timeout_seconds", config.stremio.timeout_seconds),
+                    proxy_url=config.network.proxy_url,
+                )
+            )
         elif cls is AnilistSource:
             anilist_cfg = config.sources_config.get("anilist", {})
             include_adult = anilist_cfg.get("include_adult", False)
             sources.append(cls(include_adult=include_adult))
-        elif cls in (StremioAdultSource, HanimeSource, NHentaiSource, Rule34Source):
+        elif cls in (
+            StremioAdultSource,
+            HanimeSource,
+            NHentaiSource,
+            Rule34Source,
+            EHentaiSource,
+            HitomiLaSource,
+            HentaiHavenSource,
+        ):
             # Adult sources need the full config for age gating
             sources.append(cls(config=config))
         else:

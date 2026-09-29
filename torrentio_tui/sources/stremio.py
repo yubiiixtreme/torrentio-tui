@@ -296,6 +296,37 @@ class StremioSource(Source):
             raise SourceError(" | ".join(errors))
         return results[: self.max_results]
 
+    # -- trending ------------------------------------------------------
+    def trending(self, limit: int = 20) -> list[SearchResult]:
+        """Top movies + series from Cinemeta's `top` catalogs (free,
+        keyless). Powers the Trending tab."""
+        results: list[SearchResult] = []
+        for stremio_type in ("movie", "series"):
+            try:
+                metas = self._catalog(stremio_type, "")
+            except SourceError:
+                continue
+            for meta in metas:
+                tt = meta.get("id") or meta.get("imdb_id")
+                if not tt:
+                    continue
+                raw_genres = meta.get("genres") or meta.get("genre") or []
+                results.append(
+                    SearchResult(
+                        id=_encode_id(stremio_type, tt),
+                        title=str(meta.get("name", tt)),
+                        kind=_classify_kind(stremio_type, raw_genres),
+                        source_id=self.id,
+                        year=_parse_year(meta.get("releaseInfo") or meta.get("year")),
+                        poster_url=meta.get("poster"),
+                        overview=meta.get("description"),
+                        genres=tuple(str(g) for g in raw_genres),
+                    )
+                )
+                if len(results) >= limit:
+                    return results[:limit]
+        return results[:limit]
+
     # -- episodes --------------------------------------------------------
     def get_episodes(self, item: SearchResult) -> list[Episode]:
         stremio_type, tt = _decode_id(item.id)

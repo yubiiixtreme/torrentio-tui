@@ -47,6 +47,12 @@ class Source(ABC):
         can treat everything uniformly."""
         return [Episode(id=item.id, title=item.title)]
 
+    def trending(self, limit: int = 20) -> list[SearchResult]:
+        """Return currently-trending/popular titles (for the Trending tab).
+        Sources without a trending feed return an empty list — never raise
+        for "no feed", raise `SourceError` only on failure."""
+        return []
+
     @abstractmethod
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         """Resolve one or more playable `StreamLink`s (ideally multiple

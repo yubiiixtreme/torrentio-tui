@@ -172,3 +172,30 @@ class IPTVSource(Source):
 
     def close(self) -> None:
         pass
+
+
+class IPTVOrgSource(IPTVSource):
+    """Free world live TV via the iptv-org project playlist.
+
+    100% free, no key, no account — thousands of public channels.
+    Ships with the world index playlist as the default; point
+    ``m3u_url`` at a country/category playlist from
+    https://iptv-org.github.io/iptv/ to narrow it down.
+    """
+
+    id = "iptv-org"
+    name = "IPTV-org (Free World TV)"
+
+    WORLD_PLAYLIST = "https://iptv-org.github.io/iptv/index.m3u"
+
+    def __init__(
+        self,
+        m3u_url: str | None = None,
+        m3u_path: str | None = None,
+        timeout: float = 30.0,
+    ) -> None:
+        super().__init__(
+            m3u_url=m3u_url or self.WORLD_PLAYLIST,
+            m3u_path=m3u_path,
+            timeout=timeout,
+        )

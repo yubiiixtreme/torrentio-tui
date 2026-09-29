@@ -10,10 +10,12 @@ from torrentio_tui.sources.registry import CATEGORIES, describe_source, sources_
 
 KEYBINDINGS = (
     ("↑ / ↓ or k / j", "Move selection in lists"),
-    ("← / →", "Switch tabs (Search / Continue / Library)"),
+    ("← / →", "Switch tabs (Search / Trending / Continue / Library / Sources)"),
     ("Enter", "Play selected title / episode / stream"),
     ("Tab", "Switch focus between search box, results, detail panel"),
     ("/", "Jump to search box and select its contents"),
+    ("f", "Show/hide the ⩔ funnel (kind · category · genre · year · sort)"),
+    ("g", "Open Settings (adult lock, theme, player, subtitles, folders)"),
     ("l", "Save/unsave highlighted title in your Library (❤️)"),
     ("d", "Download highlighted title (requires yt-dlp)"),
     ("i", "Show detailed info for highlighted title"),
@@ -38,6 +40,10 @@ def _source_lines() -> str:
 
 
 TIPS = (
+    "The ⩔ funnel filters fetched results instantly — no waiting per tweak.",
+    "The 🔥 Trending tab shows top movies & series with zero typing.",
+    "In the episode picker: type to filter, / focuses, digits jump seasons.",
+    "Adult sources stay locked until you unlock them in Settings (g).",
     "Enable multiple sources in config.toml [sources].enabled for wider results.",
     "Torrentio may return magnet links — install webtorrent-cli or peerflix, or add a debrid key.",
     "If Torrentio is blocked (HTTP 403), set network.proxy_url (e.g., Cloudflare WARP).",
