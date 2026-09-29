@@ -9,12 +9,14 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import (
+    Button,
     Footer,
     Header,
     Input,
     ListItem,
     ListView,
     LoadingIndicator,
+    Select,
     Static,
     TabbedContent,
     TabPane,
@@ -144,6 +146,7 @@ class MainScreen(Screen):
         ("d", "download", "Download"),
         ("i", "info", "Info"),
         ("t", "cycle_theme", "Theme"),
+        ("s", "sources", "Sources"),
         ("slash", "focus_search", "Search"),
         ("question_mark", "help", "Help"),
         ("q", "app.quit", "Quit"),
@@ -164,6 +167,7 @@ class MainScreen(Screen):
         with TabbedContent(initial="search"):
             with TabPane("🔍  Search", id="search"), Vertical():
                 yield Input(placeholder="Search movies, series, anime...", id="search-input")
+                yield self._build_filter_bar()
                 yield LoadingIndicator(id="search-loading")
                 with Horizontal(id="search-body"):
                     yield VimListView(id="search-results", classes="results-panel")
@@ -172,7 +176,36 @@ class MainScreen(Screen):
                 yield VimListView(id="continue-results", classes="results-panel")
             with TabPane("❤️  Library", id="library"):
                 yield VimListView(id="library-results", classes="results-panel")
+            with TabPane("🔌  Sources", id="sources"):
+                yield VimListView(id="sources-list", classes="results-panel")
         yield Footer()
+
+    def _build_filter_bar(self) -> Horizontal:
+        """Build the search filter bar with category/source filters."""
+        from torrentio_tui.models import MediaKind
+        from torrentio_tui.sources.registry import CATEGORIES
+
+        kind_options = ["All"] + [k.value.title() for k in MediaKind]
+        category_options = ["All"] + [label for label, _ in CATEGORIES.values()]
+
+        return Horizontal(
+            Static("[bold]Filters:[/bold]", classes="filter-label"),
+            Select(
+                [(opt, opt) for opt in kind_options],
+                value="All",
+                id="filter-kind",
+                allow_blank=False,
+            ),
+            Select(
+                [(opt, opt) for opt in category_options],
+                value="All",
+                id="filter-category",
+                allow_blank=False,
+            ),
+            Button("Clear", id="filter-clear", variant="default"),
+            id="filter-bar",
+            classes="filter-bar",
+        )
 
     def _build_detail_panel(self) -> Vertical:
         return Vertical(
@@ -265,18 +298,49 @@ class MainScreen(Screen):
         if event.input.id == "search-input":
             self.run_search(event.value)
 
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id in ("filter-kind", "filter-category"):
+            query = self.query_one("#search-input", Input).value or ""
+            if query.strip():
+                self.run_search(query)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "filter-clear":
+            self.query_one("#filter-kind", Select).value = "All"
+            self.query_one("#filter-category", Select).value = "All"
+            query = self.query_one("#search-input", Input).value or ""
+            if query.strip():
+                self.run_search(query)
+
     @work(exclusive=True)
     async def run_search(self, query: str) -> None:
         loading = self.query_one("#search-loading", LoadingIndicator)
         loading.display = True
         try:
+            # Get current filter values
+            kind_filter = self.query_one("#filter-kind", Select).value
+            category_filter = self.query_one("#filter-category", Select).value
+
+            from torrentio_tui.models import MediaKind
+            from torrentio_tui.sources.registry import CATEGORIES
+
+            # Map category label back to category id
+            category_id_map = {label: cid for cid, (label, _) in CATEGORIES.items()}
+            target_category = category_id_map.get(category_filter) if category_filter != "All" else None
+
             results: list[SearchResult] = []
             errors: list[str] = []
             for source in self.sources:
+                # Skip sources that don't match category filter
+                if target_category and getattr(source, "category", "streams") != target_category:
+                    continue
                 try:
-                    # Blocking urllib I/O must not run on the event loop —
-                    # one slow addon would freeze the whole TUI.
-                    results.extend(await asyncio.to_thread(source.search, query))
+                    source_results = await asyncio.to_thread(source.search, query)
+                    # Filter by kind if needed
+                    if kind_filter != "All":
+                        target_kind = MediaKind(kind_filter.lower())
+                        source_results = [r for r in source_results if r.kind == target_kind]
+                    results.extend(source_results)
                 except SourceError as exc:
                     errors.append(str(exc))
 
@@ -315,6 +379,27 @@ class MainScreen(Screen):
             self.open_item(item.item)
         elif isinstance(item, HistoryItem):
             self.resume_history_item(item)
+        elif hasattr(item, "source_id") and item.source_id:
+            self._toggle_source(item.source_id, not item.source_enabled)
+
+    def _toggle_source(self, source_id: str, enable: bool) -> None:
+        """Enable or disable a source."""
+        if enable:
+            if source_id not in self.config.enabled_sources:
+                self.config.enabled_sources.append(source_id)
+                self.app.notify(f"Enabled source: {source_id}")
+        else:
+            if source_id in self.config.enabled_sources:
+                self.config.enabled_sources.remove(source_id)
+                self.app.notify(f"Disabled source: {source_id}")
+        # Reload sources
+        from torrentio_tui.sources.registry import load_sources
+
+        try:
+            self.sources = load_sources(self.config)
+        except Exception as exc:
+            self.app.notify(f"Failed to reload sources: {exc}", severity="error")
+        self._populate_sources_list()
 
     def action_toggle_library(self) -> None:
         results_list = self.query_one("#search-results", ListView)
@@ -350,6 +435,49 @@ class MainScreen(Screen):
 
     def action_help(self) -> None:
         self.app.push_screen(HelpScreen())
+
+    def action_sources(self) -> None:
+        """Show the sources management tab."""
+        self.query_one(TabbedContent).active = "sources"
+        self._populate_sources_list()
+
+    def _populate_sources_list(self) -> None:
+        """Populate the sources list view with all available sources."""
+        from torrentio_tui.models import MediaKind, SearchResult
+        from torrentio_tui.sources.registry import CATEGORIES, describe_source
+
+        list_view = self.query_one("#sources-list", ListView)
+        list_view.clear()
+
+        # Group sources by category
+        sources_by_cat: dict[str, list[Source]] = {}
+        for source in self.sources:
+            cat = getattr(source, "category", "streams")
+            sources_by_cat.setdefault(cat, []).append(source)
+
+        # Add category headers and sources
+        for cat_id, (cat_label, cat_desc) in CATEGORIES.items():
+            cat_sources = sources_by_cat.get(cat_id, [])
+            if not cat_sources:
+                continue
+
+            # Category header
+            header = ListItem(
+                Static(f"[bold]{cat_label}[/bold]  [dim]{cat_desc}[/dim]", markup=True),
+                disabled=True,
+                classes="category-header",
+            )
+            list_view.append(header)
+
+            # Sources in this category
+            for source in cat_sources:
+                enabled = source.id in self.config.enabled_sources
+                status = "[green]✓ Enabled[/green]" if enabled else "[red]✗ Disabled[/red]"
+                label = f"  {describe_source(source.id)}  {status}"
+                item = ListItem(Static(label, markup=True))
+                item.source_id = source.id
+                item.source_enabled = enabled
+                list_view.append(item)
 
     def action_cycle_theme(self) -> None:
         from torrentio_tui.config import THEMES, save_theme

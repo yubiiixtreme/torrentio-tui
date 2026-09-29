@@ -22,8 +22,10 @@ class LocalSource(Source):
     name = "Local Files"
     category = "local"
 
-    def __init__(self, root: Path | None = None) -> None:
-        self.root = root or Path(os.environ.get("TORRENTIO_TUI_LOCAL_DIR", "~/Videos")).expanduser()
+    def __init__(self, root: Path | str | None = None) -> None:
+        if root is None:
+            root = os.environ.get("TORRENTIO_TUI_LOCAL_DIR", "~/Videos")
+        self.root = Path(root).expanduser()
 
     def _iter_files(self):
         if not self.root.exists():
