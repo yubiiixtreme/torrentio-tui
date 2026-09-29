@@ -1,18 +1,27 @@
+<div align="center">
+
 # 🎬 Torrentio TUI
 
+### **Netflix, but it's your terminal.** 🍿
+
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android-lightgrey.svg)](#installation)
+[![Sources](https://img.shields.io/badge/sources-53%20free-gold.svg)](#features)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/yubiiixtreme/torrentio-tui/workflows/CI/badge.svg)](https://github.com/yubiiixtreme/torrentio-tui/actions)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![GitHub stars](https://img.shields.io/github/stars/yubiiixtreme/torrentio-tui?style=flat&color=gold)](https://github.com/yubiiixtreme/torrentio-tui/stargazers)
 
-**Netflix, but it's your terminal.** It opens on 🔥 Trending so
-there's always something to watch — search movies, series and anime
-across 53 free sources at once, funnel the results by kind, category,
-genre, year and sort, pick a quality, and it's playing in mpv/vlc
-seconds later. Real poster art rendered inline, your pick of color
-themes, everything stored locally on your own machine. No account,
-no tracking, no ads.
+[✨ Features](#features) · [📦 Install](#installation) · [🚀 Quickstart](#quickstart) · [⌨️ Keybindings](#keybindings) · [🆘 Troubleshooting](#troubleshooting)
+
+</div>
+
+It opens on 🔥 **Trending** so there's always something to watch —
+search movies, series and anime across **53 free sources** at once,
+funnel the results by kind, category, genre, year and sort, pick a
+quality, and it's playing in mpv/vlc seconds later. Real poster art
+rendered inline, your pick of color themes, everything stored locally
+on your own machine. No account, no tracking, no ads.
 
 ```
  ┌ sidebar ────────┐ ┌─ 🔥 Trending ─────────────────────────┐
@@ -111,40 +120,73 @@ your config file lives.
 
 ## Installation
 
-### Option 1 — pip from GitHub (recommended)
+> ✅ **Requires Python 3.10 or newer — any newer 3.x works**
+> (3.11, 3.12, 3.13, 3.14, ...). Check yours first:
+> `python3 --version`
+>
+> ⚠️ **Golden rule: install and run with the SAME Python.**
+> Always use `python3 -m pip ...` (not bare `pip`, which may belong
+> to a different Python) — mixing interpreters is the #1 cause of
+> `ModuleNotFoundError`. See [Troubleshooting](#troubleshooting).
 
-```
-pip install "torrentio-tui[images] @ git+https://github.com/yubiiixtreme/torrentio-tui.git"
-torrentio-tui
-```
+### 🐧 Linux
 
-Drop `[images]` for a lighter install without real poster art (icon
-cards instead) — everything else is identical.
+```bash
+# Debian/Ubuntu: sudo apt install python3 python3-pip python3-venv mpv
+# Fedora:        sudo dnf install python3 python3-pip mpv
 
-### Option 2 — pipx (isolated, stays on PATH)
-
-```
 pipx install "torrentio-tui[images] @ git+https://github.com/yubiiixtreme/torrentio-tui.git"
 torrentio-tui
 ```
 
-### Option 3 — from source
+No pipx? `python3 -m pip install --user "torrentio-tui[images] @
+git+https://github.com/yubiiixtreme/torrentio-tui.git"` — then make
+sure `~/.local/bin` is on your `PATH`.
+
+Drop `[images]` for a lighter install without real poster art (icon
+cards instead) — everything else is identical.
+
+### 🍎 macOS
+
+```bash
+brew install python mpv pipx
+pipx ensurepath   # then restart your terminal once
+pipx install "torrentio-tui[images] @ git+https://github.com/yubiiixtreme/torrentio-tui.git"
+torrentio-tui
+```
+
+Prefer VLC? `brew install --cask vlc` and set `--player vlc` (or
+`player.backend = "vlc"` in the config).
+
+### 🪟 Windows (PowerShell)
+
+```powershell
+# 1. Install Python 3.10+ from python.org — tick "Add python.exe to PATH"
+# 2. Install mpv: winget install mpv  (or VLC: winget install VideoLAN.VLC)
+py -m pip install "torrentio-tui @ git+https://github.com/yubiiixtreme/torrentio-tui.git"
+torrentio-tui
+```
+
+> Use `py -m pip` (not `pip`) so the package lands in the same Python
+> that runs it.
+
+### 🛠️ From source (developers, any OS)
 
 ```
 git clone https://github.com/yubiiixtreme/torrentio-tui.git
 cd torrentio-tui
-python -m venv .venv && .venv/bin/pip install -e ".[dev]"
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
 .venv/bin/torrentio-tui
 ```
 
-### Option 4 — PyPI (once the first release is published)
+### 📦 PyPI (once the first release is published)
 
 ```
 pip install torrentio-tui
 torrentio-tui
 ```
 
-### Termux (Android)
+### 🤖 Termux (Android)
 
 Termux is headless (no video output of its own), so playback works
 differently there: instead of running mpv in the terminal, the app hands
@@ -517,6 +559,45 @@ of automated/programmatic access, etc). Torrentio-style addons scrape
 third-party torrents — fetching infringing copies through them may violate
 copyright law. That decision, and any debrid keys / self-hosting, is left
 entirely to you.
+
+## Troubleshooting
+
+### `ModuleNotFoundError: No module named 'textual'` (or `'torrentio_tui'`)
+
+Your app and your libraries live with **different Pythons**. Diagnose:
+
+```bash
+python3 --version
+python3 -c "import sys,site; print(sys.path); print('USERSITE:', site.getusersitepackages())"
+```
+
+- If `python3 --version` differs between install time and run time
+  (e.g. installed under 3.13, running 3.14), each Python has its own
+  private folder — reinstall **with the Python you run**:
+  `python3 -m pip install ...` (or `py -m pip ...` on Windows).
+- Never mix bare `pip` with `python3` from another install. The
+  `python3 -m pip` form makes mix-ups impossible.
+- Still stuck? Force a clean reinstall for your exact interpreter:
+  `python3 -m pip install --force-reinstall "torrentio-tui @
+  git+https://github.com/yubiiixtreme/torrentio-tui.git"`.
+
+### App looks old (no sidebar, no ⩔ funnel, footer nearly empty)
+
+You're launching a **frozen copy** (e.g. an old `pipx` venv) instead of
+the current code. Freshness check — this number grows with releases:
+
+```bash
+torrentio-tui --list-sources | wc -l    # ~59 lines at 53 sources
+```
+
+If it's much lower, refresh: `pipx reinstall torrentio-tui` (or
+`pipx upgrade torrentio-tui`), or reinstall per [Installation](#installation).
+
+### Torrentio blocked (HTTP 403) / empty results
+
+See [Routing around the 403](#routing-around-the-403), and enable more
+providers — press `g` → Sources, or edit `sources.enabled` in the
+config. One blocked provider never means zero results when several are on.
 
 ## Uninstall & cleanup
 
