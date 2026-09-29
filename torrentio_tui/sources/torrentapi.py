@@ -17,6 +17,7 @@ import re
 import time
 import urllib.error
 import urllib.parse
+import urllib.request
 
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.proxy import ProxyError, open_url
@@ -253,7 +254,7 @@ class RARBGSource(Source):
                     kind=kind,
                     source_id=self.id,
                     year=year,
-                    overview=None,
+                    overview=quality_label,
                     genres=(),
                 )
             )
@@ -294,7 +295,6 @@ class Thirteen37xSource(Source):
         url = self.RSS_URL.format(query=urllib.parse.quote(query))
 
         try:
-            import urllib.request
             import xml.etree.ElementTree as ET
 
             headers = {"User-Agent": _USER_AGENT, "Accept": "application/rss+xml"}
@@ -344,6 +344,8 @@ class Thirteen37xSource(Source):
             label_parts = [resolution]
             if seeders_match:
                 label_parts.append(f"👤{seeders_match.group(1)}")
+            if leechers_match:
+                label_parts.append(f"📥{leechers_match.group(1)}")
             if size_match:
                 label_parts.append(f"💾{size_match.group(1)}")
             quality_label = " ".join(label_parts)
@@ -359,7 +361,7 @@ class Thirteen37xSource(Source):
                     kind=kind,
                     source_id=self.id,
                     year=year,
-                    overview=pub_date,
+                    overview=f"{quality_label} · {pub_date}",
                     genres=("torrent",),
                 )
             )
@@ -399,7 +401,6 @@ class PirateBaySource(Source):
         url = self.RSS_URL.format(query=urllib.parse.quote(query))
 
         try:
-            import urllib.request
             import xml.etree.ElementTree as ET
 
             headers = {"User-Agent": _USER_AGENT, "Accept": "application/rss+xml"}
@@ -425,7 +426,6 @@ class PirateBaySource(Source):
                 continue
 
             title = title_elem.text or ""
-            link = link_elem.text or ""
             desc = desc_elem.text or ""
             pub_date = pub_date_elem.text or ""
 
@@ -460,7 +460,7 @@ class PirateBaySource(Source):
                     kind=kind,
                     source_id=self.id,
                     year=year,
-                    overview=pub_date,
+                    overview=f"{quality_label} · {pub_date}",
                     genres=("torrent",),
                 )
             )

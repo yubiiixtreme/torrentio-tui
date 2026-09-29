@@ -18,6 +18,7 @@ KEYBINDINGS = (
     ("d", "Download highlighted title (requires yt-dlp)"),
     ("i", "Show detailed info for highlighted title"),
     ("t", f"Cycle theme ({', '.join(THEMES)})"),
+    ("s", "Open the Sources tab to enable/disable providers"),
     ("?", "Show this help screen"),
     ("Esc", "Close picker / help screen / go back"),
     ("q", "Quit application"),

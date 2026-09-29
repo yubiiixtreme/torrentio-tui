@@ -210,7 +210,7 @@ class Thirteen37xSource(Source):
                     source_id=self.id,
                     year=year,
                     poster_url=None,
-                    overview=f"{pub_date}{size}{seeds}{peers}",
+                    overview=f"{quality} · {pub_date}{size}{seeds}{peers}",
                     genres=("torrent",),
                 )
             )
@@ -319,7 +319,7 @@ class ThePirateBaySource(Source):
                     source_id=self.id,
                     year=year,
                     poster_url=None,
-                    overview=f"Added: {added}{size_str}{seed_str}{peer_str}",
+                    overview=f"{quality} · Added: {added}{size_str}{seed_str}{peer_str}",
                     genres=("torrent",),
                 )
             )
@@ -439,7 +439,7 @@ class RARBGMirrorSource(Source):
                     kind=kind,
                     source_id=self.id,
                     year=year,
-                    overview=None,
+                    overview=quality_label,
                     genres=(),
                 )
             )
@@ -542,7 +542,7 @@ class NyaaTorrentsSource(Source):
                     source_id=self.id,
                     year=None,
                     poster_url=None,
-                    overview=f"{pub_date} · {size}{seeds}",
+                    overview=f"{quality} · {pub_date} · {size}{seeds}",
                     genres=("anime",),
                 )
             )

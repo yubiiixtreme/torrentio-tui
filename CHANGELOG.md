@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **1337x, Pirate Bay, and RARBG-mirror searches crashed every time:**
+  `torrentapi.py`'s RSS-based sources called `urllib.parse.quote()`
+  before a local `import urllib.request` later in the same function —
+  Python treats `urllib` as local for the whole function in that case,
+  so every call raised `UnboundLocalError` before a request was ever
+  made. Moved `urllib.request` to the module-level imports.
+- **Search results silently dropped their quality/seed/size info:**
+  several torrent and anime sources (`torrent_extended.py`,
+  `torrentapi.py`, `anime.py`, `anime_extended.py`) built a
+  `quality`/`quality_label` string from the parsed resolution, seeders,
+  and size, then never attached it to the result — `RarbgMirrorSource`
+  even hardcoded `overview=None` right after assembling the label. The
+  computed label is now shown in the result's overview line.
+- **Search filter row was unusable:** the "Filters:" label had no
+  explicit width, so it swallowed nearly the entire row and pushed the
+  category/kind dropdowns and the Clear button off the right edge of
+  the screen — they were rendered but completely inaccessible.
+- **Search/library results wasted almost the whole list panel:** each
+  result row was pinned to a 20-row height (a leftover from a removed
+  poster-thumbnail layout) despite rendering only two lines of text,
+  so only one result was visible on screen at a time. Restored
+  `height: auto`, and dropped the matching dead `.result-container`/
+  `.result-poster`/`.result-text` CSS.
+- **Removed the "UI Language" picker** (`l` in the quality screen): it
+  set `config.language.ui_language` and showed a "UI language: ..."
+  confirmation, but nothing in the app ever read that value — no
+  in-app text is actually translated. Kept the real, wired-up subtitle
+  language picker (`s`).
+- Help screen was missing the `s` (Sources tab) keybinding.
 - **Verified every source live; fixed what was actually broken:**
   `comet` default moved to `https://comet.elfhosted.com`
   (`comet.strem.io` no longer resolves); `yts` moved to the API's

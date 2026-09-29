@@ -7,8 +7,6 @@ crash `search()` with AttributeError instead of returning results.
 
 from __future__ import annotations
 
-import pytest
-
 from torrentio_tui.sources.anime import NyaaSource, SubsPleaseSource
 
 # One <item> exactly as SubsPlease serves it: no <description> at all.

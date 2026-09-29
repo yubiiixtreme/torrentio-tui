@@ -117,7 +117,7 @@ Underline {
 }
 
 ListView > ResultItem, ListView > HistoryItem {
-    height: 20;
+    height: auto;
     background: transparent;
     margin: 0;
     padding: 1 1;
@@ -148,30 +148,6 @@ ListView > ListItem.--highlight {
 ListView:focus > ListItem.--highlight {
     background: rgba(0, 255, 255, 0.1);
     border-left: thick #ffbf00;
-}
-
-.result-container {
-    height: 100%;
-    width: 100%;
-    padding: 0 1;
-    layout: horizontal;
-}
-
-.result-poster {
-    width: 14;
-    height: 18;
-    margin-right: 1;
-    background: #111e3a;
-    border: round #00ffff;
-    content-align: center middle;
-    color: #4dffff44;
-}
-
-.result-text {
-    width: 1fr;
-    height: 100%;
-    padding: 1 0;
-    layout: vertical;
 }
 
 #detail-panel {
@@ -462,8 +438,19 @@ Collapsible > .collapsible--content {
 }
 
 .filter-label {
-    padding: 1 1 0 0;
+    width: auto;
+    height: 3;
+    content-align: left middle;
+    padding: 0 1 0 0;
     color: #8bffff;
+}
+
+#filter-kind, #filter-category {
+    width: 24;
+}
+
+#filter-clear {
+    width: auto;
 }
 
 #sources-list .category-header {

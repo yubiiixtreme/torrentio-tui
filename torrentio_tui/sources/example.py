@@ -15,7 +15,7 @@ scraper wired in.
 
 from __future__ import annotations
 
-from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
+from torrentio_tui.models import Episode, SearchResult, StreamLink
 from torrentio_tui.sources.base import Source, SourceError
 
 

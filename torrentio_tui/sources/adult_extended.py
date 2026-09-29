@@ -16,7 +16,7 @@ import urllib.request
 from torrentio_tui.config import Config
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.sources.adult import AdultSourceBase
-from torrentio_tui.sources.base import Source, SourceError
+from torrentio_tui.sources.base import SourceError
 
 _USER_AGENT = "torrentio-tui/0.4 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
@@ -244,7 +244,6 @@ class HitomiLaSource(AdultSourceBase):
 
             # Build CDN URL
             subdomain = hash_val[:2]
-            ext = name.split(".")[-1] if "." in name else "jpg"
             img_url = f"https://{subdomain}.hitomi.la/galleries/{gallery_id}/{name}"
 
             links.append(

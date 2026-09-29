@@ -124,7 +124,7 @@ class AniDexSource(Source):
                     source_id=self.id,
                     year=None,
                     poster_url=None,
-                    overview=f"{pub_date}{size}{seeds}{peers}",
+                    overview=f"{quality} · {pub_date}{size}{seeds}{peers}",
                     genres=("anime",),
                 )
             )
@@ -187,7 +187,7 @@ class AnimeToshoSource(Source):
                     source_id=self.id,
                     year=None,
                     poster_url=None,
-                    overview=f"{pub_date} · {size}{seeds}{peers}",
+                    overview=f"{quality} · {pub_date} · {size}{seeds}{peers}",
                     genres=("anime", "release"),
                 )
             )
@@ -250,7 +250,7 @@ class TokyoToshokanSource(Source):
                     source_id=self.id,
                     year=None,
                     poster_url=None,
-                    overview=f"{pub_date} · {size}{seeds}{peers}",
+                    overview=f"{quality} · {pub_date} · {size}{seeds}{peers}",
                     genres=("anime", "release"),
                 )
             )

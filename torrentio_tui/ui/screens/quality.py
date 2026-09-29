@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, ListItem, ListView, Static
 
@@ -63,20 +63,11 @@ def _stream_type(stream: StreamLink) -> tuple[str, str, str]:
 
 
 class StreamPicked(ListItem):
-    def __init__(self, stream: StreamLink, lang_config=None) -> None:
+    def __init__(self, stream: StreamLink) -> None:
         qcolor = _quality_color(stream.quality)
         sicon, stype, scolor = _stream_type(stream)
 
-        # Subtitle indicator
-        sub_indicator = ""
-        if stream.subtitle_url:
-            sub_indicator = "  💬"
-
-        # Language indicator
-        lang_indicator = ""
-        if stream.subtitle_url and lang_config:
-            # Try to detect subtitle language
-            lang_indicator = ""
+        sub_indicator = "  💬" if stream.subtitle_url else ""
 
         label = (
             f"{sicon}  [{scolor}]{stype}[/{scolor}]  "
@@ -84,7 +75,7 @@ class StreamPicked(ListItem):
         )
         if stream.is_live:
             label += " [dim](live)[/dim]"
-        label += sub_indicator + lang_indicator
+        label += sub_indicator
         super().__init__(Static(label, markup=True))
         self.stream = stream
 
@@ -104,7 +95,6 @@ class QualityScreen(ModalScreen[StreamLink | None]):
     BINDINGS = [
         ("escape", "cancel", "Back"),
         ("s", "subtitles", "Subtitles"),
-        ("l", "language", "Language"),
     ]
 
     def __init__(self, streams: list[StreamLink]) -> None:
@@ -116,10 +106,8 @@ class QualityScreen(ModalScreen[StreamLink | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="quality-list-container"):
-            yield Static(
-                "⚡  Choose Stream Quality  [dim](s=subtitles l=language)[/dim]", id="quality-title"
-            )
-            yield VimListView(*[StreamPicked(s, self.lang_config) for s in self.streams])
+            yield Static("⚡  Choose Stream Quality  [dim](s=subtitles)[/dim]", id="quality-title")
+            yield VimListView(*[StreamPicked(s) for s in self.streams])
         yield Footer()
 
     def on_mount(self) -> None:
@@ -144,16 +132,6 @@ class QualityScreen(ModalScreen[StreamLink | None]):
         prefs = [c for c in self.lang_config.subtitle_languages if c != code]
         self.lang_config.subtitle_languages = [code, *prefs]
         self.app.notify(f"Preferred subtitles: {code}", timeout=3)
-
-    def action_language(self) -> None:
-        """UI language picker — applies to this session."""
-        self.app.push_screen(LanguageScreen(self.lang_config), callback=self._on_language_picked)
-
-    def _on_language_picked(self, code: str | None) -> None:
-        if not code:
-            return
-        self.lang_config.ui_language = code
-        self.app.notify(f"UI language: {code}", timeout=3)
 
     def action_cancel(self) -> None:
         self.dismiss(None)
@@ -191,69 +169,6 @@ class SubtitleScreen(ModalScreen[str | None]):
         if lang is not None:
             return lang.name.replace("_", " ").title()
         return code.upper()
-
-    def on_mount(self) -> None:
-        list_view = self.query_one(ListView)
-        list_view.focus()
-
-    def on_list_view_selected(self, event: ListView.Selected) -> None:
-        item = event.item
-        if isinstance(item, SubtitlePicked):
-            self.dismiss(item.lang_code)
-
-    def action_cancel(self) -> None:
-        self.dismiss(None)
-
-
-class LanguageScreen(ModalScreen[str | None]):
-    """Select UI language."""
-
-    BINDINGS = [("escape", "cancel", "Back")]
-
-    def __init__(self, lang_config) -> None:
-        super().__init__()
-        self.lang_config = lang_config
-
-    def compose(self) -> ComposeResult:
-        yield Header()
-        with Container(id="quality-list-container"):
-            yield Static(
-                "🌐  UI Language  [dim](Enter to select, Esc to cancel)[/dim]", id="quality-title"
-            )
-            items = []
-            for lang in [
-                ("en", "English"),
-                ("es", "Spanish"),
-                ("fr", "French"),
-                ("de", "German"),
-                ("it", "Italian"),
-                ("pt", "Portuguese"),
-                ("ru", "Russian"),
-                ("zh", "Chinese"),
-                ("ja", "Japanese"),
-                ("ko", "Korean"),
-                ("ar", "Arabic"),
-                ("hi", "Hindi"),
-                ("tr", "Turkish"),
-                ("pl", "Polish"),
-                ("nl", "Dutch"),
-                ("sv", "Swedish"),
-                ("no", "Norwegian"),
-                ("da", "Danish"),
-                ("fi", "Finnish"),
-                ("cs", "Czech"),
-                ("hu", "Hungarian"),
-                ("ro", "Romanian"),
-                ("bg", "Bulgarian"),
-                ("hr", "Croatian"),
-                ("sr", "Serbian"),
-                ("uk", "Ukrainian"),
-            ]:
-                code, name = lang
-                is_selected = code == self.lang_config.ui_language
-                items.append(SubtitlePicked(code, name, is_selected))
-            yield VimListView(*items)
-        yield Footer()
 
     def on_mount(self) -> None:
         list_view = self.query_one(ListView)

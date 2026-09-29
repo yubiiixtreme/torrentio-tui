@@ -30,7 +30,6 @@ async def test_multi_season_list_gets_a_header_per_season(tmp_path) -> None:
         screen = app.screen
         assert isinstance(screen, EpisodeScreen)
 
-        rows = list(screen.query(EpisodePicked)) + list(screen.query(SeasonHeader))
         headers = list(screen.query(SeasonHeader))
         picks = list(screen.query(EpisodePicked))
         assert len(headers) == 2

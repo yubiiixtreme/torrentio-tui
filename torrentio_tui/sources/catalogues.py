@@ -717,13 +717,10 @@ class TraktSource(BridgedCatalogueSource):
             raise SourceError(
                 "Trakt client ID required. Set TRAKT_CLIENT_ID env var or add to config."
             )
-        import urllib.request
-
         query = urllib.parse.urlencode(params or {})
         url = f"{self.API}{path}?{query}"
         headers = self._headers()
         try:
-            req = urllib.request.Request(url, headers=headers)
             with open_url(url, self.timeout, self.proxy_url, headers) as resp:
                 import json
 

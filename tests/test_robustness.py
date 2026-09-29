@@ -13,7 +13,6 @@ import subprocess
 import sys
 import urllib.request
 from contextlib import contextmanager
-from pathlib import Path
 
 import pytest
 

@@ -98,9 +98,7 @@ class StremioAdultSource(AdultSourceBase):
                 tt = meta.get("id") or meta.get("imdb_id")
                 if not tt:
                     continue
-                # Check if adult content (genre or tag)
                 genres = meta.get("genres") or meta.get("genre") or []
-                is_adult = any(g.lower() in ("adult", "hentai", "erotic", "porn") for g in genres)
 
                 # Include all results when adult is enabled
                 results.append(
@@ -481,7 +479,6 @@ class Rule34Source(AdultSourceBase):
                 continue
             tags = item.get("tags", "").split(" ")
             preview = item.get("preview_url", "")
-            file_url = item.get("file_url", "")
 
             results.append(
                 SearchResult(

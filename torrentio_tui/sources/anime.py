@@ -326,7 +326,7 @@ class NyaaSource(Source):
                     source_id=self.id,
                     year=None,
                     poster_url=None,
-                    overview=f"{pub_date} · {size}{seeds}",
+                    overview=f"{quality} · {pub_date} · {size}{seeds}",
                     genres=("anime",),
                 )
             )
@@ -392,7 +392,6 @@ class SubsPleaseSource(Source):
         for item in root.findall(".//item"):
             title_elem = item.find("title")
             link_elem = item.find("link")
-            desc_elem = item.find("description")
             pub_date_elem = item.find("pubDate")
 
             if title_elem is None or link_elem is None:
@@ -400,7 +399,6 @@ class SubsPleaseSource(Source):
 
             title = title_elem.text or ""
             link = link_elem.text or ""
-            desc = (desc_elem.text or "") if desc_elem is not None else ""
             pub_date = (pub_date_elem.text or "") if pub_date_elem is not None else ""
 
             # Filter by query
@@ -443,10 +441,16 @@ class SubsPleaseSource(Source):
             return []
         _, url = item.id.split(":", 1)
 
+        quality = "1080p"
+        if "2160p" in item.title or "4K" in item.title:
+            quality = "2160p"
+        elif "720p" in item.title:
+            quality = "720p"
+
         return [
             StreamLink(
                 url=url,
-                quality="1080p",
+                quality=quality,
                 is_live=False,
             )
         ]
