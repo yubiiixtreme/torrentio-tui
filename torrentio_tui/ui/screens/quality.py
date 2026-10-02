@@ -64,6 +64,8 @@ def _stream_type(stream: StreamLink) -> tuple[str, str, str]:
 
 class StreamPicked(ListItem):
     def __init__(self, stream: StreamLink) -> None:
+        from rich.markup import escape
+
         qcolor = _quality_color(stream.quality)
         sicon, stype, scolor = _stream_type(stream)
 
@@ -71,7 +73,7 @@ class StreamPicked(ListItem):
 
         label = (
             f"{sicon}  [{scolor}]{stype}[/{scolor}]  "
-            f"[bold {qcolor}]{stream.quality}[/bold {qcolor}]"
+            f"[bold {qcolor}]{escape(stream.quality)}[/bold {qcolor}]"
         )
         if stream.is_live:
             label += " [dim](live)[/dim]"
@@ -97,10 +99,14 @@ class QualityScreen(ModalScreen[StreamLink | None]):
         ("s", "subtitles", "Subtitles"),
     ]
 
-    def __init__(self, streams: list[StreamLink]) -> None:
+    def __init__(self, streams: list[StreamLink], lang_config=None) -> None:
         super().__init__()
         self.streams = streams
-        self.lang_config = get_language_config()
+        # Use the caller's shared language config when provided so the
+        # subtitle picker actually affects playback (which reads
+        # MainScreen.config.language). Fall back to a fresh load for
+        # standalone use (tests, direct pushes).
+        self.lang_config = lang_config if lang_config is not None else get_language_config()
         self.show_subtitles = False
 
     def compose(self) -> ComposeResult:

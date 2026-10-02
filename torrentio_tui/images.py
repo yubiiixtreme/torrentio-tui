@@ -87,8 +87,11 @@ def download_image(url: str, timeout: float = 10.0) -> Path | None:
     if not any(data.startswith(magic) for magic in _IMAGE_MAGIC):
         return None
 
-    IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cached.write_bytes(data)
+    try:
+        IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(data)
+    except OSError:
+        return None
     return cached
 
 

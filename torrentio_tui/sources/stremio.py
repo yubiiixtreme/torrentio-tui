@@ -49,6 +49,7 @@ sites' terms. That choice — and any debrid keys / self-hosting — is yours.
 from __future__ import annotations
 
 import contextlib
+import http.client
 import json
 import os
 import urllib.error
@@ -100,9 +101,20 @@ def _get_json(url: str, timeout: float, proxy_url: str | None = None) -> dict:
         raise SourceError(f"Network error for {url}: {exc.reason}") from exc
     except (json.JSONDecodeError, TimeoutError) as exc:
         raise SourceError(f"Bad response from {url}: {exc}") from exc
+    except (OSError, http.client.HTTPException) as exc:
+        raise SourceError(f"Network error for {url}: {exc}") from exc
 
 
-def _parse_year(release_info: str | None) -> int | None:
+def _parse_year(release_info: str | int | None) -> int | None:
+    if release_info is None:
+        return None
+    if isinstance(release_info, int):
+        return release_info if 1000 <= release_info <= 9999 else None
+    if not isinstance(release_info, str):
+        try:
+            release_info = str(release_info)
+        except Exception:
+            return None
     if not release_info:
         return None
     digits = "".join(c for c in release_info[:10] if c.isdigit())
@@ -358,18 +370,25 @@ class StremioSource(Source):
 
     # -- streams ----------------------------------------------------------
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        import re as _re
+
         stremio_type, tt = _decode_id(item.id)
         stream_type = "movie" if stremio_type == "movie" else "series"
-        video_id = episode.id
-        if ":" not in video_id or not video_id.startswith("tt"):
-            # Episode ids are full video ids ("tt...:s:e"); fall back to tt.
-            video_id = tt if stremio_type == "movie" else episode.id
-            if ":" not in video_id:
-                video_id = tt if stremio_type == "movie" else f"{tt}"
-                # For series the API needs season/episode; if we only have
-                # the series id the addon returns season packs / latest.
-                if stremio_type == "series" and ":" not in episode.id and episode.id != item.id:
-                    video_id = episode.id
+        video_id = (episode.id or "").strip() or tt
+        if stremio_type == "movie":
+            # Movies are always addressed by their catalog id.
+            video_id = tt
+        else:
+            # Series: proper episode ids look like "tt...:season:episode".
+            # Anything else (e.g. "series:tt123" when the episode list was
+            # empty, or a bare series id on resume) must collapse to the
+            # catalog id — otherwise we request
+            # /stream/series/series:tt123.json (double prefix).
+            if video_id == item.id:
+                video_id = tt
+            elif not video_id.startswith("tt"):
+                m = _re.search(r"tt\d+", video_id)
+                video_id = m.group(0) if m else tt
         url = f"{self.stream_url}/stream/{stream_type}/{video_id}.json"
         data = _get_json(url, self.timeout, self.proxy_url)
         raw = data.get("streams", []) or []

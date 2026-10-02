@@ -228,10 +228,14 @@ def _stremio_kwargs(config: Config, source_id: str) -> dict:
 
 
 def load_sources(config: Config) -> list[Source]:
+    import inspect
+    import warnings
+
     sources = []
     for source_id in config.enabled_sources:
         cls = _AVAILABLE.get(source_id)
         if cls is None:
+            warnings.warn(f"Unknown source id {source_id!r} in [sources] enabled — skipping")
             continue
         if issubclass(cls, StremioSource):
             # Every Stremio-protocol addon (stremio, mediafusion,
@@ -315,7 +319,14 @@ def load_sources(config: Config) -> list[Source]:
             m3u_url = iptv_cfg.get("m3u_url") or config.iptv.m3u_url
             m3u_path = iptv_cfg.get("m3u_path") or config.iptv.m3u_path
             timeout = iptv_cfg.get("timeout_seconds", config.iptv.timeout_seconds)
-            sources.append(cls(m3u_url=m3u_url, m3u_path=m3u_path, timeout=timeout))
+            sources.append(
+                cls(
+                    m3u_url=m3u_url,
+                    m3u_path=m3u_path,
+                    timeout=timeout,
+                    proxy_url=config.network.proxy_url,
+                )
+            )
         elif cls is IPTVOrgSource:
             # Free world playlist built in; overridable per usual.
             org_cfg = config.sources_config.get("iptv-org", {})
@@ -348,7 +359,18 @@ def load_sources(config: Config) -> list[Source]:
         elif cls is AnilistSource:
             anilist_cfg = config.sources_config.get("anilist", {})
             include_adult = anilist_cfg.get("include_adult", False)
-            sources.append(cls(include_adult=include_adult))
+            try:
+                params = inspect.signature(cls.__init__).parameters
+            except (TypeError, ValueError):
+                params = {}
+            kwargs: dict = {"include_adult": include_adult}
+            if "proxy_url" in params:
+                kwargs["proxy_url"] = config.network.proxy_url
+            if "timeout" in params:
+                kwargs["timeout"] = anilist_cfg.get(
+                    "timeout_seconds", config.stremio.timeout_seconds
+                )
+            sources.append(cls(**kwargs))
         elif cls in (
             StremioAdultSource,
             HanimeSource,
@@ -361,7 +383,21 @@ def load_sources(config: Config) -> list[Source]:
             # Adult sources need the full config for age gating
             sources.append(cls(config=config))
         else:
-            sources.append(cls())
+            # Generic fallback: honour global proxy/timeout when the
+            # source supports them instead of silently ignoring config.
+            try:
+                params = inspect.signature(cls.__init__).parameters
+            except (TypeError, ValueError):
+                params = {}
+            kwargs = {}
+            if "proxy_url" in params:
+                kwargs["proxy_url"] = config.network.proxy_url
+            if "timeout" in params:
+                kwargs["timeout"] = config.stremio.timeout_seconds
+            try:
+                sources.append(cls(**kwargs))
+            except TypeError:
+                sources.append(cls())
     return sources
 
 

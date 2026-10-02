@@ -36,26 +36,31 @@ class IPTVSource(Source):
         m3u_url: str | None = None,
         m3u_path: str | None = None,
         timeout: float = 15.0,
+        proxy_url: str | None = None,
     ) -> None:
         self.m3u_url = m3u_url
         self.m3u_path = Path(m3u_path).expanduser() if m3u_path else None
         self.timeout = timeout
+        self.proxy_url = proxy_url
         self._channels: list[dict] = []
         self._loaded = False
 
     def _load_playlist(self) -> None:
         """Load and parse the M3U playlist."""
+        from torrentio_tui.proxy import open_url
+
         if self._loaded:
             return
 
         content = ""
         if self.m3u_url:
             try:
-                req = urllib.request.Request(
+                with open_url(
                     self.m3u_url,
-                    headers={"User-Agent": _USER_AGENT, "Accept": "*/*"},
-                )
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    self.timeout,
+                    self.proxy_url,
+                    {"User-Agent": _USER_AGENT, "Accept": "*/*"},
+                ) as resp:
                     content = resp.read().decode("utf-8", errors="replace")
             except urllib.error.HTTPError as exc:
                 raise SourceError(f"Failed to fetch M3U: HTTP {exc.code}") from exc
@@ -63,6 +68,8 @@ class IPTVSource(Source):
                 raise SourceError(f"Network error fetching M3U: {exc.reason}") from exc
             except TimeoutError as exc:
                 raise SourceError(f"Timeout fetching M3U: {exc}") from exc
+            except OSError as exc:
+                raise SourceError(f"Network error fetching M3U: {exc}") from exc
         elif self.m3u_path and self.m3u_path.exists():
             try:
                 content = self.m3u_path.read_text(encoding="utf-8", errors="replace")

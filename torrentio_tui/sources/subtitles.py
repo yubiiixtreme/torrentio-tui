@@ -230,7 +230,9 @@ class OpenSubtitlesProvider(SubtitleProvider):
         query = urllib.parse.urlencode(params)
         data = self._request("GET", f"/subtitles?{query}")
         files = []
-        for row in data.get("data") if isinstance(data, dict) else []:
+        rows = data.get("data") if isinstance(data, dict) else None
+        for row in rows or []:
+            attrs = row.get("attributes") or {} if isinstance(row, dict) else {}
             attrs = row.get("attributes") or {} if isinstance(row, dict) else {}
             lang_639_1 = str(attrs.get("language", ""))
             for f in attrs.get("files") or []:
@@ -369,16 +371,17 @@ def _attach_subtitles(
         by_lang: dict[str, SubtitleFile] = {}
         for f in files:
             by_lang.setdefault(f.lang, f)
-        for lang in preferred:
-            if lang in by_lang:
-                best, best_provider = by_lang[lang], provider
+        # Prefs may be 639-1 ("en") or 639-2 ("eng"); providers normalize
+        # to 639-2, so compare normalized forms.
+        normalized_prefs = [(_to_639_2(p), p) for p in preferred]
+        for norm, _raw in normalized_prefs:
+            if norm in by_lang:
+                best, best_provider = by_lang[norm], provider
                 break
-        # Also accept provider-native 639-1 codes in user prefs.
         if best is None:
-            for lang in preferred:
-                mapped = _to_639_1(lang)
+            for norm, raw in normalized_prefs:
                 for f in files:
-                    if f.lang == lang or (mapped and f.lang == mapped):
+                    if f.lang == norm or f.lang == raw:
                         best, best_provider = f, provider
                         break
                 if best is not None:

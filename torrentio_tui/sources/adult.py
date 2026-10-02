@@ -115,7 +115,16 @@ class StremioAdultSource(AdultSourceBase):
                 )
         return results
 
-    def _parse_year(self, release_info: str | None) -> int | None:
+    def _parse_year(self, release_info: str | int | None) -> int | None:
+        if release_info is None:
+            return None
+        if isinstance(release_info, int):
+            return release_info if 1000 <= release_info <= 9999 else None
+        if not isinstance(release_info, str):
+            try:
+                release_info = str(release_info)
+            except Exception:
+                return None
         if not release_info:
             return None
         digits = "".join(c for c in release_info[:10] if c.isdigit())

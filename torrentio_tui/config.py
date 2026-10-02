@@ -563,9 +563,21 @@ class Config:
             if "ui_language" in lang_cfg:
                 cfg.language.ui_language = str(lang_cfg["ui_language"])
             if "subtitle_languages" in lang_cfg:
-                cfg.language.subtitle_languages = list(lang_cfg["subtitle_languages"])
+                sub_langs = lang_cfg["subtitle_languages"]
+                if isinstance(sub_langs, str):
+                    sub_langs = [sub_langs]
+                if isinstance(sub_langs, list):
+                    cfg.language.subtitle_languages = [
+                        str(s) for s in sub_langs if isinstance(s, str) and s
+                    ] or cfg.language.subtitle_languages
             if "audio_languages" in lang_cfg:
-                cfg.language.audio_languages = list(lang_cfg["audio_languages"])
+                aud_langs = lang_cfg["audio_languages"]
+                if isinstance(aud_langs, str):
+                    aud_langs = [aud_langs]
+                if isinstance(aud_langs, list):
+                    cfg.language.audio_languages = [
+                        str(s) for s in aud_langs if isinstance(s, str) and s
+                    ] or cfg.language.audio_languages
             if "auto_translate" in lang_cfg:
                 cfg.language.auto_translate = bool(lang_cfg["auto_translate"])
             if "prefer_original_audio" in lang_cfg:
@@ -624,7 +636,10 @@ def save_theme(theme: str) -> None:
     path = config_file()
     if not path.exists():
         return
-    text = path.read_text()
+    try:
+        text = path.read_text()
+    except OSError:
+        return
     # Only patch a theme line that lives under the [ui] section (not e.g.
     # a similarly-named key under some other table).
     ui_match = re.search(r"^\[ui\][ \t]*$", text, flags=re.MULTILINE)
@@ -639,8 +654,11 @@ def save_theme(theme: str) -> None:
     # NB: `[ \t]*` (not `\s*`) around the value — `\s` also eats the
     # newline, and after enough saves that eats the blank line before
     # the next `[section]` header and glues them onto one line.
+    # Trailing comments (`theme = "x" # comment`) and bare values are
+    # also matched so we never append a duplicate `theme =` key (which
+    # would make TOML unparseable and wipe the whole config on load).
     new_section, count = re.subn(
-        r"""^theme[ \t]*=[ \t]*["'].*["'][ \t]*$""",
+        r"""^theme[ \t]*=[ \t]*.*$""",
         f'theme = "{theme}"',
         section,
         count=1,
@@ -653,7 +671,10 @@ def save_theme(theme: str) -> None:
     # Ensure file ends with newline
     if not new_text.endswith("\n"):
         new_text += "\n"
-    path.write_text(new_text)
+    try:
+        path.write_text(new_text)
+    except OSError:
+        return
 
 
 def _patch_toml_value(section: str, key: str, formatted_value: str) -> None:
@@ -665,11 +686,17 @@ def _patch_toml_value(section: str, key: str, formatted_value: str) -> None:
     path = config_file()
     if not path.exists():
         return
-    text = path.read_text()
+    try:
+        text = path.read_text()
+    except OSError:
+        return
     section_match = re.search(rf"^\[{section}\][ \t]*$", text, flags=re.MULTILINE)
     if section_match is None:
         text = text.rstrip("\n") + f"\n\n[{section}]\n{key} = {formatted_value}\n"
-        path.write_text(text if text.endswith("\n") else text + "\n")
+        try:
+            path.write_text(text if text.endswith("\n") else text + "\n")
+        except OSError:
+            return
         return
     section_start = section_match.end()
     next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
@@ -692,7 +719,10 @@ def _patch_toml_value(section: str, key: str, formatted_value: str) -> None:
         )
     if not new_text.endswith("\n"):
         new_text += "\n"
-    path.write_text(new_text)
+    try:
+        path.write_text(new_text)
+    except OSError:
+        return
 
 
 def save_adult_enabled(enabled: bool) -> None:
@@ -724,33 +754,74 @@ def save_enabled_sources(enabled: list[str]) -> None:
     path = config_file()
     if not path.exists():
         return
-    text = path.read_text()
+    try:
+        text = path.read_text()
+    except OSError:
+        return
     quoted = ", ".join(f'"{s}"' for s in enabled)
     replacement = f"enabled = [{quoted}]"
     sources_match = re.search(r"^\[sources\][ \t]*$", text, flags=re.MULTILINE)
     if sources_match is None:
         text = text.rstrip("\n") + f"\n\n[sources]\n{replacement}\n"
-        path.write_text(text if text.endswith("\n") else text + "\n")
+        try:
+            path.write_text(text if text.endswith("\n") else text + "\n")
+        except OSError:
+            return
         return
     section_start = sources_match.end()
     next_section = re.search(r"^\[", text[section_start:], flags=re.MULTILINE)
     section_end = section_start + next_section.start() if next_section else len(text)
     section = text[section_start:section_end]
-    # Same `[ \t]*` rule as save_theme: never let the match eat newlines.
-    new_section, count = re.subn(
-        r"""^enabled[ \t]*=[ \t]*\[.*\][ \t]*$""",
-        replacement,
-        section,
-        count=1,
-        flags=re.MULTILINE,
-    )
-    if count:
+    # Replace an existing `enabled = ...` value which may span multiple
+    # lines (multiline TOML array). A duplicate `enabled =` key would make
+    # the file unparseable and Config.load would fall back to defaults,
+    # wiping the user's config — so this must match single-line values,
+    # trailing comments, AND multiline arrays.
+    key_match = re.search(r"^enabled(?=[ \t]*=)", section, flags=re.MULTILINE)
+    if key_match is not None:
+        line_start = key_match.start()
+        eq = section.index("=", key_match.end())
+        pos = eq + 1
+        # Skip whitespace (but track newlines to find value end).
+        while pos < len(section) and section[pos] in " \t":
+            pos += 1
+        if pos < len(section) and section[pos] == "[":
+            depth = 0
+            in_str: str | None = None
+            i = pos
+            while i < len(section):
+                ch = section[i]
+                if in_str is not None:
+                    if ch == in_str and section[i - 1] != "\\":
+                        in_str = None
+                elif ch in ("'", '"'):
+                    in_str = ch
+                elif ch == "[":
+                    depth += 1
+                elif ch == "]":
+                    depth -= 1
+                    if depth == 0:
+                        i += 1
+                        # Swallow trailing comment on the closing line.
+                        while i < len(section) and section[i] not in "\n":
+                            i += 1
+                        break
+                i += 1
+            value_end = i
+        else:
+            value_end = pos
+            while value_end < len(section) and section[value_end] != "\n":
+                value_end += 1
+        new_section = section[:line_start] + replacement + section[value_end:]
         new_text = text[:section_start] + new_section + text[section_end:]
     else:
         new_text = text[:section_end].rstrip("\n") + f"\n{replacement}\n" + text[section_end:]
     if not new_text.endswith("\n"):
         new_text += "\n"
-    path.write_text(new_text)
+    try:
+        path.write_text(new_text)
+    except OSError:
+        return
 
 
 def ensure_dirs() -> None:

@@ -13,10 +13,13 @@ from torrentio_tui.ui.widgets import VimListView
 
 class EpisodePicked(ListItem):
     def __init__(self, episode: Episode) -> None:
+        from rich.markup import escape
+
+        title = escape(episode.title)
         if episode.season is not None and episode.number is not None:
-            label = f"[bold cyan]S{episode.season:02d}E{episode.number:02d}[/bold cyan]  [white]{episode.title}[/white]"
+            label = f"[bold cyan]S{episode.season:02d}E{episode.number:02d}[/bold cyan]  [white]{title}[/white]"
         else:
-            label = f"[white]{episode.title}[/white]"
+            label = f"[white]{title}[/white]"
         super().__init__(Static(label, markup=True))
         self.episode = episode
 

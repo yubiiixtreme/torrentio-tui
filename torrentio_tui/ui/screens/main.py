@@ -229,21 +229,23 @@ def _format_playback_error(error: Exception, backend: str) -> str:
 
 class ResultItem(ListItem):
     def __init__(self, item: SearchResult) -> None:
+        from rich.markup import escape
+
         icon, color, label = _kind_style(item.kind)
         year = f" [dim]({item.year})[/dim]" if item.year else ""
-        line1 = f"{icon} [bold]{item.title}[/bold]{year}"
+        line1 = f"{icon} [bold]{escape(item.title)}[/bold]{year}"
 
         source_color = _source_color(item.source_id)
-        line2 = f"   [{color}]{label}[/{color}] [dim]·[/dim] [{source_color}]{item.source_id}[/{source_color}]"
+        line2 = f"   [{color}]{label}[/{color}] [dim]·[/dim] [{source_color}]{escape(item.source_id)}[/{source_color}]"
         genre_str = ", ".join(item.genres[:4])
         if genre_str:
-            line2 += f" [dim]· {genre_str}[/dim]"
+            line2 += f" [dim]· {escape(genre_str)}[/dim]"
 
         lines = [line1, line2]
         overview = (item.overview or "").strip().replace("\n", " ")
         if overview:
             snippet = f"{overview[:120]}…" if len(overview) > 120 else overview
-            lines.append(f"   [dim]{snippet}[/dim]")
+            lines.append(f"   [dim]{escape(snippet)}[/dim]")
 
         super().__init__(Static("\n".join(lines), markup=True), classes=f"kind-{item.kind.value}")
         self.item = item
@@ -641,6 +643,8 @@ class MainScreen(Screen):
                     results.extend(await asyncio.to_thread(source.search, query))
                 except SourceError as exc:
                     errors.append(f"{source.id}: {exc}")
+                except Exception as exc:  # noqa: BLE001 -- one bad source must not kill fan-out
+                    errors.append(f"{source.id}: {type(exc).__name__}: {exc}")
 
             self._last_results = results
             self._render_results(apply_result_filters(results, **self._current_filters()))
@@ -666,6 +670,8 @@ class MainScreen(Screen):
                 try:
                     results.extend(await asyncio.to_thread(source.trending, 40))
                 except SourceError:
+                    continue
+                except Exception:  # noqa: BLE001 -- one bad source must not kill fan-out
                     continue
                 if len(results) >= 60:
                     break
@@ -949,7 +955,9 @@ class MainScreen(Screen):
         stream = (
             streams[0]
             if len(streams) == 1
-            else await self.app.push_screen_wait(QualityScreen(streams))
+            else await self.app.push_screen_wait(
+                QualityScreen(streams, lang_config=self.config.language)
+            )
         )
         if stream is None:
             return
@@ -1015,7 +1023,17 @@ class MainScreen(Screen):
 
         episode: Episode
         if item.kind in (MediaKind.SERIES, MediaKind.ANIME):
-            episodes = await asyncio.to_thread(source.get_episodes, item)
+            try:
+                episodes = await asyncio.to_thread(source.get_episodes, item)
+            except SourceError as exc:
+                self.app.notify(str(exc), severity="error", timeout=10)
+                self.show_error_detail(str(exc))
+                return
+            except Exception as exc:  # noqa: BLE001 -- network/parse errors must show, not hang
+                message = f"Couldn't load episodes: {type(exc).__name__}: {exc}"
+                self.app.notify(message, severity="error", timeout=10)
+                self.show_error_detail(message)
+                return
             picked = await self.app.push_screen_wait(EpisodeScreen(episodes, title=item.title))
             if picked is None:
                 return
@@ -1029,6 +1047,11 @@ class MainScreen(Screen):
             self.app.notify(str(exc), severity="error", timeout=10)
             self.show_error_detail(str(exc))
             return
+        except Exception as exc:  # noqa: BLE001 -- same: show instead of hanging
+            message = f"Couldn't load streams ({type(exc).__name__}): {exc}"
+            self.app.notify(message, severity="error", timeout=10)
+            self.show_error_detail(message)
+            return
 
         if not streams:
             self.app.notify("No playable streams found", severity="warning")
@@ -1038,7 +1061,9 @@ class MainScreen(Screen):
         stream = (
             streams[0]
             if len(streams) == 1
-            else await self.app.push_screen_wait(QualityScreen(streams))
+            else await self.app.push_screen_wait(
+                QualityScreen(streams, lang_config=self.config.language)
+            )
         )
         if stream is None:
             return
