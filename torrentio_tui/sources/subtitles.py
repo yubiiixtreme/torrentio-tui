@@ -237,7 +237,6 @@ class OpenSubtitlesProvider(SubtitleProvider):
         rows = data.get("data") if isinstance(data, dict) else None
         for row in rows or []:
             attrs = row.get("attributes") or {} if isinstance(row, dict) else {}
-            attrs = row.get("attributes") or {} if isinstance(row, dict) else {}
             lang_639_1 = str(attrs.get("language", ""))
             for f in attrs.get("files") or []:
                 if not isinstance(f, dict) or f.get("file_id") is None:

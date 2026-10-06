@@ -90,6 +90,8 @@ def _source_color(source_id: str) -> str:
         "ehentai": "red",
         "hitomila": "magenta",
         "sukebei": "pink",
+        "hentaimanga": "red",
+        "anilist-adult": "magenta",
         "mangadex": "orange",
         "itunes": "gray",
     }

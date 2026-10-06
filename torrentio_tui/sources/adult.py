@@ -282,25 +282,13 @@ class HanimeSource(AdultSourceBase):
         text = re.sub(r"<[^>]+>", " ", html or "")
         return re.sub(r"\s+", " ", text).strip()
 
-    def search(self, query: str) -> list[SearchResult]:
-        self._check_enabled()
-        query = query.strip()
-        if not query:
-            return []
-
-        url = (
-            f"{self.SEARCH_API}?search_text={urllib.parse.quote(query)}"
-            "&order_by=likes&ordering=desc&page=0"
-        )
-        data = self._api_get(url)
-
-        results = []
-        rows = data.get("data")
+    def _to_results(self, rows: object, limit: int) -> list[SearchResult]:
         if not isinstance(rows, list):
             return []
+        results = []
         # The API ignores paging and can return thousands of rows —
         # cap client-side so the list stays usable.
-        for item in rows[:40]:
+        for item in rows[:limit]:
             if not isinstance(item, dict):
                 continue
             title = str(item.get("name", "") or "Unknown")
@@ -329,11 +317,32 @@ class HanimeSource(AdultSourceBase):
             )
         return results
 
+    def search(self, query: str) -> list[SearchResult]:
+        self._check_enabled()
+        query = query.strip()
+        if not query:
+            return []
+
+        url = (
+            f"{self.SEARCH_API}?search_text={urllib.parse.quote(query)}"
+            "&order_by=likes&ordering=desc&page=0"
+        )
+        data = self._api_get(url)
+        return self._to_results(data.get("data"), 40)
+
     def get_episodes(self, item: SearchResult) -> list[Episode]:
         self._check_enabled()
         # Every catalogue entry is a single video — one synthetic episode
         # keeps the uniform pick-episode-then-play flow working.
         return [Episode(id=item.id, title=item.title)]
+
+    def trending(self, limit: int = 20) -> list[SearchResult]:
+        """Most-liked videos: the API ignores paging and returns the
+        catalogue likes-first, so the front slice is the chart."""
+        self._check_enabled()
+        url = f"{self.SEARCH_API}?search_text=&order_by=likes&ordering=desc&page=0"
+        data = self._api_get(url)
+        return self._to_results(data.get("data"), limit)
 
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         self._check_enabled()

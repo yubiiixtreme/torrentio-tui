@@ -16,8 +16,10 @@ import urllib.request
 
 from torrentio_tui.config import Config
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
-from torrentio_tui.sources.adult import AdultSourceBase
+from torrentio_tui.sources.adult import AdultSourceBase, _adult_allowed, _bridge_by_title
+from torrentio_tui.sources.anime import AnilistSource
 from torrentio_tui.sources.base import SourceError
+from torrentio_tui.sources.catalogues import MangaDexSource
 
 _USER_AGENT = "torrentio-tui/0.4 (+https://github.com/yubiiixtreme/torrentio-tui)"
 
@@ -402,3 +404,97 @@ class SukebeiSource(AdultSourceBase):
         if not url:
             return []
         return [StreamLink(url=url, quality="torrent", is_live=False)]
+
+
+class HentaiMangaSource(MangaDexSource):
+    """Hentai manga catalogue — the same verified MangaDex API as the
+    general `mangadex` companion, but serving only `pornographic`-rated
+    titles with cover art. Gated like every other adult source; playback
+    of anime adaptations bridges through the stream addon by title."""
+
+    id = "hentaimanga"
+    name = "HentaiManga (Adult Manga)"
+    category = "adult"
+    RATINGS = ("pornographic",)
+
+    def __init__(
+        self,
+        config: Config | None = None,
+        api_url: str | None = None,
+        stream_url: str | None = None,
+        cinemeta_url: str | None = None,
+        timeout: float | None = None,
+        proxy_url: str | None = None,
+        source_id: str | None = None,
+    ) -> None:
+        self.config = config or Config.load()
+        if not _adult_allowed(self.config):
+            raise SourceError(
+                "Adult content is disabled. Enable it in config.toml: [adult] enabled = true"
+            )
+        # Honour per-source [sources.hentaimanga] overrides and the global
+        # proxy like the catalogue branch does for its siblings.
+        src_cfg = self.config.sources_config.get("hentaimanga", {})
+        default_timeout = self.config.stremio.timeout_seconds
+        super().__init__(
+            api_url=api_url or src_cfg.get("api_url"),
+            stream_url=stream_url or src_cfg.get("stream_url"),
+            cinemeta_url=cinemeta_url or src_cfg.get("cinemeta_url"),
+            timeout=(
+                timeout if timeout is not None else src_cfg.get("timeout_seconds", default_timeout)
+            ),
+            proxy_url=proxy_url or self.config.network.proxy_url,
+            source_id=source_id,
+        )
+
+    def _check_enabled(self) -> None:
+        if not _adult_allowed(self.config):
+            raise SourceError("Adult content not enabled in config")
+
+    def search(self, query: str) -> list[SearchResult]:
+        self._check_enabled()
+        return super().search(query)
+
+    def trending(self, limit: int = 20) -> list[SearchResult]:
+        self._check_enabled()
+        return super().trending(limit)
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        self._check_enabled()
+        return super().get_streams(item, episode)
+
+
+class AnilistAdultSource(AnilistSource):
+    """AniList hentai catalogue — the same verified GraphQL API as the
+    general `anilist` companion, queried with `isAdult: true` (covers
+    and tags included). Playback bridges through the stream addon by
+    title, like the Hanime catalogue."""
+
+    id = "anilist-adult"
+    name = "AniList Adult (Hentai Catalogue)"
+    category = "adult"
+
+    def __init__(self, config: Config | None = None) -> None:
+        self.config = config or Config.load()
+        if not _adult_allowed(self.config):
+            raise SourceError(
+                "Adult content is disabled. Enable it in config.toml: [adult] enabled = true"
+            )
+        super().__init__(include_adult=True)
+
+    def _check_enabled(self) -> None:
+        if not _adult_allowed(self.config):
+            raise SourceError("Adult content not enabled in config")
+
+    def search(self, query: str) -> list[SearchResult]:
+        self._check_enabled()
+        # Base stamps results with this instance's id ("anilist-adult").
+        return super().search(query)
+
+    def get_episodes(self, item: SearchResult) -> list[Episode]:
+        self._check_enabled()
+        return super().get_episodes(item)
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        self._check_enabled()
+        return _bridge_by_title(self.config, item.title, MediaKind.ANIME, source_id=self.id)

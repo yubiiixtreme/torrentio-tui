@@ -110,7 +110,8 @@ theme = "torrentio"
     # [local]  "local" = your own video files (indexes ~/Videos by default).
     # [adult]  opt-in, requires [adult] enabled = true below (or Settings):
     #   "stremio-adult", "hanime", "nhentai", "rule34", "ehentai",
-    #   "hitomila", "sukebei" (hentai torrents via Nyaa's adult tracker).
+    #   "hitomila", "sukebei" (hentai torrents), "hentaimanga",
+    #   "anilist-adult" (hentai catalogues with posters).
 enabled = ["stremio", "mediafusion", "comet", "local"]
 
 [sources.stremio]
@@ -340,8 +341,8 @@ directory = "~/Videos/torrentio-tui"
 
     [adult]
     # Enable adult content sources (stremio-adult, hanime, nhentai, rule34,
-    # ehentai, hitomila, sukebei). Locked by default — also toggleable
-    # live in-app via Settings (g).
+    # ehentai, hitomila, sukebei, hentaimanga, anilist-adult).
+    # Locked by default — also toggleable live in-app via Settings (g).
     # ONLY enable if you are of legal age in your jurisdiction!
     enabled = false
 

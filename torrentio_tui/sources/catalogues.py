@@ -956,7 +956,7 @@ class MangaDexSource(BridgedCatalogueSource):
             byline = f"✍️ {', '.join(authors[:2])}"
             overview = f"{byline} — {overview}" if overview else byline
         return SearchResult(
-            id=f"mangadex:{manga_id}",
+            id=f"{self.id}:{manga_id}",
             title=title,
             kind=MediaKind.ANIME,
             source_id=self.id,
@@ -967,11 +967,10 @@ class MangaDexSource(BridgedCatalogueSource):
         )
 
     def _query(self, params: dict[str, str]) -> list[SearchResult]:
-        query = urllib.parse.urlencode(
-            [("limit", "20"), ("includes[]", "cover_art"), ("includes[]", "author")]
-            + [("contentRating[]", rating) for rating in self.RATINGS]
-            + list(params.items())
-        )
+        pairs = [("limit", "20"), ("includes[]", "cover_art"), ("includes[]", "author")]
+        pairs += [("contentRating[]", rating) for rating in self.RATINGS]
+        pairs += list(params.items())
+        query = urllib.parse.urlencode(pairs)
         try:
             data = _get_json(f"{self.api_url}/manga?{query}", self.timeout, self.proxy_url)
         except SourceError:
@@ -1048,8 +1047,9 @@ class ITunesSource(BridgedCatalogueSource):
         year = int(released[:4]) if released[:4].isdigit() else None
         genre = str(row.get("primaryGenreName", "") or "")
         overview = str(row.get("longDescription") or row.get("shortDescription") or "")[:300]
+        media = "movie" if kind == MediaKind.MOVIE else "tv"
         return SearchResult(
-            id=f"itunes:{track_id}",
+            id=f"{self.id}:{media}:{track_id}",
             title=title,
             kind=kind,
             source_id=self.id,

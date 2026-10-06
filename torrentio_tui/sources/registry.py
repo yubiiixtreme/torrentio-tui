@@ -19,7 +19,9 @@ from torrentio_tui.sources.adult import (
     StremioAdultSource,
 )
 from torrentio_tui.sources.adult_extended import (
+    AnilistAdultSource,
     EHentaiSource,
+    HentaiMangaSource,
     HitomiLaSource,
     SukebeiSource,
 )
@@ -117,6 +119,8 @@ _SOURCE_DISPLAY_NAMES = {
     "ehentai": "E-Hentai (Adult)",
     "hitomila": "Hitomi.la (Adult)",
     "sukebei": "Sukebei (Hentai Torrents)",
+    "hentaimanga": "HentaiManga (Adult Manga)",
+    "anilist-adult": "AniList Adult (Hentai Catalogue)",
     "mangadex": "MangaDex (Manga Catalogue)",
     "itunes": "iTunes (Movies & TV Catalogue)",
 }
@@ -197,6 +201,8 @@ _AVAILABLE: dict[str, type[Source]] = {
     "ehentai": EHentaiSource,
     "hitomila": HitomiLaSource,
     "sukebei": SukebeiSource,
+    "hentaimanga": HentaiMangaSource,
+    "anilist-adult": AnilistAdultSource,
 }
 
 
@@ -251,6 +257,22 @@ def load_sources(config: Config) -> list[Source]:
             # and the global proxy are honoured instead of silently
             # falling back to hardcoded defaults.
             sources.append(cls(**_stremio_kwargs(config, source_id)))
+        elif cls in (
+            StremioAdultSource,
+            HanimeSource,
+            NHentaiSource,
+            Rule34Source,
+            EHentaiSource,
+            HitomiLaSource,
+            SukebeiSource,
+            HentaiMangaSource,
+            AnilistAdultSource,
+        ):
+            # Adult sources need the full config for age gating. Checked
+            # before the catalogue branches below: HentaiMangaSource
+            # subclasses MangaDexSource, so an isinstance check would
+            # route it to the catalogue branch and drop the config.
+            sources.append(cls(config=config))
         elif issubclass(
             cls, (TVMazeSource, JikanSource, KitsuSource, MangaDexSource, ITunesSource)
         ):
@@ -379,17 +401,6 @@ def load_sources(config: Config) -> list[Source]:
                     "timeout_seconds", config.stremio.timeout_seconds
                 )
             sources.append(cls(**kwargs))
-        elif cls in (
-            StremioAdultSource,
-            HanimeSource,
-            NHentaiSource,
-            Rule34Source,
-            EHentaiSource,
-            HitomiLaSource,
-            SukebeiSource,
-        ):
-            # Adult sources need the full config for age gating
-            sources.append(cls(config=config))
         else:
             # Generic fallback: honour global proxy/timeout when the
             # source supports them instead of silently ignoring config.

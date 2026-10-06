@@ -327,9 +327,11 @@ def test_itunes_search_filters_and_upgrades_art(monkeypatch):
     movie, show = results
     assert movie.kind == MediaKind.MOVIE
     assert movie.year == 2019
+    assert movie.id.startswith("itunes:movie:")
     assert movie.poster_url == "https://example.com/a/600x600bb.jpg"
     assert show.kind == MediaKind.SERIES
     assert show.year == 2020
+    assert show.id.startswith("itunes:tv:")
     assert ITunesSource().search("  ") == []
 
 
@@ -365,17 +367,137 @@ def test_rule34_401_points_at_credentials(monkeypatch):
         Rule34Source(config=_adult_config()).search("test")
 
 
+# -- adult catalogues: hentaimanga / anilist-adult / hanime trending --------
+
+
+def test_hentaimanga_serves_pornographic_with_covers(monkeypatch):
+    from torrentio_tui.sources.adult_extended import HentaiMangaSource
+
+    seen: list[str] = []
+
+    def _opener(request, timeout=None):
+        seen.append(request.full_url if hasattr(request, "full_url") else str(request))
+        return _FakeHTTPResponse(json.dumps(MANGADEX_PAYLOAD).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", _opener)
+    source = HentaiMangaSource(config=_adult_config())
+    assert source.category == "adult"
+    assert source.RATINGS == ("pornographic",)
+    results = source.search("test")
+    assert len(results) == 1
+    assert results[0].source_id == "hentaimanga"
+    assert results[0].id.startswith("hentaimanga:")
+    assert results[0].poster_url is not None
+    assert "contentRating%5B%5D=pornographic" in seen[0] or "contentRating" in seen[0]
+    assert source.search("  ") == []
+
+
+def test_hentaimanga_gated_and_proxy_honored():
+    from torrentio_tui.sources.adult_extended import HentaiMangaSource
+
+    with pytest.raises(SourceError):
+        HentaiMangaSource(config=Config())
+    cfg = _adult_config()
+    cfg.network.proxy_url = "http://127.0.0.1:8080"
+    assert HentaiMangaSource(config=cfg).proxy_url == "http://127.0.0.1:8080"
+
+
+ANILIST_ADULT_PAYLOAD = {
+    "data": {
+        "Page": {
+            "media": [
+                {
+                    "id": 999,
+                    "title": {"romaji": "Adult Test", "english": None, "native": "テスト"},
+                    "type": "ANIME",
+                    "format": "OVA",
+                    "status": "FINISHED",
+                    "description": "Desc.",
+                    "startDate": {"year": 2022},
+                    "season": None,
+                    "seasonYear": None,
+                    "genres": ["Hentai"],
+                    "averageScore": 70,
+                    "episodes": 2,
+                    "coverImage": {"large": "https://cdn.example.com/cover.jpg"},
+                    "isAdult": True,
+                }
+            ]
+        }
+    }
+}
+
+
+def test_anilist_adult_search_with_covers(monkeypatch):
+    from torrentio_tui.sources.adult_extended import AnilistAdultSource
+
+    monkeypatch.setattr(urllib.request, "urlopen", _json_response(ANILIST_ADULT_PAYLOAD))
+    source = AnilistAdultSource(config=_adult_config())
+    assert source.category == "adult"
+    results = source.search("test")
+    assert len(results) == 1
+    assert results[0].source_id == "anilist-adult"
+    assert results[0].poster_url == "https://cdn.example.com/cover.jpg"
+    assert results[0].year == 2022
+    assert source.search("   ") == []
+
+
+def test_anilist_adult_gated():
+    from torrentio_tui.sources.adult_extended import AnilistAdultSource
+
+    with pytest.raises(SourceError):
+        AnilistAdultSource(config=Config())
+
+
+def test_hanime_trending_returns_likes_chart(monkeypatch):
+    from torrentio_tui.sources.adult import HanimeSource
+
+    payload = {
+        "data": [
+            {
+                "id": i,
+                "name": f"Show {i}",
+                "slug": f"show-{i}",
+                "poster_url": f"https://cdn.example.com/p{i}.jpg",
+                "description": "",
+                "tags": [],
+                "brand": "",
+                "released_at": "",
+            }
+            for i in range(5)
+        ]
+    }
+    monkeypatch.setattr(urllib.request, "urlopen", _json_response(payload))
+    results = HanimeSource(config=_adult_config()).trending(limit=2)
+    assert len(results) == 2
+    assert all(r.poster_url for r in results)
+
+
 # -- registry -----------------------------------------------------------------
 
 
 def test_registry_new_ids_and_retired_hentaihaven():
     ids = registry.available_source_ids()
-    assert {"sukebei", "mangadex", "itunes"} <= set(ids)
+    assert {"sukebei", "mangadex", "itunes", "hentaimanga", "anilist-adult"} <= set(ids)
     assert "hentaihaven" not in ids
     grouped = registry.sources_by_category()
-    assert "sukebei" in {sid for sid, _ in grouped["adult"]}
+    assert {"sukebei", "hentaimanga", "anilist-adult"} <= {sid for sid, _ in grouped["adult"]}
     assert "mangadex" in {sid for sid, _ in grouped["catalogue"]}
     assert "itunes" in {sid for sid, _ in grouped["catalogue"]}
+
+
+def test_adult_sources_load_with_caller_config():
+    cfg = _adult_config()
+    cfg.enabled_sources = ["hentaimanga", "anilist-adult", "hanime", "sukebei"]
+    loaded = registry.load_sources(cfg)
+    assert {s.id for s in loaded} == {"hentaimanga", "anilist-adult", "hanime", "sukebei"}
+
+
+def test_adult_gate_blocks_registry_load():
+    cfg = Config()  # adult disabled
+    cfg.enabled_sources = ["hentaimanga", "anilist-adult"]
+    with pytest.raises(SourceError):
+        registry.load_sources(cfg)
 
 
 def test_new_catalogues_load_with_proxy():

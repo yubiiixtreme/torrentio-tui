@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   your stream addon like the other companions.
 - **New adult torrent source:** `sukebei` (Nyaa's adult tracker —
   real hentai torrents that play through the torrent bridge).
+- **Two more adult catalogues (57 sources total):** `hentaimanga`
+  (MangaDex's explicit-rated manga with cover art) and
+  `anilist-adult` (AniList queried with `isAdult: true`, covers
+  included) — both gated, both with posters and bridged playback.
+  Hanime also gained a likes-chart `trending()` feed.
 - **Rule34 credentials support:** optional `[sources.rule34] api_key`
   + `user_id` (the API now requires them) with a clear error telling
   you where to get them when missing.
@@ -66,6 +71,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HentaiHaven removed:** its JSON API never existed and the site
   blocks automated clients, so it could only ever error. Old configs
   referencing it skip gracefully; use `sukebei` or `hanime` instead.
+- **Adult registry branch ordering:** `hentaimanga` subclasses the
+  general `MangaDexSource`, so the catalogue `isinstance` branch
+  claimed it before the adult branch and dropped the caller's config —
+  age gating then read the on-disk config instead of the live one.
+  The adult branch now runs first, and `hentaimanga` resolves
+  proxy/timeout/`[sources.hentaimanga]` overrides from config.
+- **Duplicate attribute line** in the OpenSubtitles response parser
+  (harmless, removed).
 - **NHentai/Hitomi/Rule34 failures now explain themselves:** 403s point
   at `network.proxy_url` (datacenter-IP filtering), and Rule34 auth
   failures point at the new `[sources.rule34]` credentials.
