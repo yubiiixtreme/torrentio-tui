@@ -81,7 +81,9 @@ def _get_json(url: str, timeout: float, proxy_url: str | None = None) -> dict:
     except ProxyError as exc:
         raise SourceError(str(exc)) from exc
     except urllib.error.HTTPError as exc:
-        if exc.code == 403:
+        code = exc.code
+        exc.close()
+        if code == 403:
             hint = (
                 "Already routed through your configured proxy — try a different "
                 "one, or self-host the addon"
@@ -96,7 +98,7 @@ def _get_json(url: str, timeout: float, proxy_url: str | None = None) -> dict:
                 else "This addon refused the request, often a datacenter/VPN IP block"
             )
             raise SourceError(f"{blocked} (HTTP 403). {hint}.") from exc
-        raise SourceError(f"Request failed ({exc.code}): {url}") from exc
+        raise SourceError(f"Request failed ({code}): {url}") from exc
     except urllib.error.URLError as exc:
         raise SourceError(f"Network error for {url}: {exc.reason}") from exc
     except (json.JSONDecodeError, TimeoutError) as exc:

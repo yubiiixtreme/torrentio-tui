@@ -53,10 +53,12 @@ def _get_json(
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            if exc.code == 404:
+            code = exc.code
+            exc.close()
+            if code == 404:
                 return None
-            if exc.code not in (500, 502, 503, 504) or attempt == 1:
-                raise SourceError(f"Request failed (HTTP {exc.code}): {url}") from exc
+            if code not in (500, 502, 503, 504) or attempt == 1:
+                raise SourceError(f"Request failed (HTTP {code}): {url}") from exc
             last_exc = exc
             time.sleep(1.0)
         except urllib.error.URLError as exc:
@@ -728,9 +730,11 @@ class TraktSource(BridgedCatalogueSource):
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            if exc.code == 404:
+            code = exc.code
+            exc.close()
+            if code == 404:
                 return None
-            raise SourceError(f"Trakt request failed (HTTP {exc.code}): {url}") from exc
+            raise SourceError(f"Trakt request failed (HTTP {code}): {url}") from exc
         except Exception as exc:
             raise SourceError(f"Trakt error: {exc}") from exc
 

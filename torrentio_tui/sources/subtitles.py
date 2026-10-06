@@ -115,9 +115,11 @@ class SubDBProvider(SubtitleProvider):
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            if exc.code == 404:
+            code = exc.code
+            exc.close()
+            if code == 404:
                 return []
-            raise SourceError(f"SubDB failed (HTTP {exc.code})") from exc
+            raise SourceError(f"SubDB failed (HTTP {code})") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"SubDB network error: {exc.reason}") from exc
         files = []
@@ -192,10 +194,12 @@ class OpenSubtitlesProvider(SubtitleProvider):
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            if exc.code == 401:
+            code = exc.code
+            exc.close()
+            if code == 401:
                 self._token = None  # stale token — next call re-logs-in
                 raise SourceError("OpenSubtitles rejected the credentials") from exc
-            raise SourceError(f"OpenSubtitles failed (HTTP {exc.code})") from exc
+            raise SourceError(f"OpenSubtitles failed (HTTP {code})") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"OpenSubtitles network error: {exc.reason}") from exc
         except (json.JSONDecodeError, TimeoutError) as exc:

@@ -65,7 +65,9 @@ def _check_reachable(label: str, url: str, timeout: float, proxy_url: str | None
             pass
         _check(label, True)
     except urllib.error.HTTPError as exc:
-        if exc.code == 403:
+        code = exc.code
+        exc.close()
+        if code == 403:
             hint = (
                 "blocked (HTTP 403) even through your configured proxy — try a different one"
                 if proxy_url
@@ -73,7 +75,7 @@ def _check_reachable(label: str, url: str, timeout: float, proxy_url: str | None
                 "network.proxy_url or --proxy"
             )
         else:
-            hint = f"HTTP {exc.code}"
+            hint = f"HTTP {code}"
         _check(label, False, hint)
     except (ProxyError, urllib.error.URLError, TimeoutError, OSError) as exc:
         _check(label, False, str(exc))

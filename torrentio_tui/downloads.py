@@ -58,9 +58,17 @@ def download(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     ) as process:
         assert process.stdout is not None
-        for line in process.stdout:
-            if on_output:
-                on_output(line.rstrip())
+        try:
+            for line in process.stdout:
+                if on_output:
+                    on_output(line.rstrip())
+        finally:
+            # Release the pipe promptly instead of leaving it for the GC
+            # (previously surfaced as ResourceWarning: unclosed file).
+            # Guarded: test doubles may substitute a plain iterator.
+            close = getattr(process.stdout, "close", None)
+            if callable(close):
+                close()
         returncode = process.wait()
 
     if returncode != 0:

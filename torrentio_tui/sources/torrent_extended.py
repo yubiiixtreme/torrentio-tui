@@ -59,8 +59,10 @@ def _read_json(url: str, timeout: float, proxy_url: str | None) -> dict | list:
             with open_url(url, timeout, proxy_url, headers) as resp:
                 return json.loads(resp.read().decode("utf-8", errors="replace"))
         except urllib.error.HTTPError as exc:
-            if exc.code not in (500, 502, 503, 504) or attempt == 1:
-                raise SourceError(f"Request failed (HTTP {exc.code}): {url}") from exc
+            code = exc.code
+            exc.close()
+            if code not in (500, 502, 503, 504) or attempt == 1:
+                raise SourceError(f"Request failed (HTTP {code}): {url}") from exc
             last_exc = exc
             time.sleep(1.0)
         except ProxyError as exc:

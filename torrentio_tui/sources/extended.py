@@ -60,7 +60,9 @@ def _fetch_rss(url: str, timeout: float, proxy_url: str | None = None) -> str:
     except ProxyError as exc:
         raise SourceError(str(exc)) from exc
     except urllib.error.HTTPError as exc:
-        raise SourceError(f"HTTP {exc.code}: {url}") from exc
+        code = exc.code
+        exc.close()
+        raise SourceError(f"HTTP {code}: {url}") from exc
     except urllib.error.URLError as exc:
         raise SourceError(f"Network error: {exc.reason}") from exc
     except TimeoutError as exc:
@@ -285,7 +287,9 @@ class MagnetDLSource(Source):
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"HTTP {exc.code}: {url}") from exc
+            code = exc.code
+            exc.close()
+            raise SourceError(f"HTTP {code}: {url}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except TimeoutError as exc:
@@ -358,7 +362,9 @@ class VumooSource(Source):
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"HTTP {exc.code}: {url}") from exc
+            code = exc.code
+            exc.close()
+            raise SourceError(f"HTTP {code}: {url}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except TimeoutError as exc:
@@ -435,7 +441,9 @@ class SolarMovieSource(Source):
         except ProxyError as exc:
             raise SourceError(str(exc)) from exc
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"HTTP {exc.code}: {url}") from exc
+            code = exc.code
+            exc.close()
+            raise SourceError(f"HTTP {code}: {url}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except TimeoutError as exc:

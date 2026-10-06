@@ -63,7 +63,9 @@ class IPTVSource(Source):
                 ) as resp:
                     content = resp.read().decode("utf-8", errors="replace")
             except urllib.error.HTTPError as exc:
-                raise SourceError(f"Failed to fetch M3U: HTTP {exc.code}") from exc
+                code = exc.code
+                exc.close()
+                raise SourceError(f"Failed to fetch M3U: HTTP {code}") from exc
             except urllib.error.URLError as exc:
                 raise SourceError(f"Network error fetching M3U: {exc.reason}") from exc
             except TimeoutError as exc:

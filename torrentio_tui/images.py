@@ -58,6 +58,10 @@ def _fetch(url: str, timeout: float) -> bytes:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.read()
     except urllib.error.HTTPError as exc:
+        # Release the error response body promptly (it holds a socket/file
+        # that would otherwise linger until GC and trip a ResourceWarning).
+        # Only exc.code is needed below, so closing first is safe.
+        exc.close()
         # Timeouts/drops and 5xx/429 are worth retrying; any other 4xx means
         # the poster genuinely isn't there, so let it propagate immediately.
         if exc.code == 429 or exc.code >= 500:

@@ -68,9 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   API requires (was HTTP 406 on every call); transient HTTP 5xx on
   catalogue/torrent-index fetches is retried once; HTTP 403 from *any*
   addon now carries the proxy/configured-URL hint (was Torrentio-only).
-- **Removed two more dead sources:** `rarbg` (`torrentapi.org`
-  returns HTTP 400 — API gone with the 2023 shutdown) and
-  `nuviostreams` (public instance serves its SPA at `/manifest.json`).
+- **Known-dead endpoints (kept registered so old configs still load):**
+  `rarbg` queries `torrentapi.org`, which returns HTTP 400 since the
+  2023 shutdown, and `nuviostreams`' public instance serves its SPA at
+  `/manifest.json` instead of an addon manifest.
 - **Multilingual playback:** mpv now gets `--slang/--alang` from the
   `[language]` preferences (HUD mode included), so matching audio and
   subtitle tracks auto-select instead of always defaulting to the

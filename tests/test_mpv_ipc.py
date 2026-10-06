@@ -42,28 +42,34 @@ class _FakeMpvServer:
             self._serve_connection(conn)
 
     def _serve_connection(self, conn: socket.socket) -> None:
-        buffer = b""
-        conn.settimeout(0.2)
-        while self._alive:
-            try:
-                chunk = conn.recv(4096)
-            except TimeoutError:
-                continue
-            except OSError:
-                return
-            if not chunk:
-                return
-            buffer += chunk
-            while b"\n" in buffer:
-                line, _, buffer = buffer.partition(b"\n")
-                request = json.loads(line)
-                reply = {
-                    "request_id": request["request_id"],
-                    "error": "success",
-                    "data": 42,
-                }
-                with contextlib.suppress(OSError):
-                    conn.sendall((json.dumps(reply) + "\n").encode())
+        try:
+            buffer = b""
+            conn.settimeout(0.2)
+            while self._alive:
+                try:
+                    chunk = conn.recv(4096)
+                except TimeoutError:
+                    continue
+                except OSError:
+                    return
+                if not chunk:
+                    return
+                buffer += chunk
+                while b"\n" in buffer:
+                    line, _, buffer = buffer.partition(b"\n")
+                    request = json.loads(line)
+                    reply = {
+                        "request_id": request["request_id"],
+                        "error": "success",
+                        "data": 42,
+                    }
+                    with contextlib.suppress(OSError):
+                        conn.sendall((json.dumps(reply) + "\n").encode())
+        finally:
+            # Release the accepted socket promptly — otherwise it lingers
+            # until GC and trips ResourceWarning: unclosed socket.
+            with contextlib.suppress(OSError):
+                conn.close()
 
     def stop(self) -> None:
         self._alive = False
@@ -102,13 +108,14 @@ def test_connect_times_out_if_socket_never_appears(tmp_path):
 def test_reconnects_transparently_after_dropped_connection(tmp_path):
     socket_path = tmp_path / "mpv.sock"
     server = _FakeMpvServer(socket_path, drop_first_connection=True)
+    ipc = MpvIPC(socket_path, is_alive=lambda: True)
     try:
-        ipc = MpvIPC(socket_path, is_alive=lambda: True)
         ipc.connect(timeout=2.0)
         # First request's connection gets dropped by the server; get_property
         # must reconnect once and retry instead of raising.
         assert ipc.get_property("time-pos") == 42
     finally:
+        ipc.close()
         server.stop()
 
 

@@ -137,7 +137,9 @@ def _fetch_anilist(query: str, is_adult: bool = False) -> list[AnilistMedia]:
         with urllib.request.urlopen(req, timeout=15.0) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise SourceError(f"AniList API error: HTTP {exc.code}") from exc
+        code = exc.code
+        exc.close()
+        raise SourceError(f"AniList API error: HTTP {code}") from exc
     except urllib.error.URLError as exc:
         raise SourceError(f"Network error: {exc.reason}") from exc
     except json.JSONDecodeError as exc:
@@ -267,7 +269,9 @@ class NyaaSource(Source):
             with urllib.request.urlopen(req, timeout=15.0) as resp:
                 content = resp.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"Nyaa.si error: HTTP {exc.code}") from exc
+            code = exc.code
+            exc.close()
+            raise SourceError(f"Nyaa.si error: HTTP {code}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except TimeoutError as exc:
@@ -375,7 +379,9 @@ class SubsPleaseSource(Source):
             with urllib.request.urlopen(req, timeout=15.0) as resp:
                 content = resp.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"SubsPlease error: HTTP {exc.code}") from exc
+            code = exc.code
+            exc.close()
+            raise SourceError(f"SubsPlease error: HTTP {code}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except TimeoutError as exc:

@@ -71,9 +71,11 @@ class StremioAdultSource(AdultSourceBase):
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 return json.loads(resp.read().decode("utf-8", errors="replace"))
         except urllib.error.HTTPError as exc:
-            if exc.code == 403:
+            code = exc.code
+            exc.close()
+            if code == 403:
                 raise SourceError(f"Blocked (HTTP 403): {url}") from exc
-            raise SourceError(f"HTTP {exc.code}: {url}") from exc
+            raise SourceError(f"HTTP {code}: {url}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except json.JSONDecodeError as exc:
@@ -231,7 +233,9 @@ class HanimeSource(AdultSourceBase):
             with urllib.request.urlopen(req, timeout=15.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            raise SourceError(f"Hanime API error: HTTP {exc.code}") from exc
+            code = exc.code
+            exc.close()
+            raise SourceError(f"Hanime API error: HTTP {code}") from exc
         except urllib.error.URLError as exc:
             raise SourceError(f"Network error: {exc.reason}") from exc
         except json.JSONDecodeError as exc:

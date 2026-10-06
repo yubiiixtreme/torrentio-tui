@@ -36,7 +36,9 @@ def _fetch_rss(url: str, query: str | None = None) -> ET.Element:
         with urllib.request.urlopen(req, timeout=15.0) as resp:
             content = resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
-        raise SourceError(f"RSS fetch error: HTTP {exc.code}") from exc
+        code = exc.code
+        exc.close()
+        raise SourceError(f"RSS fetch error: HTTP {code}") from exc
     except urllib.error.URLError as exc:
         raise SourceError(f"Network error: {exc.reason}") from exc
     except TimeoutError as exc:
