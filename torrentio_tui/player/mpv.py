@@ -39,6 +39,27 @@ def mpv_language_args() -> list[str]:
     return args
 
 
+def streaming_args(stream: StreamLink) -> list[str]:
+    """Instant-start, seek-friendly flags for on-demand HTTP streams.
+
+    mpv plays network URLs progressively by default, but without an
+    explicit cache it can stall on slow links and refuse to seek on
+    servers that omit `Accept-Ranges`. These flags (all long-standing
+    mpv options) make playback start from the current buffer immediately
+    and allow jumping to any timestamp — mpv re-requests from the new
+    offset instead of needing the whole file first. Skipped for live
+    streams (nothing to seek) and non-HTTP URLs (local files, ...).
+    """
+    url = stream.url.lower()
+    if stream.is_live or not url.startswith(("http://", "https://")):
+        return []
+    return [
+        "--cache=yes",
+        "--demuxer-readahead-secs=15",
+        "--force-seekable=yes",
+    ]
+
+
 class MpvPlayer(Player):
     id = "mpv"
 
@@ -68,6 +89,8 @@ class MpvPlayer(Player):
             cmd.append(f"--sub-file={stream.subtitle_url}")
 
         cmd.extend(mpv_language_args())
+
+        cmd.extend(streaming_args(stream))
 
         cmd.append(stream.url)
 

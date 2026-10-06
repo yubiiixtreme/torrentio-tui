@@ -22,14 +22,14 @@ from textual.widgets import (
 
 from torrentio_tui.config import Config
 from torrentio_tui.history import HistoryStore
-from torrentio_tui.images import IMAGES_AVAILABLE, PosterWidget, download_image
+from torrentio_tui.images import IMAGES_AVAILABLE, PosterThumb, PosterWidget, download_image
 from torrentio_tui.library import LibraryStore
 from torrentio_tui.models import Episode, MediaKind, SearchResult, StreamLink
 from torrentio_tui.player.registry import get_player
 from torrentio_tui.sources.base import Source, SourceError
 from torrentio_tui.ui.screens.episodes import EpisodeScreen
 from torrentio_tui.ui.screens.help import HelpScreen
-from torrentio_tui.ui.screens.quality import QualityScreen
+from torrentio_tui.ui.screens.quality import QualityScreen, ranked_streams
 from torrentio_tui.ui.widgets import VimListView
 
 KIND_STYLE: dict[MediaKind, tuple[str, str, str]] = {
@@ -89,7 +89,9 @@ def _source_color(source_id: str) -> str:
         "nyaa-torrents": "orange",
         "ehentai": "red",
         "hitomila": "magenta",
-        "hentaihaven": "pink",
+        "sukebei": "pink",
+        "mangadex": "orange",
+        "itunes": "gray",
     }
     return colors.get(source_id, "white")
 
@@ -227,13 +229,22 @@ def _format_playback_error(error: Exception, backend: str) -> str:
     return f"Playback failed ({type(error).__name__}): {error}"
 
 
+#: Only the first rows of a list get live thumbnail boxes — each one
+#: is a poster download, so capping keeps search/trending instant while
+#: the 🖼 marker + detail-panel poster still identify the rest.
+MAX_ROW_THUMBS = 12
+
+
 class ResultItem(ListItem):
-    def __init__(self, item: SearchResult) -> None:
+    def __init__(self, item: SearchResult, thumb: bool = False) -> None:
         from rich.markup import escape
 
         icon, color, label = _kind_style(item.kind)
+        # 🖼 marks every row that carries poster art, so titles are
+        # identifiable even where the live thumbnail below is capped.
+        art = " 🖼" if item.poster_url else ""
         year = f" [dim]({item.year})[/dim]" if item.year else ""
-        line1 = f"{icon} [bold]{escape(item.title)}[/bold]{year}"
+        line1 = f"{icon} [bold]{escape(item.title)}[/bold]{year}[dim]{art}[/dim]"
 
         source_color = _source_color(item.source_id)
         line2 = f"   [{color}]{label}[/{color}] [dim]·[/dim] [{source_color}]{escape(item.source_id)}[/{source_color}]"
@@ -247,8 +258,26 @@ class ResultItem(ListItem):
             snippet = f"{overview[:120]}…" if len(overview) > 120 else overview
             lines.append(f"   [dim]{escape(snippet)}[/dim]")
 
-        super().__init__(Static("\n".join(lines), markup=True), classes=f"kind-{item.kind.value}")
+        body = Static("\n".join(lines), markup=True)
+        if thumb and item.poster_url and IMAGES_AVAILABLE:
+            # Fixed-shape thumbnail box beside the text; the screen fills
+            # it in lazily so lists render instantly (see _fill_thumbs).
+            row_thumb = PosterThumb(item.poster_url)
+            super().__init__(Horizontal(row_thumb, body), classes=f"kind-{item.kind.value}")
+            self.thumb: PosterThumb | None = row_thumb
+        else:
+            super().__init__(body, classes=f"kind-{item.kind.value}")
+            self.thumb = None
         self.item = item
+
+    def show_thumb(self, path: Path, url: str) -> None:
+        """Fill this row's thumbnail (called back on the UI thread)."""
+        thumb = self.thumb
+        if thumb is None or not self.is_mounted or not thumb.is_mounted:
+            return
+        if thumb.poster_url != url:
+            return  # row was recycled for another item while downloading
+        thumb.show_image(path)
 
 
 class HistoryItem(ListItem):
@@ -485,8 +514,9 @@ class MainScreen(Screen):
     def refresh_library(self) -> None:
         list_view = self.query_one("#library-results", ListView)
         list_view.clear()
-        for item in self.library.all():
-            list_view.append(ResultItem(item))
+        for index, item in enumerate(self.library.all()):
+            list_view.append(ResultItem(item, thumb=index < MAX_ROW_THUMBS))
+        self._fill_thumbs(list_view)
         if len(list_view.children) > 0:
             list_view.index = 0
 
@@ -552,6 +582,25 @@ class MainScreen(Screen):
 
         self.app.call_from_thread(apply)
 
+    @work(thread=True)
+    def _load_row_thumb(self, row: ResultItem, url: str) -> None:
+        path = download_image(url)
+        if path is None:
+            return
+        self.app.call_from_thread(row.show_thumb, path, url)
+
+    def _fill_thumbs(self, list_view: ListView) -> None:
+        """Kick off lazy poster downloads for rows carrying a thumbnail
+        box. Cached posters apply instantly; misses fill in as they land
+        without ever blocking the list."""
+        if not IMAGES_AVAILABLE:
+            return
+        for child in list_view.children:
+            if isinstance(child, ResultItem) and child.thumb is not None:
+                url = child.thumb.poster_url
+                if url:
+                    self._load_row_thumb(child, url)
+
     def show_error_detail(self, message: str) -> None:
         self.query_one("#detail-overview", Static).update(f"[red]{message}[/red]")
 
@@ -608,8 +657,9 @@ class MainScreen(Screen):
     def _render_results(self, results: list[SearchResult]) -> None:
         list_view = self.query_one("#search-results", ListView)
         list_view.clear()
-        for item in results:
-            list_view.append(ResultItem(item))
+        for index, item in enumerate(results):
+            list_view.append(ResultItem(item, thumb=index < MAX_ROW_THUMBS))
+        self._fill_thumbs(list_view)
         total = len(self._last_results)
         self._update_filter_count(len(results), total)
         if results:
@@ -677,8 +727,9 @@ class MainScreen(Screen):
                     break
             list_view = self.query_one("#trending-results", ListView)
             list_view.clear()
-            for item in results[:60]:
-                list_view.append(ResultItem(item))
+            for index, item in enumerate(results[:60]):
+                list_view.append(ResultItem(item, thumb=index < MAX_ROW_THUMBS))
+            self._fill_thumbs(list_view)
             if results:
                 list_view.index = 0
             # No toast when empty: the tab hint already explains itself,
@@ -952,6 +1003,7 @@ class MainScreen(Screen):
             self.app.notify("No downloadable streams found", severity="warning")
             return
 
+        streams = ranked_streams(streams)
         stream = (
             streams[0]
             if len(streams) == 1
@@ -1058,6 +1110,7 @@ class MainScreen(Screen):
             self.show_error_detail("No playable streams found for this title/episode.")
             return
 
+        streams = ranked_streams(streams)
         stream = (
             streams[0]
             if len(streams) == 1
@@ -1098,6 +1151,7 @@ class MainScreen(Screen):
             self.app.notify(str(exc), severity="error", timeout=10)
             return
         if streams:
+            streams = ranked_streams(streams)
             await self.play_stream(
                 result, episode, streams[0], resume_seconds=entry.position_seconds
             )

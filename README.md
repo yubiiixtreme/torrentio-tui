@@ -6,7 +6,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android-lightgrey.svg)](#installation)
-[![Sources](https://img.shields.io/badge/sources-53%20free-gold.svg)](#features)
+[![Sources](https://img.shields.io/badge/sources-55%20free-gold.svg)](#features)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/yubiiixtreme/torrentio-tui/workflows/CI/badge.svg)](https://github.com/yubiiixtreme/torrentio-tui/actions)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
@@ -17,7 +17,7 @@
 </div>
 
 It opens on 🔥 **Trending** so there's always something to watch —
-search movies, series and anime across **53 free sources** at once,
+search movies, series and anime across **55 free sources** at once,
 funnel the results by kind, category, genre, year and sort, pick a
 quality, and it's playing in mpv/vlc seconds later. Real poster art
 rendered inline, your pick of color themes, everything stored locally
@@ -29,7 +29,7 @@ on your own machine. No account, no tracking, no ads.
  │ 🔥 Trending     │ │ 📺 Breaking Bad (2008)    [stremio]   │
  │ ❤️ Library      │ │ 🎴 Solo Leveling (2024)   [anilist]   │
  │ ⏯ Continue      │ │                                       │
- │ 🔌 Sources 4/53 │ │ Enter to play · l to save · i info    │
+ │ 🔌 Sources 4/55 │ │ Enter to play · l to save · i info    │
  └─────────────────┘ └───────────────────────────────────────┘
   1-5 sections · / search · ⩔ funnel · g settings · t theme · ? help
 ```
@@ -45,7 +45,7 @@ ecosystem (Cinemeta + Torrentio-compatible stream addons).
 
 ## Features
 
-- 🔍 **Search 53 free sources at once** — every enabled provider
+- 🔍 **Search 55 free sources at once** — every enabled provider
   (Torrentio, MediaFusion, Comet, AIOStreams, Torrentio Cloud,
   SuperStream, YTS, RARBG, 1337x, Pirate Bay, EZTV, LimeTorrents,
   Nyaa, AniDex, TVMaze, TMDB, Trakt, Jikan, Kitsu, AniList, free
@@ -481,7 +481,7 @@ torrentio_tui/
     rss_indexes.py # LimeTorrents, TorrentDownloads, GloDLS (RSS magnets)
     torrentapi.py  # YTS, RARBG, 1337x, Pirate Bay torrent indexes (magnets)
     torrent_extended.py  # TPB API, RARBG mirrors, Nyaa mirrors
-    catalogues.py  # Metadata companions (TVMaze, Jikan, Kitsu, TMDB,
+    catalogues.py  # Metadata companions (TVMaze, Jikan, Kitsu, MangaDex, iTunes, TMDB,
                     # Trakt) with playback bridged through your stream addon
     iptv.py        # Live TV from an M3U playlist + built-in free iptv-org world TV
     anime.py       # AniList metadata, Nyaa.si and SubsPlease torrents
@@ -490,7 +490,7 @@ torrentio_tui/
     subtitles.py   # Subtitle providers (SubDB, OpenSubtitles) + auto-attach
     local.py       # Indexes a local media folder
     example.py     # Annotated template for a real scraper/API source (not registered)
-    registry.py    # Maps config source ids -> Source classes (53 registered)
+    registry.py    # Maps config source ids -> Source classes (55 registered)
 
   player/
     base.py        # Player ABC
@@ -587,7 +587,7 @@ You're launching a **frozen copy** (e.g. an old `pipx` venv) instead of
 the current code. Freshness check — this number grows with releases:
 
 ```bash
-torrentio-tui --list-sources | wc -l    # ~59 lines at 53 sources
+torrentio-tui --list-sources | wc -l    # ~61 lines at 55 sources
 ```
 
 If it's much lower, refresh: `pipx reinstall torrentio-tui` (or

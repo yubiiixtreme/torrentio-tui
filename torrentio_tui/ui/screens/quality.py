@@ -62,6 +62,31 @@ def _stream_type(stream: StreamLink) -> tuple[str, str, str]:
     return STREAM_ICONS["stream"]
 
 
+def _stream_rank(stream: StreamLink) -> int:
+    """Order the quality picker so instant, seekable streams come first.
+
+    Direct/debrid HTTP(S) starts playing from the current buffer right
+    away and supports jumping to any timestamp; local files are next;
+    torrent/magnet links (sequential download — playback can't skip
+    ahead of the downloaded pieces) sink to the bottom. Stable, so
+    sources keep their relative order within each tier.
+    """
+    url = stream.url.lower()
+    if is_torrent_link(url):
+        return 2
+    if url.startswith(("http://", "https://")):
+        return 0
+    return 1
+
+
+def ranked_streams(streams: list[StreamLink]) -> list[StreamLink]:
+    """Sort streams direct-first (see `_stream_rank`). Used by the picker
+    and by every auto-pick path so the default is always the fastest to
+    start and seekable — including downloads, where a magnet first would
+    just error out (yt-dlp can't fetch torrents)."""
+    return sorted(streams, key=_stream_rank)
+
+
 class StreamPicked(ListItem):
     def __init__(self, stream: StreamLink) -> None:
         from rich.markup import escape
@@ -101,7 +126,9 @@ class QualityScreen(ModalScreen[StreamLink | None]):
 
     def __init__(self, streams: list[StreamLink], lang_config=None) -> None:
         super().__init__()
-        self.streams = streams
+        # Direct HTTP first (instant start + seeking), magnets last —
+        # see _stream_rank. The auto-picked streams[0] elsewhere benefits too.
+        self.streams = ranked_streams(streams)
         # Use the caller's shared language config when provided so the
         # subtitle picker actually affects playback (which reads
         # MainScreen.config.language). Fall back to a fresh load for

@@ -99,8 +99,9 @@ theme = "torrentio"
 # [catalogue]  metadata companions (free, keyless). "tvmaze" = series
 #   air-dates/episodes (streams bridged via IMDb id). "jikan" =
 #   MyAnimeList anime data. "kitsu" = Kitsu anime data. "anilist" =
-#   AniList anime data. Catalogue results resolve playback through your
-#   configured stream addon by title/IMDb match.
+#   AniList anime data. "mangadex" = manga with cover art. "itunes" =
+#   movies/TV with poster art. Catalogue results resolve playback
+#   through your configured stream addon by title/IMDb match.
     # [anime]  "nyaa" = anime torrents from Nyaa.si. "subsplease" = latest
     #   anime releases from SubsPlease. "anidex"/"animetosho"/
     #   "tokyotoshokan"/"nyaa-torrents" = more anime indexes.
@@ -109,7 +110,7 @@ theme = "torrentio"
     # [local]  "local" = your own video files (indexes ~/Videos by default).
     # [adult]  opt-in, requires [adult] enabled = true below (or Settings):
     #   "stremio-adult", "hanime", "nhentai", "rule34", "ehentai",
-    #   "hitomila", "hentaihaven".
+    #   "hitomila", "sukebei" (hentai torrents via Nyaa's adult tracker).
 enabled = ["stremio", "mediafusion", "comet", "local"]
 
 [sources.stremio]
@@ -265,6 +266,16 @@ timeout_seconds = 15.0
 # # api_url = "https://kitsu.io/api/edge"
 # # stream_url = "https://torrentio.strem.fun"
 # # timeout_seconds = 15.0
+#
+# [sources.mangadex]
+# # api_url = "https://api.mangadex.org"
+# # stream_url = "https://torrentio.strem.fun"
+# # timeout_seconds = 15.0
+#
+# [sources.itunes]
+# # api_url = "https://itunes.apple.com/search"
+# # stream_url = "https://torrentio.strem.fun"
+# # timeout_seconds = 15.0
 
 # --- IPTV / Live TV ---
 # [sources.iptv]
@@ -291,6 +302,13 @@ timeout_seconds = 15.0
 # [sources.nhentai]
 #
 # [sources.rule34]
+# # rule34.xxx now requires free API credentials for most calls —
+# # grab them from rule34.xxx's API page while logged in:
+# # api_key = ""
+# # user_id = ""
+#
+# [sources.sukebei]
+# # timeout_seconds = 15.0
 
 [network]
 # Route requests through a proxy — useful if Torrentio Cloudflare-blocks
@@ -322,7 +340,7 @@ directory = "~/Videos/torrentio-tui"
 
     [adult]
     # Enable adult content sources (stremio-adult, hanime, nhentai, rule34,
-    # ehentai, hitomila, hentaihaven). Locked by default — also toggleable
+    # ehentai, hitomila, sukebei). Locked by default — also toggleable
     # live in-app via Settings (g).
     # ONLY enable if you are of legal age in your jurisdiction!
     enabled = false

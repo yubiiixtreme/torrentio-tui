@@ -201,13 +201,19 @@ ListView:focus > ListItem.--highlight {
 }
 
 #detail-poster {
-    height: 10;
+    height: 12;
     content-align: center middle;
     text-style: bold;
     border: round #00ffff;
     margin-bottom: 1;
     background: #0c1426;
     color: #4dffff44;
+    overflow: hidden;
+}
+
+#detail-poster PosterThumb, #detail-poster Image {
+    width: 100%;
+    height: 100%;
 }
 
 #detail-badges {

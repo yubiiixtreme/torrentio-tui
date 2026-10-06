@@ -123,9 +123,10 @@ class PlaybackHudScreen(ModalScreen[None]):
             cmd.append(f"--http-header-fields={fields}")
         if self._stream.subtitle_url:
             cmd.append(f"--sub-file={self._stream.subtitle_url}")
-        from torrentio_tui.player.mpv import mpv_language_args
+        from torrentio_tui.player.mpv import mpv_language_args, streaming_args
 
         cmd.extend(mpv_language_args())
+        cmd.extend(streaming_args(self._stream))
         cmd.append(self._stream.url)
         return cmd
 

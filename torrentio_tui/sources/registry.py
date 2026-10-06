@@ -20,8 +20,8 @@ from torrentio_tui.sources.adult import (
 )
 from torrentio_tui.sources.adult_extended import (
     EHentaiSource,
-    HentaiHavenSource,
     HitomiLaSource,
+    SukebeiSource,
 )
 from torrentio_tui.sources.anime import AnilistSource, NyaaSource, SubsPleaseSource
 from torrentio_tui.sources.anime_extended import (
@@ -31,8 +31,10 @@ from torrentio_tui.sources.anime_extended import (
 )
 from torrentio_tui.sources.base import Source
 from torrentio_tui.sources.catalogues import (
+    ITunesSource,
     JikanSource,
     KitsuSource,
+    MangaDexSource,
     TMDBSource,
     TraktSource,
     TVMazeSource,
@@ -114,7 +116,9 @@ _SOURCE_DISPLAY_NAMES = {
     "nyaa-torrents": "Nyaa Torrents (Mirrors)",
     "ehentai": "E-Hentai (Adult)",
     "hitomila": "Hitomi.la (Adult)",
-    "hentaihaven": "HentaiHaven (Adult)",
+    "sukebei": "Sukebei (Hentai Torrents)",
+    "mangadex": "MangaDex (Manga Catalogue)",
+    "itunes": "iTunes (Movies & TV Catalogue)",
 }
 
 
@@ -160,6 +164,8 @@ _AVAILABLE: dict[str, type[Source]] = {
     "tvmaze": TVMazeSource,
     "jikan": JikanSource,
     "kitsu": KitsuSource,
+    "mangadex": MangaDexSource,
+    "itunes": ITunesSource,
     "iptv": IPTVSource,
     "anilist": AnilistSource,
     "nyaa": NyaaSource,
@@ -190,7 +196,7 @@ _AVAILABLE: dict[str, type[Source]] = {
     "nyaa-torrents": NyaaTorrentsSource,
     "ehentai": EHentaiSource,
     "hitomila": HitomiLaSource,
-    "hentaihaven": HentaiHavenSource,
+    "sukebei": SukebeiSource,
 }
 
 
@@ -245,7 +251,9 @@ def load_sources(config: Config) -> list[Source]:
             # and the global proxy are honoured instead of silently
             # falling back to hardcoded defaults.
             sources.append(cls(**_stremio_kwargs(config, source_id)))
-        elif issubclass(cls, (TVMazeSource, JikanSource, KitsuSource)):
+        elif issubclass(
+            cls, (TVMazeSource, JikanSource, KitsuSource, MangaDexSource, ITunesSource)
+        ):
             source_cfg = config.sources_config.get(source_id, {})
             sources.append(
                 cls(
@@ -378,7 +386,7 @@ def load_sources(config: Config) -> list[Source]:
             Rule34Source,
             EHentaiSource,
             HitomiLaSource,
-            HentaiHavenSource,
+            SukebeiSource,
         ):
             # Adult sources need the full config for age gating
             sources.append(cls(config=config))

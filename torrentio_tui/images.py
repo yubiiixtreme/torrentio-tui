@@ -153,10 +153,47 @@ class PosterWidget(Container):
         is available and the download succeeded)."""
         if _ImageWidget is None:
             return
-        for child in list(self.children):
-            self._remove(child)
-        self._fallback.display = False
-        self.mount(_ImageWidget(str(path)))
+        if not self.is_mounted:
+            return  # row/detail moved on while the poster downloaded
+        from textual.widget import MountError
+
+        try:
+            for child in list(self.children):
+                self._remove(child)
+            self._fallback.display = False
+            self.mount(_ImageWidget(str(path)))
+        except MountError:
+            # Unmounted between the check and the mount (screen changed
+            # mid-download) — nothing to show into, drop it quietly.
+            return
+
+
+class PosterThumb(PosterWidget):
+    """Mini poster for catalogue rows: a fixed-shape box (never shifting
+    the row layout) showing the downloaded poster when textual-image is
+    installed, otherwise the icon fallback. The owning screen fills it
+    in lazily via `show_image()` so lists render instantly."""
+
+    DEFAULT_CSS = """
+    PosterThumb {
+        width: 14;
+        height: 7;
+        align: center middle;
+        border: round #1a2d50;
+        margin-right: 1;
+        content-align: center middle;
+    }
+    PosterThumb > Static {
+        width: 100%;
+        height: 100%;
+        content-align: center middle;
+        text-style: bold;
+    }
+    """
+
+    def __init__(self, poster_url: str | None = None, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.poster_url = poster_url
 
 
 def clear_cache() -> None:

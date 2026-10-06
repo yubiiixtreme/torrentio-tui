@@ -7,6 +7,7 @@ AND the user confirms they are of legal age in their jurisdiction.
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -24,6 +25,36 @@ def _adult_allowed(config: Config | None = None) -> bool:
     if config is None:
         config = Config.load()
     return config.adult.enabled if hasattr(config, "adult") else False
+
+
+def _bridge_by_title(
+    config: Config, title: str, kind: MediaKind, source_id: str
+) -> list[StreamLink]:
+    """Resolve `title` to playable streams through the user's configured
+    Stremio-protocol addon — the same bridge the catalogue companions
+    (TVMaze, Jikan, ...) use for metadata-only entries."""
+    from torrentio_tui.sources.stremio import StremioSource
+
+    addon = StremioSource(
+        cinemeta_url=config.stremio.cinemeta_url,
+        stream_url=config.stremio.stream_url,
+        timeout=config.stremio.timeout_seconds,
+        proxy_url=config.network.proxy_url,
+        source_id=f"{source_id}-bridge",
+    )
+    try:
+        matches = addon.search(title)
+    except SourceError as exc:
+        raise SourceError(f"Could not resolve {title!r} for playback: {exc}") from exc
+    wanted = {kind} | ({MediaKind.SERIES, MediaKind.MOVIE} if kind == MediaKind.ANIME else set())
+    candidates = [m for m in matches if m.kind in wanted] or matches
+    if not candidates:
+        raise SourceError(
+            f"{title!r} is metadata-only here — no playable match. "
+            "Search the same title under a stream source (stremio, comet, ...)."
+        )
+    picked = candidates[0]
+    return addon.get_streams(picked, Episode(id=picked.id, title=picked.title))
 
 
 class AdultSourceBase(Source):
@@ -210,21 +241,21 @@ class StremioAdultSource(AdultSourceBase):
 
 
 class HanimeSource(AdultSourceBase):
-    """Hanime.tv - hentai anime streaming."""
+    """Hanime.tv - hentai anime streaming catalogue.
+
+    Search runs against hanime's public guest API (posters, tags,
+    descriptions included); each entry is a single video, and playback
+    resolves through the user's configured stream addon by title — the
+    same bridge the catalogue companions (TVMaze, Jikan, ...) use —
+    since hanime's own player handshake requires a browser session.
+    """
 
     id = "hanime"
     name = "Hanime.tv (Hentai Anime)"
 
-    HANIME_API = "https://hanime.tv/api/v8"
+    SEARCH_API = "https://guest.freeanimehentai.net/api/v11/search_hvs"
 
-    def search(self, query: str) -> list[SearchResult]:
-        self._check_enabled()
-        query = query.strip()
-        if not query:
-            return []
-
-        url = f"{self.HANIME_API}/search?keyword={urllib.parse.quote(query)}"
-
+    def _api_get(self, url: str) -> dict:
         try:
             req = urllib.request.Request(
                 url,
@@ -242,16 +273,47 @@ class HanimeSource(AdultSourceBase):
             raise SourceError(f"Bad response: {exc}") from exc
         except TimeoutError as exc:
             raise SourceError(f"Timeout: {exc}") from exc
+        if not isinstance(data, dict):
+            raise SourceError("Hanime API returned an unexpected response")
+        return data
+
+    @staticmethod
+    def _plain_text(html: str) -> str:
+        text = re.sub(r"<[^>]+>", " ", html or "")
+        return re.sub(r"\s+", " ", text).strip()
+
+    def search(self, query: str) -> list[SearchResult]:
+        self._check_enabled()
+        query = query.strip()
+        if not query:
+            return []
+
+        url = (
+            f"{self.SEARCH_API}?search_text={urllib.parse.quote(query)}"
+            "&order_by=likes&ordering=desc&page=0"
+        )
+        data = self._api_get(url)
 
         results = []
-        for item in data.get("data", []):
-            title = item.get("name", "")
-            slug = item.get("slug", "")
-            cover = item.get("cover_url", "")
-            description = item.get("description", "")
-            year = item.get("released_year")
-            brands = item.get("brands", [])
-            tags = [b.get("name", "") for b in brands if b.get("name")]
+        rows = data.get("data")
+        if not isinstance(rows, list):
+            return []
+        # The API ignores paging and can return thousands of rows —
+        # cap client-side so the list stays usable.
+        for item in rows[:40]:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("name", "") or "Unknown")
+            slug = str(item.get("slug", "") or "")
+            if not slug:
+                continue
+            poster = str(item.get("poster_url", "") or "")
+            overview = self._plain_text(str(item.get("description", "") or ""))[:300]
+            tags = [str(t) for t in item.get("tags", []) if isinstance(t, str)]
+            brand = str(item.get("brand", "") or "")
+            released = str(item.get("released_at", "") or "")
+            year = int(released[:4]) if released[:4].isdigit() else None
+            genres = ([brand] if brand else []) + tags
 
             results.append(
                 SearchResult(
@@ -260,77 +322,27 @@ class HanimeSource(AdultSourceBase):
                     kind=MediaKind.ANIME,
                     source_id=self.id,
                     year=year,
-                    poster_url=cover,
-                    overview=description[:300] if description else "",
-                    genres=tuple(tags),
+                    poster_url=poster or None,
+                    overview=overview,
+                    genres=tuple(genres[:10]),
                 )
             )
         return results
 
     def get_episodes(self, item: SearchResult) -> list[Episode]:
         self._check_enabled()
-        if ":" not in item.id:
-            return [Episode(id=item.id, title=item.title)]
-        _, slug = item.id.split(":", 1)
-
-        # Fetch episodes for this show
-        url = f"{self.HANIME_API}/anime/{slug}"
-
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception:
-            return [Episode(id=item.id, title=item.title)]
-
-        episodes = []
-        for ep in data.get("episodes", []):
-            ep_num = ep.get("number", 0)
-            ep_title = ep.get("name") or f"Episode {ep_num}"
-            ep_slug = ep.get("slug", "")
-            episodes.append(Episode(id=f"hanime:{ep_slug}", title=ep_title, number=ep_num))
-
-        episodes.sort(key=lambda e: e.number or 0)
-        return episodes or [Episode(id=item.id, title=item.title)]
+        # Every catalogue entry is a single video — one synthetic episode
+        # keeps the uniform pick-episode-then-play flow working.
+        return [Episode(id=item.id, title=item.title)]
 
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         self._check_enabled()
-        if ":" not in episode.id:
-            return []
-        _, ep_slug = episode.id.split(":", 1)
-
-        # Get stream URLs for this episode
-        url = f"{self.HANIME_API}/video/embed?id={ep_slug}"
-
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception:
-            return []
-
-        links = []
-        for src in data.get("sources", []):
-            stream_url = src.get("src", "")
-            if not stream_url:
-                continue
-            quality = src.get("height", "auto")
-            if quality != "auto":
-                quality = f"{quality}p"
-            links.append(
-                StreamLink(
-                    url=stream_url,
-                    quality=quality,
-                    headers={"Referer": "https://hanime.tv/"},
-                )
-            )
-        return links
+        return _bridge_by_title(
+            self.config,
+            item.title,
+            MediaKind.ANIME,
+            source_id=self.id,
+        )
 
 
 def _nhentai_year(upload_date: object) -> int | None:
@@ -384,6 +396,16 @@ class NHentaiSource(AdultSourceBase):
             )
             with urllib.request.urlopen(req, timeout=15.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            if code == 403:
+                raise SourceError(
+                    "NHentai blocked the request (HTTP 403) — it filters "
+                    "datacenter/VPN IPs. Try setting network.proxy_url "
+                    "(e.g. Cloudflare WARP's proxy mode)."
+                ) from exc
+            raise SourceError(f"NHentai search failed (HTTP {code})") from exc
         except Exception as exc:
             raise SourceError(f"NHentai search failed: {exc}") from exc
 
@@ -455,12 +477,24 @@ class NHentaiSource(AdultSourceBase):
 
 
 class Rule34Source(AdultSourceBase):
-    """Rule34.xxx - adult artwork."""
+    """Rule34.xxx - adult artwork.
+
+    The API now requires free credentials for most calls: put them in
+    `[sources.rule34]` as `api_key` + `user_id` (from rule34.xxx's API
+    page while logged in). Without them, searches raise a clear error
+    instead of failing silently.
+    """
 
     id = "rule34"
     name = "Rule34.xxx"
 
     RULE34_API = "https://api.rule34.xxx/index.php"
+
+    def __init__(self, config: Config | None = None) -> None:
+        super().__init__(config)
+        src_cfg = self.config.sources_config.get("rule34", {})
+        self.api_key = str(src_cfg.get("api_key", "") or "")
+        self.user_id = str(src_cfg.get("user_id", "") or "")
 
     def search(self, query: str) -> list[SearchResult]:
         self._check_enabled()
@@ -469,6 +503,8 @@ class Rule34Source(AdultSourceBase):
             return []
 
         url = f"{self.RULE34_API}?page=dapi&s=post&q=index&tags={urllib.parse.quote(query)}&json=1&limit=30"
+        if self.api_key and self.user_id:
+            url += f"&api_key={urllib.parse.quote(self.api_key)}&user_id={urllib.parse.quote(self.user_id)}"
 
         try:
             req = urllib.request.Request(
@@ -476,9 +512,29 @@ class Rule34Source(AdultSourceBase):
                 headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
             )
             with urllib.request.urlopen(req, timeout=15.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception as exc:
+                body = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            if code in (401, 403):
+                raise SourceError(
+                    "Rule34.xxx rejected the request (HTTP "
+                    f"{code}) — it now requires free API credentials: set "
+                    "[sources.rule34] api_key + user_id in config.toml "
+                    "(see rule34.xxx while logged in)."
+                ) from exc
+            raise SourceError(f"Rule34 search failed (HTTP {code})") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise SourceError(f"Rule34 search failed: {exc}") from exc
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError as exc:
+            if "auth" in body.lower():
+                raise SourceError(
+                    "Rule34.xxx requires free API credentials for this call: "
+                    "set [sources.rule34] api_key + user_id in config.toml."
+                ) from exc
+            raise SourceError(f"Rule34 search failed: bad response") from exc
 
         if isinstance(data, dict):
             # Error payloads come back as a dict, not a list.

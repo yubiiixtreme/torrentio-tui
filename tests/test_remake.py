@@ -174,7 +174,7 @@ def test_new_sources_registered() -> None:
         "nyaa-torrents",
         "ehentai",
         "hitomila",
-        "hentaihaven",
+        "sukebei",
     ):
         assert expected in ids
 
@@ -191,7 +191,7 @@ def test_adult_sources_all_gated() -> None:
         "rule34",
         "ehentai",
         "hitomila",
-        "hentaihaven",
+        "sukebei",
     } <= adult_ids
 
 

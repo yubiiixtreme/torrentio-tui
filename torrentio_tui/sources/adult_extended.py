@@ -3,12 +3,13 @@
 Adds support for:
 - E-Hentai / ExHentai (hentai manga/doujinshi)
 - Hitomi.la (hentai manga)
-- HentaiHaven alternative (hentai anime streaming)
+- Sukebei (Nyaa's adult tracker — hentai anime torrents)
 """
 
 from __future__ import annotations
 
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -35,11 +36,45 @@ class EHentaiSource(AdultSourceBase):
 
     EHENTAI_API = "https://api.e-hentai.org/api.php"
     EXHENTAI_API = "https://api.exhentai.org/api.php"
+    EHENTAI_BASE = "https://e-hentai.org"
+    EXHENTAI_BASE = "https://exhentai.org"
+
+    #: Gallery links on the HTML search page: /g/<gid>/<token>/
+    _GALLERY_LINK_RE = re.compile(r"/g/(\d+)/([0-9a-f]{10})/")
 
     def __init__(self, config: Config | None = None, use_ex: bool = False) -> None:
         super().__init__(config)
         self.use_ex = use_ex
         self.api_url = self.EXHENTAI_API if use_ex else self.EHENTAI_API
+        self.base_url = self.EXHENTAI_BASE if use_ex else self.EHENTAI_BASE
+
+    def _search_gallery_ids(self, query: str) -> list[tuple[int, str]]:
+        """The `gdata` API only accepts explicit gid/token pairs — it has
+        no free-text search (passing one returns "gdata request needs a
+        gidlist"). So search the HTML index first and scrape the gallery
+        links, then resolve metadata via `gdata`."""
+        url = f"{self.base_url}/?f_search={urllib.parse.quote(query)}"
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": _USER_AGENT, "Accept": "text/html"},
+            )
+            with urllib.request.urlopen(req, timeout=15.0) as resp:
+                html = resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            raise SourceError(f"E-Hentai search failed (HTTP {code})") from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise SourceError(f"E-Hentai search failed: {exc}") from exc
+        seen: list[tuple[int, str]] = []
+        for gid_str, token in self._GALLERY_LINK_RE.findall(html):
+            pair = (int(gid_str), token)
+            if pair not in seen:
+                seen.append(pair)
+            if len(seen) >= 25:
+                break
+        return seen
 
     def search(self, query: str) -> list[SearchResult]:
         self._check_enabled()
@@ -47,11 +82,14 @@ class EHentaiSource(AdultSourceBase):
         if not query:
             return []
 
+        pairs = self._search_gallery_ids(query)
+        if not pairs:
+            return []
+
         payload = {
             "method": "gdata",
-            "gidlist": [],
+            "gidlist": [[gid, token] for gid, token in pairs],
             "namespace": 1,
-            "search": query,
         }
 
         try:
@@ -171,6 +209,17 @@ class HitomiLaSource(AdultSourceBase):
             )
             with urllib.request.urlopen(req, timeout=15.0) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            code = exc.code
+            exc.close()
+            if code in (403, 404):
+                raise SourceError(
+                    f"Hitomi.la search failed (HTTP {code}) — it serves "
+                    "results through client-side indexes that block "
+                    "automated clients. A proxy (network.proxy_url) "
+                    "sometimes helps."
+                ) from exc
+            raise SourceError(f"Hitomi.la search failed (HTTP {code})") from exc
         except Exception as exc:
             raise SourceError(f"Hitomi.la search failed: {exc}") from exc
 
@@ -256,116 +305,100 @@ class HitomiLaSource(AdultSourceBase):
         return links
 
 
-class HentaiHavenSource(AdultSourceBase):
-    """HentaiHaven / HentaiStream - hentai anime streaming (mirror sites)."""
+class SukebeiSource(AdultSourceBase):
+    """Sukebei — Nyaa's adult tracker (hentai anime/manga torrents).
 
-    id = "hentaihaven"
-    name = "HentaiHaven (Hentai Anime)"
+    Same RSS protocol as Nyaa.si (verified live), so results are real
+    torrents that play through the torrent bridge (webtorrent/peerflix)
+    with seeking inside the buffered pieces, or via a debrid-backed
+    addon. Gated like every other adult source.
+    """
 
-    HENTAI_HAVEN_API = "https://hentaihaven.xxx/api"
+    id = "sukebei"
+    name = "Sukebei (Hentai Torrents)"
+
+    RSS = "https://sukebei.nyaa.si/?page=rss&q={query}&f=0"
+
+    def __init__(
+        self,
+        config: Config | None = None,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        limit: int = 20,
+    ) -> None:
+        super().__init__(config)
+        self.timeout = timeout
+        self.proxy_url = proxy_url
+        self.limit = limit
 
     def search(self, query: str) -> list[SearchResult]:
+        from torrentio_tui.proxy import open_url
+        from torrentio_tui.sources.torrent_extended import _guess_resolution
+
         self._check_enabled()
         query = query.strip()
         if not query:
             return []
 
-        url = f"{self.HENTAI_HAVEN_API}/search?q={urllib.parse.quote(query)}"
+        url = self.RSS.format(query=urllib.parse.quote(query))
+        try:
+            with open_url(url, self.timeout, self.proxy_url, {"User-Agent": _USER_AGENT}) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+        except Exception as exc:
+            raise SourceError(f"Sukebei search failed: {exc}") from exc
+
+        import xml.etree.ElementTree as ET
 
         try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception as exc:
-            raise SourceError(f"HentaiHaven search failed: {exc}") from exc
+            root = ET.fromstring(content)
+        except ET.ParseError as exc:
+            raise SourceError(f"Bad RSS response: {exc}") from exc
 
         results = []
-        for item in data.get("results", []):
-            if not isinstance(item, dict):
+        for item in root.findall(".//item")[: self.limit]:
+            title_elem = item.find("title")
+            link_elem = item.find("link")
+            desc_elem = item.find("description")
+            if title_elem is None or link_elem is None:
                 continue
-            slug = item.get("slug", "")
-            title = item.get("title", "Unknown")
-            cover = item.get("thumbnail", "")
-            tags = [t.get("name", "") for t in item.get("tags", []) if isinstance(t, dict)]
-            released = item.get("release_date", "")
-
+            title = title_elem.text or ""
+            link = (link_elem.text or "").strip()
+            desc = (desc_elem.text or "") if desc_elem is not None else ""
+            if not title or not link:
+                continue
+            size = ""
+            seeds = ""
+            size_match = re.search(r"Size:\s*([\d.]+\s*[GMK]iB)", desc)
+            if size_match:
+                size = size_match.group(1)
+            seeds_match = re.search(r"Seeders:\s*(\d+)", desc)
+            if seeds_match:
+                seeds = f" 👤{seeds_match.group(1)}"
+            clean_title = re.sub(r"\s+", " ", re.sub(r"\[.*?\]", "", title)).strip()
+            quality = _guess_resolution(title)
+            overview = " · ".join(p for p in (quality, size + seeds) if p)
             results.append(
                 SearchResult(
-                    id=f"hentaihaven:{slug}",
-                    title=title,
+                    id=f"sukebei:{link}",
+                    title=clean_title or title,
                     kind=MediaKind.ANIME,
                     source_id=self.id,
-                    year=int(released[:4]) if released and released[:4].isdigit() else None,
-                    poster_url=cover,
-                    overview="",
-                    genres=tuple(tags[:10]),
+                    year=None,
+                    poster_url=None,
+                    overview=overview,
+                    genres=("hentai",),
                 )
             )
         return results
 
     def get_episodes(self, item: SearchResult) -> list[Episode]:
-        self._check_enabled()
-        if ":" not in item.id:
-            return [Episode(id=item.id, title=item.title)]
-        _, slug = item.id.split(":", 1)
-
-        url = f"{self.HENTAI_HAVEN_API}/series/{slug}"
-
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception:
-            return [Episode(id=item.id, title=item.title)]
-
-        episodes = []
-        for ep in data.get("episodes", []):
-            if not isinstance(ep, dict):
-                continue
-            ep_slug = ep.get("slug", "")
-            ep_title = ep.get("title", "")
-            ep_num = ep.get("number", 0)
-            episodes.append(Episode(id=f"hentaihaven:{ep_slug}", title=ep_title, number=ep_num))
-
-        episodes.sort(key=lambda e: e.number or 0)
-        return episodes or [Episode(id=item.id, title=item.title)]
+        return [Episode(id=item.id, title=item.title)]
 
     def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
         self._check_enabled()
-        if ":" not in episode.id:
+        if ":" not in item.id:
             return []
-        _, ep_slug = episode.id.split(":", 1)
-
-        url = f"{self.HENTAI_HAVEN_API}/episode/{ep_slug}/sources"
-
-        try:
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15.0) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except Exception:
+        _, url = item.id.split(":", 1)
+        if not url:
             return []
-
-        links = []
-        for src in data.get("sources", []):
-            if not isinstance(src, dict):
-                continue
-            stream_url = src.get("url", "")
-            quality = src.get("quality", "auto")
-            if stream_url:
-                links.append(
-                    StreamLink(
-                        url=stream_url,
-                        quality=quality,
-                        headers={"Referer": "https://hentaihaven.xxx/"},
-                    )
-                )
-        return links
+        return [StreamLink(url=url, quality="torrent", is_live=False)]

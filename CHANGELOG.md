@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Instant-start, seekable streaming:** mpv now plays on-demand HTTP
+  streams with an explicit cache, read-ahead, and forced seekability,
+  so episodes/movies start from the current buffer immediately and
+  jump to any timestamp instead of needing the whole file first (live
+  streams excluded — nothing to seek); VLC gets matching network
+  caching. The quality picker (and every auto-pick, including resume
+  and downloads) now ranks direct/debrid HTTP first and magnets last,
+  since torrent links can only play sequentially up to the downloaded
+  pieces.
+- **Poster thumbnails in catalogue rows:** search/trending/library rows
+  show a fixed-shape live poster thumbnail (first 12 per list, lazily
+  filled without blocking), every poster row carries a 🖼 marker, and
+  the detail-panel poster box is now a fixed, border-clipped frame
+  that no longer shifts layout or paints outside its rounded border.
+- **2 new keyless catalogues (55 sources total):** `mangadex` (manga
+  with real cover art + followed-count trending) and `itunes`
+  (movies/TV with poster art) — both with playback bridged through
+  your stream addon like the other companions.
+- **New adult torrent source:** `sukebei` (Nyaa's adult tracker —
+  real hentai torrents that play through the torrent bridge).
+- **Rule34 credentials support:** optional `[sources.rule34] api_key`
+  + `user_id` (the API now requires them) with a clear error telling
+  you where to get them when missing.
 - **UI remake:** ⩔ funnel filter bar (kind · category · genre · year ·
   sort) that filters fetched results instantly with live counts;
   🔥 Trending tab (top movies & series, no typing); ⚙️ Settings screen
@@ -19,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **15 more free sources (53 total):** LimeTorrents, TorrentDownloads,
   GloDLS, IPTV-org world TV, AniDex, Anime Tosho, Tokyo Toshokan, The
   Pirate Bay (API), RARBG mirrors, Nyaa mirrors, E-Hentai, Hitomi.la,
-  HentaiHaven — plus a `Source.trending()` API powering the Trending
+  HentaiHaven (since retired — see Fixed below) — plus a `Source.trending()` API powering the Trending
   tab. Also fixed TMDB failing to construct (wrong kwargs passed).
 - Settings choices persist to `config.toml` immediately
   (`save_adult_enabled`, `save_player_backend`,
@@ -31,6 +54,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every section has its own view + hint line.
 
 ### Fixed
+- **E-Hentai search always failed:** it sent free text to the `gdata`
+  API, which only accepts gid/token pairs ("gdata request needs a
+  gidlist"). Search now scrapes gallery links from the HTML index
+  first, then resolves titles/tags/posters via `gdata` (verified live).
+- **Hanime search/streams were dead:** the `/api/v8/*` endpoints no
+  longer exist. Search now uses hanime's real guest API (`search_hvs`,
+  with posters, tags, descriptions — verified live); playback bridges
+  through the stream addon by title since the player handshake needs a
+  browser session.
+- **HentaiHaven removed:** its JSON API never existed and the site
+  blocks automated clients, so it could only ever error. Old configs
+  referencing it skip gracefully; use `sukebei` or `hanime` instead.
+- **NHentai/Hitomi/Rule34 failures now explain themselves:** 403s point
+  at `network.proxy_url` (datacenter-IP filtering), and Rule34 auth
+  failures point at the new `[sources.rule34]` credentials.
 - **1337x, Pirate Bay, and RARBG-mirror searches crashed every time:**
   `torrentapi.py`'s RSS-based sources called `urllib.parse.quote()`
   before a local `import urllib.request` later in the same function —

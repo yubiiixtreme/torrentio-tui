@@ -1,12 +1,14 @@
-"""Metadata catalogue sources: TVMaze, Jikan (MyAnimeList), Kitsu.
+"""Metadata catalogue sources: TVMaze, Jikan (MyAnimeList), Kitsu,
+MangaDex, iTunes, TMDB, Trakt.
 
-These are *discovery* companions, not stream indexes — all three APIs are
-free and keyless, and each is stronger than Cinemeta somewhere (TVMaze
-for series air-dates/episodes, Jikan/Kitsu for anime depth). To avoid
+These are *discovery* companions, not stream indexes — the keyless APIs
+are free, and each is stronger than Cinemeta somewhere (TVMaze for
+series air-dates/episodes, Jikan/Kitsu for anime depth, MangaDex for
+manga with cover art, iTunes for movies/TV with poster art). To avoid
 the classic dead-end catalogue (results that can never play), every
 source here bridges to playable streams through a Stremio-protocol
 stream addon — TVMaze via the show's IMDb external id when available,
-otherwise (and for Jikan/Kitsu) via a Cinemeta title resolve — so the
+otherwise (and for the rest) via a Cinemeta title resolve — so the
 user's configured addon (debrid URL included) does the streaming.
 """
 
@@ -866,3 +868,216 @@ class TraktSource(BridgedCatalogueSource):
         if kind == MediaKind.ANIME:
             kind = MediaKind.SERIES
         return self._bridge_by_title(item.title, kind, season=episode.season, number=episode.number)
+
+
+class MangaDexSource(BridgedCatalogueSource):
+    """MangaDex — manga/manhwa catalogue with real cover art (free,
+    keyless). Playback of anime adaptations resolves through the stream
+    addon by title, like the other catalogue companions."""
+
+    id = "mangadex"
+    name = "MangaDex (Manga Catalogue)"
+
+    API = "https://api.mangadex.org"
+    COVERS = "https://uploads.mangadex.org/covers"
+    #: Keep the general catalogue clean — explicit adult manga lives
+    #: behind the opt-in adult sources instead.
+    RATINGS = ("safe", "suggestive", "erotica")
+
+    def __init__(
+        self,
+        api_url: str | None = None,
+        stream_url: str | None = None,
+        cinemeta_url: str | None = None,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        source_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            stream_url=stream_url,
+            cinemeta_url=cinemeta_url,
+            timeout=timeout,
+            proxy_url=proxy_url,
+            source_id=source_id,
+        )
+        self.api_url = (api_url or self.API).rstrip("/")
+
+    @staticmethod
+    def _local_text(loc: object, preferred: tuple[str, ...] = ("en",)) -> str:
+        if not isinstance(loc, dict):
+            return ""
+        for lang in preferred:
+            value = loc.get(lang)
+            if isinstance(value, str) and value:
+                return value
+        for value in loc.values():
+            if isinstance(value, str) and value:
+                return value
+        return ""
+
+    def _to_result(self, entry: dict) -> SearchResult | None:
+        if not isinstance(entry, dict) or not entry.get("id"):
+            return None
+        manga_id = str(entry["id"])
+        attrs = entry.get("attributes") or {}
+        if not isinstance(attrs, dict):
+            return None
+        title = self._local_text(attrs.get("title"))
+        if not title:
+            for alt in attrs.get("altTitles") or []:
+                title = self._local_text(alt)
+                if title:
+                    break
+        if not title:
+            return None
+        overview = self._local_text(attrs.get("description"))[:300]
+        tags = []
+        for tag in attrs.get("tags") or []:
+            name = (tag.get("attributes") or {}).get("name") if isinstance(tag, dict) else None
+            label = self._local_text(name)
+            if label:
+                tags.append(label)
+        year = attrs.get("year") if isinstance(attrs.get("year"), int) else None
+        poster = None
+        authors = []
+        for rel in entry.get("relationships") or []:
+            if not isinstance(rel, dict):
+                continue
+            rel_attrs = rel.get("attributes") or {}
+            if rel.get("type") == "cover_art" and isinstance(rel_attrs, dict):
+                filename = rel_attrs.get("fileName")
+                if filename:
+                    poster = f"{self.COVERS}/{manga_id}/{filename}"
+            elif rel.get("type") == "author" and isinstance(rel_attrs, dict):
+                author = rel_attrs.get("name")
+                if author:
+                    authors.append(str(author))
+        if authors:
+            byline = f"✍️ {', '.join(authors[:2])}"
+            overview = f"{byline} — {overview}" if overview else byline
+        return SearchResult(
+            id=f"mangadex:{manga_id}",
+            title=title,
+            kind=MediaKind.ANIME,
+            source_id=self.id,
+            year=year,
+            poster_url=poster,
+            overview=overview,
+            genres=tuple(tags[:10]),
+        )
+
+    def _query(self, params: dict[str, str]) -> list[SearchResult]:
+        query = urllib.parse.urlencode(
+            [("limit", "20"), ("includes[]", "cover_art"), ("includes[]", "author")]
+            + [("contentRating[]", rating) for rating in self.RATINGS]
+            + list(params.items())
+        )
+        try:
+            data = _get_json(f"{self.api_url}/manga?{query}", self.timeout, self.proxy_url)
+        except SourceError:
+            return []
+        if not isinstance(data, dict) or not isinstance(data.get("data"), list):
+            return []
+        results = []
+        for entry in data["data"]:
+            res = self._to_result(entry)
+            if res is not None:
+                results.append(res)
+        return results
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        return self._query({"title": query, "order[relevance]": "desc"})
+
+    def trending(self, limit: int = 20) -> list[SearchResult]:
+        return self._query({"order[followedCount]": "desc"})[:limit]
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        return self._bridge_by_title(item.title, MediaKind.ANIME, number=episode.number)
+
+
+class ITunesSource(BridgedCatalogueSource):
+    """iTunes Store catalogue — movies and TV with poster art (free,
+    keyless). Playback resolves through the stream addon by title."""
+
+    id = "itunes"
+    name = "iTunes (Movies & TV Catalogue)"
+
+    API = "https://itunes.apple.com/search"
+    KINDS = {
+        "feature-movie": MediaKind.MOVIE,
+        "tv-episode": MediaKind.SERIES,
+        "tv-season": MediaKind.SERIES,
+    }
+
+    def __init__(
+        self,
+        api_url: str | None = None,
+        stream_url: str | None = None,
+        cinemeta_url: str | None = None,
+        timeout: float = 15.0,
+        proxy_url: str | None = None,
+        source_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            stream_url=stream_url,
+            cinemeta_url=cinemeta_url,
+            timeout=timeout,
+            proxy_url=proxy_url,
+            source_id=source_id,
+        )
+        self.api_url = (api_url or self.API).rstrip("/")
+
+    def _to_result(self, row: dict) -> SearchResult | None:
+        if not isinstance(row, dict):
+            return None
+        kind = self.KINDS.get(str(row.get("kind", "")))
+        if kind is None:
+            return None
+        track_id = row.get("trackId") or row.get("collectionId")
+        if track_id is None:
+            return None
+        title = str(row.get("trackName") or row.get("collectionName") or "").strip()
+        if not title:
+            return None
+        art = str(row.get("artworkUrl100", "") or "")
+        poster = art.replace("100x100bb", "600x600bb") if art else None
+        released = str(row.get("releaseDate", "") or "")
+        year = int(released[:4]) if released[:4].isdigit() else None
+        genre = str(row.get("primaryGenreName", "") or "")
+        overview = str(row.get("longDescription") or row.get("shortDescription") or "")[:300]
+        return SearchResult(
+            id=f"itunes:{track_id}",
+            title=title,
+            kind=kind,
+            source_id=self.id,
+            year=year,
+            poster_url=poster,
+            overview=overview,
+            genres=(genre,) if genre else (),
+        )
+
+    def search(self, query: str) -> list[SearchResult]:
+        query = query.strip()
+        if not query:
+            return []
+        params = urllib.parse.urlencode({"term": query, "limit": "25"})
+        try:
+            data = _get_json(f"{self.api_url}?{params}", self.timeout, self.proxy_url)
+        except SourceError:
+            return []
+        if not isinstance(data, dict) or not isinstance(data.get("results"), list):
+            return []
+        results = []
+        for row in data["results"]:
+            res = self._to_result(row)
+            if res is not None:
+                results.append(res)
+        return results
+
+    def get_streams(self, item: SearchResult, episode: Episode) -> list[StreamLink]:
+        if item.kind == MediaKind.MOVIE:
+            return self._bridge_by_title(item.title, MediaKind.MOVIE)
+        return self._bridge_by_title(item.title, MediaKind.SERIES)

@@ -38,6 +38,14 @@ class VlcPlayer(Player):
         if stream.subtitle_url:
             cmd.append(f"--sub-file={stream.subtitle_url}")
 
+        # Buffer a few seconds up front on on-demand HTTP so playback
+        # starts from the current buffer immediately and seeking to any
+        # timestamp works without pre-loading the whole file. Skipped
+        # for live streams (nothing to seek) and non-HTTP URLs.
+        url = stream.url.lower()
+        if not stream.is_live and url.startswith(("http://", "https://")):
+            cmd.append("--network-caching=3000")
+
         cmd.append(stream.url)
 
         result = run_supervised(cmd)

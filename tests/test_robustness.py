@@ -286,16 +286,72 @@ def test_rule34_dict_error_payload_raises_source_error(monkeypatch):
         Rule34Source(config=_adult_config()).search("test")
 
 
-def test_hanime_skips_empty_src_urls(monkeypatch):
-    payload = {"sources": [{"src": "", "height": 720}, {"src": "https://cdn/x.mp4", "height": 720}]}
-    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen(payload))
+def test_hanime_search_parses_hvs_api_and_bridges_streams(monkeypatch):
+    """Hanime search runs on the search_hvs guest API (posters, tags);
+    playback resolves through the configured stream addon by title."""
+    hvs = {
+        "data": [
+            {
+                "id": 5,
+                "name": "Test Show",
+                "slug": "test-show",
+                "poster_url": "https://hanime-cdn.com/images/posters/test-pv1.jpg",
+                "cover_url": "https://hanime-cdn.com/images/covers/test-cv1.png",
+                "description": "<p>A <b>test</b> show.</p>",
+                "tags": ["school", "ahegao"],
+                "brand": "TestBrand",
+                "released_at": "2021-03-04T00:00:00.000Z",
+            }
+        ]
+    }
+    monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen(hvs))
     from torrentio_tui.models import Episode, MediaKind, SearchResult
 
-    item = SearchResult(id="hanime:show", title="Show", kind=MediaKind.ANIME, source_id="hanime")
+    results = HanimeSource(config=_adult_config()).search("test")
+    assert len(results) == 1
+    assert results[0].id == "hanime:test-show"
+    assert results[0].poster_url.startswith("https://hanime-cdn.com")
+    assert results[0].year == 2021
+    assert "<p>" not in results[0].overview
+    assert "TestBrand" in results[0].genres
+
+    episodes = HanimeSource(config=_adult_config()).get_episodes(results[0])
+    assert len(episodes) == 1
+    assert episodes[0].id == "hanime:test-show"
+
+    # Streams bridge through the stream addon, not the (browser-only)
+    # hanime player handshake.
+    import torrentio_tui.sources.stremio as stremio_mod
+
+    addon_seen: dict = {}
+
+    class _FakeAddon:
+        def __init__(self, **kwargs):
+            addon_seen.update(kwargs)
+
+        def search(self, title):
+            addon_seen["title"] = title
+            return [
+                SearchResult(
+                    id="series:tt123",
+                    title=title,
+                    kind=MediaKind.SERIES,
+                    source_id="stremio",
+                )
+            ]
+
+        def get_streams(self, item, episode):
+            return [StreamLink(url="https://cdn/x.mp4", quality="1080p")]
+
+    monkeypatch.setattr(stremio_mod, "StremioSource", _FakeAddon)
+    item = SearchResult(
+        id="hanime:test-show", title="Test Show", kind=MediaKind.ANIME, source_id="hanime"
+    )
     links = HanimeSource(config=_adult_config()).get_streams(
-        item, Episode(id="hanime:ep1", title="E1")
+        item, Episode(id="hanime:test-show", title="Test Show")
     )
     assert [link.url for link in links] == ["https://cdn/x.mp4"]
+    assert addon_seen["title"] == "Test Show"
 
 
 # -- quality screen -----------------------------------------------------------
