@@ -57,7 +57,8 @@ def download(
     with supervised_popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     ) as process:
-        assert process.stdout is not None
+        if process.stdout is None:
+            raise DownloadError("yt-dlp produced no output")
         try:
             for line in process.stdout:
                 if on_output:
